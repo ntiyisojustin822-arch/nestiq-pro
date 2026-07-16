@@ -1,0 +1,11 @@
+{
+  "name": "nestiq-functions",
+  "description": "NestIQ Cloud Functions (PayFast ITN)",
+  "engines": { "node": "20" },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-admin": "^11.11.1",
+    "firebase-functions": "^4.9.0"
+  },
+  "private": true
+}

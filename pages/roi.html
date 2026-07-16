@@ -1,0 +1,243 @@
+<div class="page" id="page-roi" style="padding-top:70px">
+  <section class="section">
+    <div class="eyebrow section-center" style="justify-content:center">Investment Analysis</div>
+    <h2 class="section-title section-center reveal">ROI Calculator</h2>
+    <p class="section-sub reveal">Enter your property details to instantly calculate returns, yield and cash flow projections.</p>
+    <div class="roi-layout">
+      <div class="roi-form">
+        <div class="form-section-title">🏠 Property Details</div>
+        <div class="form-row">
+          <div class="form-group"><label>Purchase Price (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_price" type="number" value="1200000" oninput="calcROI()"></div></div>
+          <div class="form-group"><label>Deposit / Down Payment (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_deposit" type="number" value="240000" oninput="calcROI()"></div></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Monthly Rental Income (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_rent" type="number" value="12500" oninput="calcROI()"></div></div>
+          <div class="form-group"><label>Expected Annual Growth (%)</label><input class="form-input" id="roi_growth" type="number" value="7" oninput="calcROI()"></div>
+        </div>
+        <div class="form-section-title">💸 Monthly Expenses</div>
+        <div class="form-row">
+          <div class="form-group"><label>Mortgage Payment (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_mortgage" type="number" value="8400" oninput="calcROI()"></div></div>
+          <div class="form-group"><label>Rates & Taxes (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_rates" type="number" value="650" oninput="calcROI()"></div></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Insurance (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_insurance" type="number" value="450" oninput="calcROI()"></div></div>
+          <div class="form-group"><label>Maintenance (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="roi_maint" type="number" value="300" oninput="calcROI()"></div></div>
+        </div>
+        <div class="form-section-title">⚙️ Assumptions</div>
+        <div class="form-group">
+          <label>Vacancy Rate: <span class="range-val" id="roi_vac_val">5%</span></label>
+          <input class="range-input" id="roi_vacancy" type="range" min="0" max="30" value="5" oninput="document.getElementById('roi_vac_val').textContent=this.value+'%';calcROI()">
+        </div>
+        <div class="form-group">
+          <label>Management Fee: <span class="range-val" id="roi_mgmt_val">8%</span></label>
+          <input class="range-input" id="roi_mgmt" type="range" min="0" max="20" value="8" oninput="document.getElementById('roi_mgmt_val').textContent=this.value+'%';calcROI()">
+        </div>
+      </div>
+      <div class="roi-results">
+        <div class="roi-title">📈 Investment Summary</div>
+        <div class="roi-metric"><div class="roi-metric-label">Gross Rental Yield</div><div class="roi-metric-value" id="roi_gross_yield">—</div><div class="roi-metric-sub">Annual rent ÷ purchase price</div></div>
+        <div class="roi-metric"><div class="roi-metric-label">Net Rental Yield</div><div class="roi-metric-value" id="roi_net_yield">—</div><div class="roi-metric-sub">After all expenses & vacancy</div></div>
+        <div class="roi-metric"><div class="roi-metric-label">Monthly Cash Flow</div><div class="roi-metric-value" id="roi_cashflow">—</div><div class="roi-metric-sub">Rent minus all monthly costs</div></div>
+        <div class="roi-metric"><div class="roi-metric-label">Annual Cash Flow</div><div class="roi-metric-value" id="roi_annual_cf">—</div><div class="roi-metric-sub">Net income per year</div></div>
+        <div class="roi-metric"><div class="roi-metric-label">Cash-on-Cash Return</div><div class="roi-metric-value" id="roi_coc">—</div><div class="roi-metric-sub">Annual CF ÷ total cash invested</div></div>
+        <div class="roi-metric"><div class="roi-metric-label">Break-Even Point</div><div class="roi-metric-value" id="roi_breakeven">—</div><div class="roi-metric-sub">Years to recover deposit</div></div>
+      </div>
+    </div>
+
+    <div class="roi-bond-wrap">
+      <div class="roi-form">
+        <div class="form-section-title">🏦 Bond Repayment Calculator</div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Purchase Price (R)</label>
+            <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="bond_price" type="number" value="1200000" oninput="calcBondRepayment()"></div>
+          </div>
+          <div class="form-group">
+            <label>Interest Rate (%)</label>
+            <input class="form-input" id="bond_rate" type="number" step="0.01" value="11.75" oninput="calcBondRepayment()">
+            <div style="font-size:0.74rem;color:var(--muted);margin-top:4px">Current SA prime rate: 11.75%</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+              <button class="btn-outline btn-sm" type="button" onclick="setBondPrimeRate(11.75)">Use Prime</button>
+              <button class="btn-outline btn-sm" type="button" onclick="setBondPrimeRate(12.75)">Use Prime +1</button>
+              <button class="btn-outline btn-sm" type="button" onclick="setBondPrimeRate(13.75)">Use Prime +2</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Deposit (%): <span class="range-val" id="bond_deposit_val">10%</span> (<span id="bond_deposit_amt">R120,000</span>)</label>
+          <input class="range-input" id="bond_deposit_pct" type="range" min="0" max="40" value="10" oninput="calcBondRepayment()">
+        </div>
+
+        <div class="form-group">
+          <label>Loan Term (years): <span class="range-val" id="bond_term_val">20</span></label>
+          <input class="range-input" id="bond_term_years" type="range" min="5" max="30" value="20" oninput="calcBondRepayment()">
+        </div>
+
+        <div class="form-group" style="margin-top:10px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+            <input id="bond_include_fee" type="checkbox" checked onchange="calcBondRepayment()">
+            <span>Include initiation fee (R6,037)</span>
+          </label>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Monthly Levy (R)</label>
+            <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="bond_levy" type="number" value="0" oninput="calcBondRepayment()"></div>
+          </div>
+          <div class="form-group">
+            <label>Monthly Rates (R)</label>
+            <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="bond_rates" type="number" value="650" oninput="calcBondRepayment()"></div>
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn-primary btn-sm" type="button" onclick="useBondInROI()">Use in ROI Calculator</button>
+        </div>
+      </div>
+
+      <div class="roi-results" id="bondResultsCard">
+        <div class="roi-title">Bond Summary</div>
+        <div class="roi-metric">
+          <div class="roi-metric-label">Monthly Bond Payment</div>
+          <div class="roi-metric-value" id="bond_monthly_pay">—</div>
+          <div class="roi-metric-sub" id="bond_term_summary">—</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-label">Loan Snapshot</div>
+          <div class="roi-metric-sub" id="bond_loan_amt">Total Loan Amount: —</div>
+          <div class="roi-metric-sub" id="bond_interest_total">Total Interest Paid: —</div>
+          <div class="roi-metric-sub" id="bond_total_cost">Total Cost of Property: —</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-label">Transfer Costs</div>
+          <div class="roi-metric-sub" id="bond_transfer_duty">Transfer Duty: —</div>
+          <div class="roi-metric-sub" id="bond_conveyancing">Conveyancing Fees: —</div>
+          <div class="roi-metric-sub" id="bond_deeds">Deeds Office: —</div>
+          <div class="roi-metric-sub" id="bond_transfer_total" style="color:var(--gold)">Total Transfer Costs: —</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-label">Affordability</div>
+          <div class="roi-metric-sub" id="bond_monthly_breakdown">Monthly Bond: —</div>
+          <div class="roi-metric-sub" id="bond_monthly_levy">Monthly Levy: —</div>
+          <div class="roi-metric-sub" id="bond_monthly_rates">Monthly Rates: —</div>
+          <div class="roi-metric-sub" id="bond_monthly_total" style="color:var(--gold)">Total Monthly Cost: —</div>
+          <div class="roi-metric-sub" id="bond_income_line" style="display:none"></div>
+          <div class="roi-metric-sub" id="bond_coverage_line" style="display:none"></div>
+          <div class="roi-metric-sub" id="bond_cashflow_line" style="display:none"></div>
+          <div class="roi-metric-sub" id="bond_debt_ratio_line"></div>
+          <div class="roi-metric-sub" id="bond_debt_health_line"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="roi-amort-card">
+      <button class="btn-outline btn-sm" type="button" onclick="toggleBondAmortization()">View Full Amortization Schedule</button>
+      <div id="bondAmortWrap" style="display:none;margin-top:14px">
+        <div style="overflow:auto;max-height:360px;border:1px solid var(--border);border-radius:12px">
+          <table class="bond-amort-table">
+            <thead>
+              <tr>
+                <th>Year</th>
+                <th>Opening Balance</th>
+                <th>Interest</th>
+                <th>Principal</th>
+                <th>Closing Balance</th>
+              </tr>
+            </thead>
+            <tbody id="bond_amort_tbody"></tbody>
+          </table>
+        </div>
+        <div class="chart-wrap" style="margin-top:14px;height:280px">
+          <canvas id="bondAmortChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <div class="roi-bond-wrap" style="margin-top:18px">
+      <div class="roi-form">
+        <div class="form-section-title">📊 Rent Increase Calculator</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px">CPI figures are updated manually. Check www.statssa.gov.za for latest figures.</div>
+
+        <div class="form-group">
+          <label>Select Tenant (optional)</label>
+          <select id="cpi_tenant_id" class="form-input" onchange="onCpiTenantChange()">
+            <option value="">-- No tenant selected --</option>
+          </select>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Current Monthly Rent (R)</label>
+            <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="cpi_current_rent" type="number" value="12500" oninput="calcCpiRentIncrease()"></div>
+            <div style="margin-top:8px"><button class="btn-outline btn-sm" type="button" onclick="runCpiAiSuggestRent()">AI Suggest Rent</button></div>
+          </div>
+          <div class="form-group">
+            <label>Effective Date</label>
+            <input class="form-input" id="cpi_effective_date" type="date" onchange="calcCpiRentIncrease()">
+            <div id="cpi_renewal_hint" style="font-size:0.74rem;color:var(--muted);margin-top:4px"></div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Increase Type</label>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+            <label><input type="radio" name="cpi_type" value="cpi" checked onchange="calcCpiRentIncrease()"> CPI Linked</label>
+            <label><input type="radio" name="cpi_type" value="cpi_plus" onchange="calcCpiRentIncrease()"> CPI + Fixed %</label>
+            <label><input type="radio" name="cpi_type" value="fixed_pct" onchange="calcCpiRentIncrease()"> Fixed Percentage</label>
+            <label><input type="radio" name="cpi_type" value="fixed_amt" onchange="calcCpiRentIncrease()"> Fixed Amount (R)</label>
+          </div>
+        </div>
+
+        <div id="cpi_year_wrap" class="form-row">
+          <div class="form-group">
+            <label>CPI Year</label>
+            <select id="cpi_year" class="form-input" onchange="calcCpiRentIncrease()"></select>
+            <div id="cpi_year_rate" style="font-size:0.74rem;color:var(--muted);margin-top:4px"></div>
+          </div>
+          <div class="form-group" id="cpi_plus_wrap" style="display:none">
+            <label>Additional %</label>
+            <input class="form-input" id="cpi_plus_pct" type="number" value="1" oninput="calcCpiRentIncrease()">
+          </div>
+        </div>
+
+        <div class="form-group" id="cpi_fixed_pct_wrap" style="display:none">
+          <label>Fixed % Increase</label>
+          <input class="form-input" id="cpi_fixed_pct" type="number" value="6" oninput="calcCpiRentIncrease()">
+        </div>
+
+        <div class="form-group" id="cpi_fixed_amt_wrap" style="display:none">
+          <label>Fixed Amount (R)</label>
+          <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="cpi_fixed_amt" type="number" value="500" oninput="calcCpiRentIncrease()"></div>
+        </div>
+
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn-outline btn-sm" id="cpi_ai_btn" type="button" onclick="askAiRentIncreaseAdvisor()">Ask AI</button>
+          <button class="btn-primary btn-sm" id="cpi_apply_btn" type="button" onclick="applyCpiIncreaseToTenant()" style="display:none">Apply to Tenant</button>
+        </div>
+        <div id="cpiAiResult" style="margin-top:10px"></div>
+      </div>
+
+      <div class="roi-results">
+        <div class="roi-title">Increase Summary</div>
+        <div class="roi-metric">
+          <div class="roi-metric-label">Increase Percentage</div>
+          <div class="roi-metric-value" id="cpi_inc_pct">—</div>
+          <div class="roi-metric-sub" id="cpi_effective_from">Effective From: —</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-sub" id="cpi_inc_amt">Increase Amount: —</div>
+          <div class="roi-metric-sub" id="cpi_new_rent">New Monthly Rent: —</div>
+          <div class="roi-metric-sub" id="cpi_new_annual">New Annual Rent: —</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-sub">Remember: You must give at least 1 calendar month written notice before increasing rent under the Rental Housing Act.</div>
+        </div>
+        <div class="roi-metric">
+          <div class="roi-metric-sub">A landlord may not increase rent more than once per 12 months. CPI-linked increases are considered fair and reasonable under South African rental law.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

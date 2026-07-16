@@ -1,0 +1,64 @@
+<div id="page-latefees" class="page" style="padding-top:70px">
+
+  <!-- Page header -->
+  <div class="page-header reveal">
+    <div>
+      <h1 class="page-title">💸 Late Fee Management</h1>
+      <p class="page-sub">Configure your late fee policy and track outstanding fees</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-outline btn-sm" onclick="nestiqApplyAllLateFees()">⚡ Apply All Overdue Fees</button>
+      <button class="btn-gold btn-sm" onclick="nestiqOpenLateFeeSettingsModal()">⚙️ Fee Policy</button>
+    </div>
+  </div>
+
+  <!-- Policy summary card -->
+  <div id="lateFeePolicySummary" class="reveal" style="margin-bottom:20px"></div>
+
+  <!-- Stats row -->
+  <div class="stats-row reveal" id="lateFeeStatsRow"></div>
+
+  <!-- Late fee ledger table -->
+  <div class="card reveal" style="margin-top:20px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg)">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+      <h3 class="card-title" style="margin:0;font-family:'Playfair Display',serif;font-size:1.15rem">Late Fee Ledger</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select class="form-input" id="lateFeeStatusFilter" onchange="nestiqFilterLateFeeLedger()" style="width:auto;padding:6px 10px;font-size:0.85rem">
+          <option value="all">All Fees</option>
+          <option value="outstanding">Outstanding</option>
+          <option value="paid">Paid</option>
+          <option value="waived">Waived</option>
+        </select>
+        <button class="btn-outline btn-sm" onclick="nestiqExportLateFeesCSV()">⬇ Export</button>
+      </div>
+    </div>
+    <div id="lateFeeTableWrap" style="overflow-x:auto">
+      <table class="nestiq-table" style="width:100%;border-collapse:collapse;font-size:0.86rem">
+        <thead>
+          <tr style="text-align:left;background:var(--paper)">
+            <th style="padding:10px 12px">Tenant</th>
+            <th style="padding:10px 12px">Property</th>
+            <th style="padding:10px 12px">Fee Amount</th>
+            <th style="padding:10px 12px">Rent Due Date</th>
+            <th style="padding:10px 12px">Days Late</th>
+            <th style="padding:10px 12px">Applied On</th>
+            <th style="padding:10px 12px">Status</th>
+            <th style="padding:10px 12px">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="lateFeeTableBody">
+          <tr><td colspan="8" style="text-align:center;padding:32px;color:var(--muted)">Loading late fees...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Waived fees toggle -->
+  <div class="reveal" style="margin-top:12px;text-align:right">
+    <label style="font-size:0.85rem;color:var(--muted);cursor:pointer">
+      <input type="checkbox" id="showWaivedFees" onchange="nestiqFilterLateFeeLedger()">
+      Show waived fees
+    </label>
+  </div>
+
+</div>

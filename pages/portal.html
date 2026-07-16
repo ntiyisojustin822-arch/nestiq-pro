@@ -1,0 +1,97 @@
+<div class="page" id="page-portal" style="padding-top:70px">
+  <div class="portal-hero">
+    <img id="portalPropertyPhoto" class="portal-hero-photo" alt="Property photo" style="display:none" />
+    <div class="portal-hero-photo-shade" style="display:none" id="portalPropertyPhotoShade"></div>
+    <div class="portal-hero-bg"></div>
+    <div style="position:relative;z-index:1">
+      <div style="font-size:0.75rem;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--gold);margin-bottom:12px">Tenant Portal</div>
+      <h1 style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;margin-bottom:8px">Welcome back, <em style="font-style:italic;color:var(--gold)" id="portalTenantName">Loading...</em> 👋</h1>
+      <p style="color:rgba(247,244,239,0.55);font-size:0.95rem" id="portalPropertyInfo">Loading...</p>
+    </div>
+  </div>
+  <div class="portal-layout" style="background:var(--paper)">
+    <div class="portal-sidebar">
+      <div class="portal-profile">
+        <div class="portal-avatar" id="portalAvatar">👤</div>
+        <div class="portal-name" id="portalSidebarName">Loading...</div>
+        <div class="portal-unit" id="portalSidebarUnit">Loading...</div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr 1fr;gap:10px;text-align:center">
+          <div><div style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700;color:var(--gold)" id="portalSidebarRent">R0</div><div style="font-size:0.7rem;color:var(--muted)">Monthly Rent</div></div>
+          <div><div id="portalSidebarStatus" class="badge badge-amber" style="font-family:'Playfair Display',serif;font-size:1rem;font-weight:700">Loading</div><div style="font-size:0.7rem;color:var(--muted)">This Month</div></div>
+        </div>
+      </div>
+      <div class="portal-nav">
+        <div class="portal-nav-item active" onclick="switchPortalTab('payments',this)"><span class="nav-icon">💳</span>Payment History</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('lease',this)"><span class="nav-icon">📄</span>Lease Details</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('maintenance',this)"><span class="nav-icon">🔧</span>Maintenance Request</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('documents',this)"><span class="nav-icon">📁</span>Documents</div>
+      </div>
+    </div>
+    <div class="portal-main">
+      <!-- Payments tab -->
+      <div id="portal-tab-payments">
+        <div class="portal-card">
+          <div class="portal-card-title">Payment History <span class="badge badge-green" style="font-size:0.72rem">12 Months</span>
+            <button class="btn-outline btn-sm" onclick="generatePaymentStatementPDF(1)" style="margin-left:auto">⬇ PDF</button>
+          </div>
+          <div id="paymentHistory"></div>
+        </div>
+      </div>
+      <!-- Lease tab -->
+      <div id="portal-tab-lease" style="display:none">
+        <div class="portal-card">
+          <div class="portal-card-title">Lease Agreement</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px">
+            <div style="background:var(--paper);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="font-size:0.72rem;color:var(--muted);margin-bottom:3px">LEASE START</div><div style="font-weight:600;font-size:0.9rem" id="leaseStartDate">—</div></div>
+            <div style="background:var(--paper);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="font-size:0.72rem;color:var(--muted);margin-bottom:3px">LEASE END</div><div style="font-weight:600;font-size:0.9rem" id="leaseEndDate">—</div></div>
+            <div style="background:var(--paper);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="font-size:0.72rem;color:var(--muted);margin-bottom:3px">MONTHLY RENT</div><div style="font-weight:700;font-size:0.9rem;color:var(--gold)" id="leaseRentAmount">—</div></div>
+            <div style="background:var(--paper);border-radius:10px;padding:14px;border:1px solid var(--border)"><div style="font-size:0.72rem;color:var(--muted);margin-bottom:3px">DEPOSIT HELD</div><div style="font-weight:600;font-size:0.9rem" id="leaseDepositAmount">—</div></div>
+          </div>
+          <div class="lease-progress">
+            <div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:0.8rem;font-weight:600">Lease Progress</span><span style="font-size:0.8rem;color:var(--muted)" id="leaseProgressPercent">—</span></div>
+            <div class="lease-bar"><div class="lease-fill" id="leaseProgressBar" style="width:0%"></div></div>
+            <div style="display:flex;justify-content:space-between"><span style="font-size:0.72rem;color:var(--muted)">Jan 2025</span><span style="font-size:0.72rem;color:var(--muted)">Dec 2026</span></div>
+            <div style="font-size:0.78rem;color:var(--muted);margin-top:6px" id="leaseDaysRemaining">—</div>
+            <div style="display:none;margin-top:10px;font-size:0.82rem;color:var(--rust)" id="leaseRenewalWarning"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Maintenance tab -->
+      <div id="portal-tab-maintenance" style="display:none">
+        <div class="portal-card">
+          <div class="portal-card-title">Submit Maintenance Request</div>
+          <div class="maint-form">
+            <div class="form-row">
+              <div class="form-group"><label>Issue Type</label>
+                <select class="form-input" id="pm_issue"><option>Plumbing</option><option>Electrical</option><option>Structural</option><option>Appliance</option><option>Pest Control</option><option>Other</option></select>
+              </div>
+              <div class="form-group"><label>Urgency</label>
+                <select class="form-input" id="pm_urgency"><option>Low — Not urgent</option><option>Medium — Needs attention</option><option>High — Urgent</option></select>
+              </div>
+            </div>
+            <div class="form-group"><label>Description</label><textarea class="form-input form-textarea" id="pm_desc" placeholder="Describe the issue in detail..."></textarea></div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <button class="btn-outline btn-sm" onclick="runPortalMaintAiAssess()">AI Assess</button>
+              <span id="pmAiLoading" style="font-size:0.8rem;color:var(--muted);display:none">Thinking...</span>
+            </div>
+            <div id="pmAiResult" style="margin-top:8px"></div>
+            <div class="form-group"><label>Preferred Time for Inspection</label><input class="form-input" id="pm_time" type="datetime-local"></div>
+            <div class="form-group"><label>Attach Photo (optional)</label><div id="portalMaintUploadWrap"></div></div>
+            <button class="btn-primary" onclick="submitPortalMaintRequest()">Submit Request →</button>
+          </div>
+        </div>
+        <div class="portal-card" style="margin-top:0">
+          <div class="portal-card-title">Open Requests</div>
+          <div id="tenantOpenRequests"></div>
+        </div>
+      </div>
+      <!-- Documents tab -->
+      <div id="portal-tab-documents" style="display:none">
+        <div class="portal-card">
+          <div class="portal-card-title">Your Documents</div>
+          <div id="tenantDocuments"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

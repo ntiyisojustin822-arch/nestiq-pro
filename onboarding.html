@@ -1,0 +1,1170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Welcome — NestIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <style>
+    :root {
+      --gold: #C46A3A;
+      --ink: #0E1117;
+      --cream: #F5F0E8;
+      --rust: #A63D2F;
+      --paper: #FFFFFF;
+      --muted: rgba(14, 17, 23, 0.55);
+      --border: rgba(14, 17, 23, 0.12);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--cream);
+      min-height: 100vh;
+    }
+    .font-display { font-family: 'Playfair Display', serif; }
+    .ob-layout { display: flex; min-height: 100vh; }
+    .ob-sidebar {
+      width: 35%;
+      max-width: 380px;
+      min-width: 280px;
+      background: var(--ink);
+      color: #fff;
+      padding: 32px 28px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 10;
+    }
+    .ob-logo { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--gold); font-weight: 700; }
+    .ob-tagline { font-size: 0.88rem; color: rgba(255,255,255,.65); margin-top: 8px; line-height: 1.5; }
+    .ob-steps { margin-top: 40px; flex: 1; position: relative; }
+    .ob-steps::before {
+      content: '';
+      position: absolute;
+      left: 15px;
+      top: 20px;
+      bottom: 20px;
+      width: 2px;
+      background: rgba(255,255,255,.15);
+    }
+    .ob-step-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      margin-bottom: 22px;
+      position: relative;
+      transition: opacity .25s;
+    }
+    .ob-step-circle {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.78rem;
+      font-weight: 700;
+      z-index: 1;
+      transition: all .3s ease;
+    }
+    .ob-step-item.done .ob-step-circle {
+      background: var(--gold);
+      border: 2px solid var(--gold);
+      color: #fff;
+    }
+    .ob-step-item.current .ob-step-circle {
+      background: transparent;
+      border: 2px solid var(--gold);
+      color: var(--gold);
+    }
+    .ob-step-item.upcoming .ob-step-circle {
+      background: transparent;
+      border: 2px solid rgba(255,255,255,.25);
+      color: rgba(255,255,255,.4);
+    }
+    .ob-step-label { font-size: 0.82rem; padding-top: 6px; color: rgba(255,255,255,.45); }
+    .ob-step-item.current .ob-step-label { color: #fff; font-weight: 600; }
+    .ob-step-item.done .ob-step-label { color: rgba(255,255,255,.7); }
+    .ob-save-later {
+      margin-top: auto;
+      font-size: 0.82rem;
+      color: rgba(255,255,255,.55);
+      background: none;
+      border: none;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 0;
+    }
+    .ob-save-later:hover { color: var(--gold); }
+    .ob-main {
+      margin-left: 35%;
+      width: 65%;
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--paper);
+    }
+    .ob-progress-wrap {
+      height: 4px;
+      background: var(--cream);
+      flex-shrink: 0;
+    }
+    .ob-progress-bar {
+      height: 100%;
+      background: var(--gold);
+      width: 0%;
+      transition: width .35s ease;
+    }
+    .ob-mobile-label {
+      display: none;
+      padding: 12px 16px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .ob-content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 32px 40px 120px;
+    }
+    .ob-card {
+      max-width: 640px;
+      animation: obFadeIn .3s ease forwards;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    @keyframes obFadeIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes obShake {
+      0%,100% { transform: translateX(0); }
+      20%,60% { transform: translateX(-6px); }
+      40%,80% { transform: translateX(6px); }
+    }
+    .ob-shake { animation: obShake .4s ease; }
+    .ob-title { font-family: 'Playfair Display', serif; font-size: 1.75rem; font-weight: 700; margin: 0 0 8px; }
+    .ob-sub { font-size: 0.95rem; color: var(--muted); margin: 0 0 24px; line-height: 1.55; }
+    .ob-label { display: block; font-size: 0.78rem; font-weight: 600; margin-bottom: 6px; color: var(--ink); }
+    .ob-input, .ob-select, .ob-textarea {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.92rem;
+      font-family: inherit;
+      margin-bottom: 14px;
+      background: #fff;
+      transition: outline .15s;
+    }
+    .ob-input:focus, .ob-select:focus, .ob-textarea:focus {
+      outline: 2px solid var(--gold);
+      outline-offset: 0;
+      border-color: var(--gold);
+    }
+    .ob-input[readonly] { background: var(--cream); color: var(--muted); }
+    .ob-input.invalid { border-color: #dc3545; }
+    .ob-phone-wrap { display: flex; gap: 8px; }
+    .ob-phone-prefix {
+      padding: 11px 12px;
+      background: var(--cream);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
+    .ob-phone-wrap .ob-input { flex: 1; margin-bottom: 14px; }
+    .ob-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media(max-width:600px){ .ob-row { grid-template-columns: 1fr; } }
+    .ob-toggle { display: flex; gap: 8px; margin-bottom: 16px; }
+    .ob-toggle button {
+      flex: 1;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.88rem;
+    }
+    .ob-toggle button.active { background: var(--gold); color: #fff; border-color: var(--gold); }
+    .ob-skip { display: inline-block; margin-top: 12px; font-size: 0.85rem; color: var(--gold); cursor: pointer; background: none; border: none; text-decoration: underline; }
+    .ob-footer {
+      position: fixed;
+      bottom: 0;
+      right: 0;
+      width: 65%;
+      padding: 16px 40px;
+      background: rgba(255,255,255,.96);
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 12px;
+      justify-content: flex-end;
+      backdrop-filter: blur(8px);
+      z-index: 5;
+    }
+    .ob-btn {
+      padding: 12px 28px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      cursor: pointer;
+      border: none;
+      min-width: 120px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .ob-btn-outline { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+    .ob-btn-gold { background: var(--gold); color: #fff; }
+    .ob-btn:disabled { opacity: .55; cursor: not-allowed; }
+    .ob-spinner {
+      width: 18px; height: 18px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .ob-error {
+      background: #f8d7da;
+      color: #721c24;
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .ob-highlights { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 24px 0; }
+    @media(max-width:700px){ .ob-highlights { grid-template-columns: 1fr; } }
+    .ob-highlight { text-align: center; padding: 16px; background: var(--cream); border-radius: 12px; font-size: 0.88rem; }
+    .ob-mock {
+      background: linear-gradient(135deg, var(--cream), #fff);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    .ob-mock-stat { font-size: 1.5rem; font-weight: 700; color: var(--gold); }
+    .ob-pill {
+      display: inline-block;
+      background: rgba(196,106,58,.12);
+      color: var(--rust);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-top: 12px;
+    }
+    .ob-avatar-wrap { display: flex; align-items: center; gap: 16px; margin-bottom: 16px; }
+    .ob-avatar {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: var(--cream);
+      border: 2px dashed var(--border);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.5rem;
+    }
+    .ob-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .ob-plan-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 20px 0; }
+    @media(max-width:800px){ .ob-plan-grid { grid-template-columns: 1fr; } }
+    .ob-plan-card {
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 18px;
+      position: relative;
+    }
+    .ob-plan-card.popular { border-color: var(--gold); box-shadow: 0 8px 24px rgba(196,106,58,.12); }
+    .ob-summary { background: var(--cream); border-radius: 14px; padding: 20px; margin: 20px 0; }
+    .ob-summary li { margin: 8px 0; font-size: 0.9rem; }
+    .ob-quick { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin: 20px 0; }
+    @media(max-width:700px){ .ob-quick { grid-template-columns: 1fr; } }
+    .ob-quick a {
+      display: block;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      text-decoration: none;
+      color: var(--ink);
+      font-size: 0.88rem;
+      font-weight: 600;
+      text-align: center;
+      transition: border-color .2s;
+    }
+    .ob-quick a:hover { border-color: var(--gold); }
+    .ob-cycle-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 16px; }
+    .ob-cycle-toggle button { padding: 8px 16px; border: none; background: transparent; cursor: pointer; font-size: 0.82rem; }
+    .ob-cycle-toggle button.active { background: var(--gold); color: #fff; }
+    .ob-test-ok { color: #155724; background: #d4edda; padding: 10px; border-radius: 8px; margin-top: 10px; }
+    .ob-test-fail { color: #721c24; background: #f8d7da; padding: 10px; border-radius: 8px; margin-top: 10px; }
+    #obGate { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    @media(max-width:900px){
+      .ob-sidebar { display: none; }
+      .ob-main { margin-left: 0; width: 100%; }
+      .ob-footer { width: 100%; padding: 16px; }
+      .ob-mobile-label { display: block; }
+      .ob-content { padding: 20px 16px 100px; }
+      .ob-btn { flex: 1; min-width: 0; }
+    }
+  </style>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+</head>
+<body>
+  <div id="obGate"><p style="color:var(--muted)">Loading…</p></div>
+
+  <div class="ob-layout" id="obApp" style="display:none">
+    <aside class="ob-sidebar">
+      <div class="ob-logo">🏠 NestIQ</div>
+      <p class="ob-tagline">Property management, simplified.</p>
+      <nav class="ob-steps" id="obStepNav" aria-label="Onboarding steps"></nav>
+      <button type="button" class="ob-save-later" id="obSaveLater">Save &amp; Continue Later</button>
+    </aside>
+
+    <div class="ob-main">
+      <div class="ob-progress-wrap"><div class="ob-progress-bar" id="obProgressBar"></div></div>
+      <div class="ob-mobile-label" id="obMobileLabel"></div>
+      <div class="ob-content">
+        <div id="obError" class="ob-error"></div>
+        <div id="obStepContent" class="ob-card"></div>
+      </div>
+      <div class="ob-footer">
+        <button type="button" class="ob-btn ob-btn-outline" id="obBackBtn" style="display:none">Back</button>
+        <button type="button" class="ob-btn ob-btn-gold" id="obContinueBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/firestore-paths.js"></script>
+  <script src="./js/onboarding-gate.js"></script>
+  <script>
+  (function(){
+    'use strict';
+
+    const NESTIQ_FIREBASE_CONFIG = window.NESTIQ_FIREBASE_CONFIG || {
+      apiKey: 'AIzaSyDoUFyF7N4Dambzrzp2STB6GZYxX5fgI7E',
+      authDomain: 'nestiq-pro.firebaseapp.com',
+      projectId: 'nestiq-pro',
+      storageBucket: 'nestiq-pro.firebasestorage.app',
+      messagingSenderId: '375703486251',
+      appId: '1:375703486251:web:75c6bb4a11b82bb2f70f6e'
+    };
+
+    const NESTIQ_PLANS = {
+      starter: { name: 'Starter', price_monthly: 0, price_annual: 0, features: ['Up to 2 properties','Up to 5 tenants','Basic rent tracking','Tenant portal'] },
+      pro: { name: 'Pro', price_monthly: 299, price_annual: 2870, features: ['Unlimited properties','Unlimited tenants','AI tools','Reports & exports','Email & WhatsApp'] },
+      enterprise: { name: 'Enterprise', price_monthly: 799, price_annual: 7670, features: ['Everything in Pro','Unlimited AI','Custom branding','API access','SLA support'] }
+    };
+
+    const STEP_LABELS = [
+      'Welcome', 'Your profile', 'First property', 'First tenant',
+      'Notifications', 'Your plan', 'All done'
+    ];
+
+    const state = {
+      step: 1,
+      uid: null,
+      email: '',
+      draft: {},
+      propertyId: null,
+      propertySkipped: false,
+      tenantId: null,
+      tenantSkipped: false,
+      propertyName: '',
+      tenantName: '',
+      emailjsConnected: false,
+      billingCycle: 'monthly',
+      saving: false
+    };
+
+    let db, auth, fv;
+
+    function settingsRef(uid){
+      return db.collection('landlords').doc(uid).collection('profile').doc('settings');
+    }
+    function propsCol(uid){ return db.collection('landlords').doc(uid).collection('properties'); }
+    function tenantsCol(uid){ return db.collection('landlords').doc(uid).collection('tenants'); }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+    function formatZar(n){ return 'R' + Number(n||0).toFixed(2); }
+
+    function showError(msg){
+      const el = document.getElementById('obError');
+      if(!el) return;
+      el.textContent = msg;
+      el.style.display = msg ? 'block' : 'none';
+    }
+
+    function showRedirectLoopGate(uid){
+      const gate = document.getElementById('obGate');
+      gate.style.display = 'flex';
+      gate.innerHTML = '<div style="max-width:560px;margin:24px auto;padding:20px;border:1px solid rgba(14,17,23,.12);border-radius:14px;background:#fff">'
+        + '<h2 style="margin:0 0 8px;font-family:Playfair Display,serif">Redirect loop detected</h2>'
+        + '<p style="margin:0 0 16px;color:rgba(14,17,23,.65);line-height:1.55">NestIQ keeps bouncing between pages. Your account looks set up already — use the button below to open the dashboard. If that fails, deploy the latest <code>firestore.rules</code> and refresh.</p>'
+        + '<button type="button" id="obForceDash" class="ob-btn ob-btn-gold" style="width:100%">Continue to dashboard</button>'
+        + '</div>';
+      document.getElementById('obForceDash').onclick = async () => {
+        const btn = document.getElementById('obForceDash');
+        btn.disabled = true;
+        btn.textContent = 'Opening…';
+        const ok = await window.nestiqForceOnboardingComplete(db, uid);
+        if(ok){
+          window.location.replace('index.html');
+        }else{
+          btn.disabled = false;
+          btn.textContent = 'Continue to dashboard';
+          showError('Could not save settings. Check Firestore rules and try again.');
+        }
+      };
+    }
+
+    function setLoading(loading){
+      state.saving = loading;
+      const btn = document.getElementById('obContinueBtn');
+      if(!btn) return;
+      btn.disabled = loading;
+      if(loading){
+        btn.innerHTML = '<span class="ob-spinner"></span> Saving…';
+      }else{
+        btn.textContent = state.step === 7 ? 'Go to My Dashboard →' : (state.step === 1 ? "Let's Get Started →" : 'Continue');
+      }
+    }
+
+    function validSaPhone(raw){
+      const d = String(raw||'').replace(/\D/g,'');
+      if(d.length === 10 && d.startsWith('0')) return true;
+      if(d.length === 11 && d.startsWith('27')) return true;
+      return false;
+    }
+
+    function normalizePhone(raw){
+      let d = String(raw||'').replace(/\D/g,'');
+      if(d.startsWith('27') && d.length === 11) return '+' + d;
+      if(d.startsWith('0') && d.length === 10) return '+27' + d.slice(1);
+      return raw;
+    }
+
+    function dobFromSaId(id){
+      const s = String(id||'').replace(/\D/g,'');
+      if(s.length < 6) return '';
+      const yy = parseInt(s.slice(0,2),10);
+      const mm = s.slice(2,4);
+      const dd = s.slice(4,6);
+      const century = yy > 30 ? 1900 : 2000;
+      return `${century + yy}-${mm}-${dd}`;
+    }
+
+    function progressPct(){
+      return Math.round((state.step / 7) * 100);
+    }
+
+    function renderStepNav(){
+      const nav = document.getElementById('obStepNav');
+      if(!nav) return;
+      nav.innerHTML = STEP_LABELS.map((label, i) => {
+        const n = i + 1;
+        let cls = 'upcoming';
+        if(n < state.step) cls = 'done';
+        else if(n === state.step) cls = 'current';
+        const inner = n < state.step ? '✓' : n;
+        return `<div class="ob-step-item ${cls}" data-step="${n}">
+          <div class="ob-step-circle">${inner}</div>
+          <div class="ob-step-label">${esc(label)}</div>
+        </div>`;
+      }).join('');
+      document.getElementById('obProgressBar').style.width = progressPct() + '%';
+      document.getElementById('obMobileLabel').textContent = `Step ${state.step} of 7 — ${STEP_LABELS[state.step - 1]}`;
+      document.getElementById('obBackBtn').style.display = state.step > 1 && state.step < 7 ? '' : 'none';
+      const cont = document.getElementById('obContinueBtn');
+      if(state.step === 1) cont.textContent = "Let's Get Started →";
+      else if(state.step === 7) cont.textContent = 'Go to My Dashboard →';
+      else cont.textContent = 'Continue';
+    }
+
+    function readFileB64(file, maxW, cb){
+      if(!file){ cb(null); return; }
+      const r = new FileReader();
+      r.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const scale = Math.min(1, maxW / img.width);
+          const c = document.createElement('canvas');
+          c.width = img.width * scale;
+          c.height = img.height * scale;
+          c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+          cb(c.toDataURL('image/jpeg', 0.82));
+        };
+        img.src = r.result;
+      };
+      r.readAsDataURL(file);
+    }
+
+    function renderStep(){
+      renderStepNav();
+      showError('');
+      const box = document.getElementById('obStepContent');
+      box.className = 'ob-card';
+      void box.offsetWidth;
+      box.style.animation = 'none';
+      void box.offsetWidth;
+      box.style.animation = '';
+
+      const d = state.draft;
+      const prof = d.profile || {};
+
+      if(state.step === 1){
+        box.innerHTML = `
+          <h1 class="ob-title" style="animation:obFadeIn .5s ease">Welcome to NestIQ! 🎉</h1>
+          <p class="ob-sub">Let's get your portfolio set up in under 5 minutes. We'll walk you through everything step by step.</p>
+          <div class="ob-highlights">
+            <div class="ob-highlight">🏠<br>Add your properties</div>
+            <div class="ob-highlight">👥<br>Invite your tenants</div>
+            <div class="ob-highlight">💰<br>Start tracking rent</div>
+          </div>
+          <div class="ob-mock">
+            <div style="font-size:.78rem;color:var(--muted);margin-bottom:8px">Your dashboard preview</div>
+            <div style="font-weight:700;margin-bottom:4px">Sunset Apartments — Unit 4</div>
+            <div class="ob-mock-stat">R12,500 <span style="font-size:.82rem;font-weight:400;color:var(--muted)">collected this month</span></div>
+          </div>
+          <span class="ob-pill">✨ You're on a free 14-day Pro trial — all features unlocked</span>`;
+        return;
+      }
+
+      if(state.step === 2){
+        const parts = (prof.firstName && prof.lastName) ? [prof.firstName, prof.lastName] : (auth.currentUser?.displayName || '').split(/\s+/);
+        const fn = prof.firstName || parts[0] || '';
+        const ln = prof.lastName || parts.slice(1).join(' ') || '';
+        box.innerHTML = `
+          <h2 class="ob-title">Tell Us About Yourself</h2>
+          <p class="ob-sub">This information appears on tenant communications and invoices.</p>
+          <div class="ob-row">
+            <div><label class="ob-label">First name *</label><input class="ob-input" id="ob_fn" inputmode="text" value="${esc(fn)}" /></div>
+            <div><label class="ob-label">Last name *</label><input class="ob-input" id="ob_ln" inputmode="text" value="${esc(ln)}" /></div>
+          </div>
+          <label class="ob-label">Email address</label>
+          <input class="ob-input" id="ob_email" type="email" readonly value="${esc(state.email)}" />
+          <label class="ob-label">Phone number *</label>
+          <div class="ob-phone-wrap">
+            <span class="ob-phone-prefix">🇿🇦 +27</span>
+            <input class="ob-input" id="ob_phone" inputmode="tel" placeholder="82 123 4567" value="${esc(prof.phoneLocal || '')}" />
+          </div>
+          <label class="ob-label">Company or trading name</label>
+          <input class="ob-input" id="ob_company" value="${esc(prof.company || '')}" />
+          <label class="ob-label">Properties you manage</label>
+          <select class="ob-select" id="ob_prop_count">
+            ${['1','2–5','6–10','11–20','20+'].map(v => `<option ${prof.propertyCount===v?'selected':''}>${v}</option>`).join('')}
+          </select>
+          <div class="ob-avatar-wrap">
+            <div class="ob-avatar" id="ob_avatar_btn" title="Upload photo">${prof.logoBase64 ? `<img src="${prof.logoBase64}" alt="">` : '📷'}</div>
+            <div><div class="ob-label" style="margin:0">Profile photo or logo (optional)</div>
+            <button type="button" class="ob-skip" onclick="document.getElementById('ob_logo_file').click()">Choose file</button></div>
+            <input type="file" id="ob_logo_file" accept="image/*" hidden />
+          </div>`;
+        document.getElementById('ob_logo_file').onchange = e => {
+          readFileB64(e.target.files[0], 400, b64 => {
+            state.draft.profile = state.draft.profile || {};
+            state.draft.profile.logoBase64 = b64;
+            const btn = document.getElementById('ob_avatar_btn');
+            if(btn && b64) btn.innerHTML = `<img src="${b64}" alt="">`;
+          });
+        };
+        document.getElementById('ob_avatar_btn').onclick = () => document.getElementById('ob_logo_file').click();
+        ['ob_fn','ob_ln','ob_phone'].forEach(id => {
+          document.getElementById(id)?.addEventListener('input', validateStep2Live);
+        });
+        validateStep2Live();
+        return;
+      }
+
+      if(state.step === 3){
+        const p = d.property || {};
+        box.innerHTML = `
+          <h2 class="ob-title">Add Your First Property</h2>
+          <p class="ob-sub">Don't worry — you can add more later. Just start with one.</p>
+          <label class="ob-label">Property name *</label>
+          <input class="ob-input" id="ob_pname" placeholder="Riverside Apartments Unit 3" value="${esc(p.name||'')}" />
+          <label class="ob-label">Full address *</label>
+          <input class="ob-input" id="ob_paddr" value="${esc(p.addr||'')}" />
+          <div class="ob-row">
+            <div><label class="ob-label">Property type</label>
+              <select class="ob-select" id="ob_ptype">
+                ${['Apartment','House','Townhouse','Bachelor','Commercial','Other'].map(t =>
+                  `<option ${p.typeLabel===t?'selected':''}>${t}</option>`).join('')}
+              </select></div>
+            <div><label class="ob-label">Bedrooms</label>
+              <select class="ob-select" id="ob_beds">
+                ${[1,2,3,4,'5+'].map(b => `<option ${String(p.bedrooms)===String(b)?'selected':''}>${b}</option>`).join('')}
+              </select></div>
+          </div>
+          <label class="ob-label">Monthly rent (R) *</label>
+          <input class="ob-input" id="ob_rent" type="number" inputmode="decimal" placeholder="0.00" value="${p.rent||''}" />
+          <div class="ob-row">
+            <div><label class="ob-label">Lease end date</label><input class="ob-input" id="ob_lease_end" type="date" value="${esc(p.leaseEnd||'')}" /></div>
+            <div><label class="ob-label">Status</label>
+              <div class="ob-toggle" id="ob_status_toggle">
+                <button type="button" class="${p.status!=='vacant'?'active':''}" data-v="occupied">Occupied</button>
+                <button type="button" class="${p.status==='vacant'?'active':''}" data-v="vacant">Vacant</button>
+              </div>
+            </div>
+          </div>
+          <label class="ob-label">Property photo (optional)</label>
+          <input type="file" id="ob_pphoto" accept="image/*" />
+          <button type="button" class="ob-skip" id="ob_skip_prop">Skip for now</button>`;
+        document.getElementById('ob_status_toggle').onclick = e => {
+          const b = e.target.closest('button[data-v]');
+          if(!b) return;
+          document.querySelectorAll('#ob_status_toggle button').forEach(x => x.classList.remove('active'));
+          b.classList.add('active');
+        };
+        document.getElementById('ob_skip_prop').onclick = () => skipProperty();
+        document.getElementById('ob_pphoto').onchange = e => {
+          readFileB64(e.target.files[0], 800, b64 => {
+            state.draft.property = state.draft.property || {};
+            state.draft.property.photoBase64 = b64;
+          });
+        };
+        return;
+      }
+
+      if(state.step === 4){
+        if(state.propertySkipped || !state.propertyId){
+          box.innerHTML = `
+            <h2 class="ob-title">Add Your First Tenant</h2>
+            <p class="ob-sub">You skipped adding a property. You can add tenants from the Tenants page once your dashboard is set up.</p>
+            <button type="button" class="ob-btn ob-btn-outline" id="ob_skip_tenant_only">Skip</button>`;
+          document.getElementById('ob_skip_tenant_only').onclick = () => skipTenant();
+          return;
+        }
+        const t = d.tenant || {};
+        box.innerHTML = `
+          <h2 class="ob-title">Add Your First Tenant</h2>
+          <p class="ob-sub">Link a tenant to the property you just added.</p>
+          <label class="ob-label">Full name *</label>
+          <input class="ob-input" id="ob_tname" value="${esc(t.name||'')}" />
+          <label class="ob-label">Email address *</label>
+          <input class="ob-input" id="ob_temail" type="email" inputmode="email" value="${esc(t.email||'')}" />
+          <label class="ob-label">Phone / WhatsApp</label>
+          <input class="ob-input" id="ob_tphone" inputmode="tel" value="${esc(t.phone||'')}" />
+          <label class="ob-label">SA ID number (optional)</label>
+          <input class="ob-input" id="ob_tid" inputmode="numeric" value="${esc(t.idNumber||'')}" />
+          <p id="ob_dob_hint" style="font-size:.78rem;color:var(--muted);margin:-8px 0 12px"></p>
+          <label class="ob-label">Linked property</label>
+          <input class="ob-input" readonly value="${esc(state.propertyName)}" />
+          <label class="ob-label">Unit number</label>
+          <input class="ob-input" id="ob_tunit" value="${esc(t.unit||'')}" />
+          <div class="ob-row">
+            <div><label class="ob-label">Lease start</label><input class="ob-input" id="ob_tls" type="date" value="${esc(t.leaseStart||'')}" /></div>
+            <div><label class="ob-label">Lease end</label><input class="ob-input" id="ob_tle" type="date" value="${esc(t.leaseEnd||'')}" /></div>
+          </div>
+          <label class="ob-label">Monthly rent (R)</label>
+          <input class="ob-input" id="ob_trent" type="number" inputmode="decimal" value="${esc(t.rent ?? d.property?.rent ?? '')}" />
+          <label class="ob-label">Deposit amount (R)</label>
+          <input class="ob-input" id="ob_tdep" type="number" inputmode="decimal" value="${esc(t.deposit||'')}" />
+          <button type="button" class="ob-skip" id="ob_skip_tenant">Skip for now</button>`;
+        document.getElementById('ob_tid').oninput = e => {
+          const dob = dobFromSaId(e.target.value);
+          document.getElementById('ob_dob_hint').textContent = dob ? `Date of birth (from ID): ${dob}` : '';
+        };
+        document.getElementById('ob_skip_tenant').onclick = () => skipTenant();
+        return;
+      }
+
+      if(state.step === 5){
+        const ej = d.emailjs || {};
+        const wa = d.whatsapp || {};
+        box.innerHTML = `
+          <h2 class="ob-title">Stay on Top of Everything</h2>
+          <p class="ob-sub">Connect your notification channels so you and your tenants never miss a thing.</p>
+          <h3 style="font-size:1rem;font-weight:700;margin:20px 0 8px">EmailJS Setup</h3>
+          <p style="font-size:.85rem;color:var(--muted);margin:0 0 12px">NestIQ uses EmailJS to send rent reminders, tenant invitations, and lease expiry alerts. It's free for up to 200 emails/month.
+            <a href="https://www.emailjs.com/" target="_blank" rel="noopener" style="color:var(--gold)">Create a free EmailJS account →</a></p>
+          <label class="ob-label">EmailJS Public Key</label>
+          <input class="ob-input" id="ob_ej_pk" value="${esc(ej.publicKey||'')}" />
+          <label class="ob-label">EmailJS Service ID</label>
+          <input class="ob-input" id="ob_ej_sid" value="${esc(ej.serviceId||'')}" />
+          <label class="ob-label">Default Email Template ID</label>
+          <input class="ob-input" id="ob_ej_tid" value="${esc(ej.defaultTemplateId||'')}" />
+          <button type="button" class="ob-btn ob-btn-outline" id="ob_test_email" style="width:auto;margin-bottom:16px">Test Connection</button>
+          <div id="ob_email_result"></div>
+          <h3 style="font-size:1rem;font-weight:700;margin:24px 0 8px">WhatsApp Reminders</h3>
+          <p style="font-size:.85rem;color:var(--muted);margin:0 0 12px">Add your WhatsApp number to send one-click rent reminders directly from NestIQ.</p>
+          <label class="ob-label">WhatsApp number</label>
+          <input class="ob-input" id="ob_wa" inputmode="tel" value="${esc(wa.number || prof.phoneLocal || '')}" />
+          <button type="button" class="ob-skip" id="ob_skip_notif">Skip for now — set up later in Settings</button>`;
+        document.getElementById('ob_test_email').onclick = testEmailJs;
+        document.getElementById('ob_skip_notif').onclick = async () => {
+          try{ await saveStep5(); }catch(_e){ state.draft.emailjs = state.draft.emailjs || {}; }
+          goToStep(6);
+        };
+        return;
+      }
+
+      if(state.step === 6){
+        const billing = d.billing || state.settingsBilling || {};
+        const trialEnd = billing.trialEnds ? new Date(billing.trialEnds).toLocaleDateString('en-ZA') : 'soon';
+        const cycle = state.billingCycle;
+        box.innerHTML = `
+          <h2 class="ob-title">You're on a Free 14-Day Pro Trial</h2>
+          <p class="ob-sub">After your trial you'll be moved to the free Starter plan unless you upgrade. No credit card required right now.</p>
+          <div class="ob-cycle-toggle">
+            <button type="button" class="${cycle==='monthly'?'active':''}" data-c="monthly">Monthly</button>
+            <button type="button" class="${cycle==='annual'?'active':''}" data-c="annual">Annual (save 20%)</button>
+          </div>
+          <div class="ob-plan-grid" id="ob_plans"></div>
+          <p style="font-size:.85rem;color:var(--muted)">You won't be charged until your trial ends on <strong>${esc(trialEnd)}</strong>. Cancel anytime.</p>
+          <div style="display:flex;flex-wrap:wrap;gap:12px;margin-top:24px">
+            <button type="button" class="ob-btn ob-btn-gold" id="ob_upgrade_now" style="flex:1;min-width:200px">Upgrade to Pro Now — ${formatZar(NESTIQ_PLANS.pro.price_monthly)}/month</button>
+            <button type="button" class="ob-btn ob-btn-outline" id="ob_trial_cont" style="flex:1;min-width:200px">Continue with free trial</button>
+          </div>`;
+        const grid = document.getElementById('ob_plans');
+        ['starter','pro','enterprise'].forEach(key => {
+          const p = NESTIQ_PLANS[key];
+          const price = cycle === 'annual' ? p.price_annual : p.price_monthly;
+          const div = document.createElement('div');
+          div.className = 'ob-plan-card' + (key === 'pro' ? ' popular' : '');
+          div.innerHTML = `
+            <h4 class="font-display" style="font-weight:700;font-size:1.1rem">${esc(p.name)}</h4>
+            <p style="font-size:1.4rem;font-weight:700;margin:8px 0">${price ? formatZar(price) : 'Free'}<span style="font-size:.8rem;font-weight:400;color:var(--muted)">${price ? (cycle==='annual'?'/year':'/month') : ''}</span></p>
+            <ul style="font-size:.82rem;color:var(--muted);padding-left:0;list-style:none;line-height:1.7">
+              ${p.features.map(f => `<li>✓ ${esc(f)}</li>`).join('')}
+            </ul>
+            ${key === 'pro' ? '<p style="font-size:.78rem;color:var(--gold);font-weight:600;margin-top:8px">✨ This is what you\'re currently trialling</p>' : ''}`;
+          grid.appendChild(div);
+        });
+        document.querySelectorAll('.ob-cycle-toggle button').forEach(b => {
+          b.onclick = () => {
+            state.billingCycle = b.dataset.c;
+            renderStep();
+          };
+        });
+        document.getElementById('ob_upgrade_now').onclick = () => {
+          if(typeof window.nestiqInitiatePayFastCheckout === 'function'){
+            window.nestiqInitiatePayFastCheckout('pro', state.billingCycle);
+          } else {
+            showError('Billing module not loaded. Continue with trial or open billing from Settings.');
+          }
+        };
+        document.getElementById('ob_trial_cont').onclick = () => goToStep(7);
+        return;
+      }
+
+      if(state.step === 7){
+        const fn = state.draft.profile?.firstName || '';
+        const full = [state.draft.profile?.firstName, state.draft.profile?.lastName].filter(Boolean).join(' ') || fn;
+        const trialDays = (() => {
+          const end = state.settingsBilling?.trialEnds;
+          if(!end) return '14';
+          return Math.max(0, Math.ceil((new Date(end) - Date.now()) / 86400000));
+        })();
+        box.innerHTML = `
+          <h2 class="ob-title">You're All Set, ${esc(fn || 'there')}! 🎉</h2>
+          <p class="ob-sub">Your NestIQ dashboard is ready. Here's a summary of what you've set up:</p>
+          <ul class="ob-summary">
+            <li>✅ Profile created — ${esc(full || '—')}</li>
+            <li>${state.propertySkipped ? '⏭️' : '✅'} Property ${state.propertySkipped ? 'skipped' : 'added'} — ${state.propertySkipped ? 'add from dashboard' : esc(state.propertyName)}</li>
+            <li>${state.tenantSkipped ? '⏭️' : '✅'} Tenant ${state.tenantSkipped ? 'skipped' : 'added'} — ${state.tenantSkipped ? 'add from dashboard' : esc(state.tenantName)}</li>
+            <li>${state.emailjsConnected ? '✅' : '⚠️'} EmailJS ${state.emailjsConnected ? 'connected' : 'not set up — configure in Settings'}</li>
+            <li>✨ Pro trial active — ${trialDays} days remaining</li>
+          </ul>
+          <div class="ob-quick">
+            <a href="index.html#properties">🏠 Add another property</a>
+            <a href="index.html#tenants">👥 Invite your tenant</a>
+            <a href="index.html">📊 Explore your dashboard</a>
+          </div>`;
+        if(typeof confetti === 'function'){
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ['#C46A3A','#F5F0E8','#0E1117','#A63D2F','#ffffff'] });
+        }
+      }
+    }
+
+    function validateStep2Live(){
+      if(state.step !== 2) return;
+      const fn = document.getElementById('ob_fn')?.value?.trim();
+      const ln = document.getElementById('ob_ln')?.value?.trim();
+      const ph = document.getElementById('ob_phone')?.value?.trim();
+      const ok = fn && ln && validSaPhone(ph);
+      document.getElementById('obContinueBtn').disabled = !ok && state.step === 2;
+    }
+
+    function shakeInvalid(ids){
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el){ el.classList.add('invalid','ob-shake'); setTimeout(() => el.classList.remove('ob-shake'), 400); }
+      });
+    }
+
+    function collectStep2(){
+      return {
+        firstName: document.getElementById('ob_fn').value.trim(),
+        lastName: document.getElementById('ob_ln').value.trim(),
+        phoneLocal: document.getElementById('ob_phone').value.trim(),
+        phone: normalizePhone(document.getElementById('ob_phone').value.trim()),
+        company: document.getElementById('ob_company').value.trim(),
+        propertyCount: document.getElementById('ob_prop_count').value,
+        logoBase64: state.draft.profile?.logoBase64 || null
+      };
+    }
+
+    async function saveSettings(patch){
+      await settingsRef(state.uid).set(patch, { merge: true });
+    }
+
+    async function saveStep2(){
+      const p = collectStep2();
+      if(!p.firstName || !p.lastName){ shakeInvalid(['ob_fn','ob_ln']); throw new Error('validation'); }
+      if(!validSaPhone(p.phoneLocal)){ shakeInvalid(['ob_phone']); throw new Error('validation'); }
+      state.draft.profile = p;
+      const fullName = `${p.firstName} ${p.lastName}`.trim();
+      await saveSettings({
+        onboardingStep: 2,
+        name: fullName,
+        email: state.email,
+        phone: p.phone,
+        companyName: p.company,
+        profile: p,
+        landlordSettings: {
+          name: fullName,
+          email: state.email,
+          phone: p.phone,
+          companyName: p.company,
+          propertyCount: p.propertyCount,
+          logoBase64: p.logoBase64
+        }
+      });
+      try{ await auth.currentUser.updateProfile({ displayName: fullName }); }catch(_e){}
+    }
+
+    async function saveStep3(){
+      const name = document.getElementById('ob_pname').value.trim();
+      const addr = document.getElementById('ob_paddr').value.trim();
+      const rent = parseFloat(document.getElementById('ob_rent').value);
+      if(!name || !addr || !rent){ shakeInvalid(['ob_pname','ob_paddr','ob_rent']); throw new Error('validation'); }
+      const typeLabel = document.getElementById('ob_ptype').value;
+      const typeMap = { Apartment:'apartment', House:'house', Townhouse:'apartment', Bachelor:'apartment', Commercial:'commercial', Other:'apartment' };
+      const beds = document.getElementById('ob_beds').value;
+      const statusBtn = document.querySelector('#ob_status_toggle button.active');
+      const status = statusBtn?.dataset.v === 'vacant' ? 'vacant' : 'occupied';
+      const leaseEnd = document.getElementById('ob_lease_end').value;
+      const icon = typeLabel === 'House' ? '🏠' : '🏢';
+      const row = {
+        name, addr, city: '', rent, status,
+        type: typeMap[typeLabel] || 'apartment',
+        icon,
+        bedrooms: beds === '5+' ? 5 : parseInt(beds, 10) || 1,
+        leaseEnd: status === 'occupied' ? (leaseEnd || 'See tenant') : 'Available',
+        notes: '',
+        landlordId: state.uid,
+        publicListing: status === 'vacant',
+        createdAt: fv.serverTimestamp()
+      };
+      if(state.draft.property?.photoBase64) row.photoUrl = state.draft.property.photoBase64;
+      const ref = await propsCol(state.uid).add(row);
+      state.propertyId = ref.id;
+      state.propertyName = name;
+      state.propertySkipped = false;
+      state.draft.property = { name, addr, rent, typeLabel, bedrooms: beds, status, leaseEnd, photoBase64: state.draft.property?.photoBase64 };
+      await saveSettings({ onboardingStep: 3, onboarding: { ...state.draft, propertyId: ref.id } });
+    }
+
+    async function skipProperty(){
+      state.propertySkipped = true;
+      state.propertyId = null;
+      state.draft.property = null;
+      await saveSettings({ onboardingStep: 3, onboarding: { ...state.draft, propertySkipped: true } });
+      goToStep(4);
+    }
+
+    async function saveStep4(){
+      const name = document.getElementById('ob_tname')?.value?.trim();
+      const email = document.getElementById('ob_temail')?.value?.trim().toLowerCase();
+      if(!name || !email){ shakeInvalid(['ob_tname','ob_temail']); throw new Error('validation'); }
+      const rent = parseFloat(document.getElementById('ob_trent').value) || state.draft.property?.rent || 0;
+      const dep = parseFloat(document.getElementById('ob_tdep').value) || rent * 2;
+      const leaseStart = document.getElementById('ob_tls').value || new Date().toISOString().slice(0,10);
+      const leaseEnd = document.getElementById('ob_tle').value || '2026-12-31';
+      const unit = (document.getElementById('ob_tunit').value || 'Unit').trim();
+      const row = {
+        name, property: state.propertyName, propertyId: state.propertyId,
+        unit, rent, status: 'due', lease: leaseEnd, leaseStart, leaseEnd,
+        monthlyDueDate: 1, phone: document.getElementById('ob_tphone').value.trim(),
+        email, avatar: '👤', notes: '', unitPassword: unit.toLowerCase().replace(/^unit\s*/,'').replace(/\s+/g,''),
+        landlordId: state.uid, hasPortalAccess: false, firstLogin: false, deposit: dep,
+        idNumber: document.getElementById('ob_tid').value.trim(),
+        createdAt: fv.serverTimestamp()
+      };
+      const ref = await tenantsCol(state.uid).add(row);
+      state.tenantId = ref.id;
+      state.tenantName = name;
+      state.tenantSkipped = false;
+      state.draft.tenant = { name, email, rent, unit, leaseStart, leaseEnd, deposit: dep };
+      await saveSettings({ onboardingStep: 4, onboarding: { ...state.draft, tenantId: ref.id } });
+    }
+
+    async function skipTenant(){
+      state.tenantSkipped = true;
+      state.tenantId = null;
+      await saveSettings({ onboardingStep: 4, onboarding: { ...state.draft, tenantSkipped: true } });
+      goToStep(5);
+    }
+
+    async function saveStep5(){
+      if(!document.getElementById('ob_ej_pk')) return;
+      const publicKey = document.getElementById('ob_ej_pk')?.value?.trim() || '';
+      const serviceId = document.getElementById('ob_ej_sid')?.value?.trim() || '';
+      const defaultTemplateId = document.getElementById('ob_ej_tid')?.value?.trim() || '';
+      const waNum = normalizePhone(document.getElementById('ob_wa')?.value?.trim() || '');
+      state.draft.emailjs = { publicKey, serviceId, defaultTemplateId };
+      state.draft.whatsapp = { number: waNum };
+      state.emailjsConnected = !!(publicKey && serviceId && defaultTemplateId);
+      await saveSettings({
+        onboardingStep: 5,
+        email: { publicKey, serviceId, defaultTemplateId },
+        whatsapp: { number: waNum },
+        landlordSettings: {
+          emailjs: {
+            publicKey, serviceId,
+            templates: { rentReminder: defaultTemplateId },
+            testEmail: state.email
+          },
+          phone: waNum || state.draft.profile?.phone,
+          whatsappNumber: waNum
+        },
+        onboarding: state.draft
+      });
+    }
+
+    async function testEmailJs(){
+      const publicKey = document.getElementById('ob_ej_pk').value.trim();
+      const serviceId = document.getElementById('ob_ej_sid').value.trim();
+      const templateId = document.getElementById('ob_ej_tid').value.trim();
+      const res = document.getElementById('ob_email_result');
+      if(!publicKey || !serviceId || !templateId){
+        res.innerHTML = '<div class="ob-test-fail">❌ Connection failed — fill in all three fields</div>';
+        return;
+      }
+      try{
+        emailjs.init(publicKey);
+        await emailjs.send(serviceId, templateId, {
+          to_email: state.email,
+          to_name: state.draft.profile?.firstName || 'Landlord',
+          message: 'NestIQ EmailJS test — your connection works!'
+        });
+        state.emailjsConnected = true;
+        res.innerHTML = '<div class="ob-test-ok">✅ EmailJS connected successfully</div>';
+      }catch(e){
+        res.innerHTML = '<div class="ob-test-fail">❌ Connection failed — check your credentials</div>';
+      }
+    }
+
+    async function finishOnboarding(){
+      await saveSettings({
+        onboardingComplete: true,
+        onboardingStep: 7,
+        onboardingPaused: false,
+        onboarding: state.draft
+      });
+      window.location.href = 'index.html';
+    }
+
+    async function saveAndContinueLater(){
+      try{
+        if(state.step === 2 && document.getElementById('ob_fn')) state.draft.profile = collectStep2();
+        await saveSettings({
+          onboardingStep: state.step,
+          onboardingPaused: true,
+          onboarding: state.draft
+        });
+        window.location.href = 'index.html';
+      }catch(e){
+        showError('Failed to save. Please check your connection and try again.');
+      }
+    }
+
+    function goToStep(n){
+      state.step = n;
+      renderStep();
+      window.scrollTo(0, 0);
+    }
+
+    async function onContinue(){
+      if(state.saving) return;
+      showError('');
+      setLoading(true);
+      try{
+        if(state.step === 1){ goToStep(2); return; }
+        if(state.step === 2){ await saveStep2(); goToStep(3); return; }
+        if(state.step === 3){
+          if(document.getElementById('ob_pname')){
+            await saveStep3();
+            goToStep(4);
+          } else goToStep(4);
+          return;
+        }
+        if(state.step === 4){
+          if(state.propertySkipped || !document.getElementById('ob_tname')){
+            goToStep(5);
+          } else {
+            await saveStep4();
+            goToStep(5);
+          }
+          return;
+        }
+        if(state.step === 5){
+          if(document.getElementById('ob_ej_pk')) await saveStep5();
+          goToStep(6);
+          return;
+        }
+        if(state.step === 6){ goToStep(7); return; }
+        if(state.step === 7){ await finishOnboarding(); return; }
+      }catch(e){
+        if(e.message !== 'validation'){
+          const code=String(e?.code||'').toLowerCase();
+          if(state.step===3&&(code.includes('permission')||String(e?.message||'').toLowerCase().includes('permission'))){
+            showError('Could not save property — Firebase permissions blocked this. Deploy the latest firestore.rules, then try again.');
+          }else{
+            showError('Failed to save. Please check your connection and try again.');
+          }
+        }
+      }finally{
+        setLoading(false);
+      }
+    }
+
+    function onBack(){
+      if(state.step <= 1) return;
+      if(state.step === 4 && state.propertySkipped) goToStep(3);
+      else goToStep(state.step - 1);
+    }
+
+    async function loadSavedSettings(data){
+      state.draft = data.onboarding || {};
+      if(data.profile) state.draft.profile = { ...state.draft.profile, ...data.profile };
+      if(data.onboarding?.propertyId) state.propertyId = data.onboarding.propertyId;
+      if(data.onboarding?.tenantId) state.tenantId = data.onboarding.tenantId;
+      state.propertySkipped = !!(data.onboarding?.propertySkipped || data.onboarding?.skippedProperty);
+      state.tenantSkipped = !!(data.onboarding?.tenantSkipped);
+      state.settingsBilling = data.billing || {};
+      if(data.landlordSettings?.emailjs) state.draft.emailjs = {
+        publicKey: data.landlordSettings.emailjs.publicKey,
+        serviceId: data.landlordSettings.emailjs.serviceId,
+        defaultTemplateId: data.landlordSettings.emailjs.templates?.rentReminder
+      };
+      if(data.whatsapp) state.draft.whatsapp = data.whatsapp;
+      if(data.onboarding?.property?.name) state.propertyName = data.onboarding.property.name;
+      if(data.onboarding?.tenant?.name) state.tenantName = data.onboarding.tenant.name;
+      const step = Number(data.onboardingStep);
+      if(step >= 1 && step <= 6) state.step = step;
+      if(data.onboardingPaused) state.step = Math.max(state.step, 1);
+    }
+
+    async function boot(){
+      if(!firebase.apps.length) firebase.initializeApp(NESTIQ_FIREBASE_CONFIG);
+      db = firebase.firestore();
+      window.nestiqDb = db;
+      auth = firebase.auth();
+      fv = firebase.firestore.FieldValue;
+
+      let bootDone = false;
+      setTimeout(() => {
+        if(bootDone) return;
+        const gate = document.getElementById('obGate');
+        if(!gate || gate.style.display === 'none') return;
+        gate.innerHTML = '<div style="max-width:480px;margin:24px auto;padding:20px;text-align:center"><h2 style="margin:0 0 8px">Still loading</h2><p style="color:var(--muted);line-height:1.55;margin:0 0 16px">This is taking longer than usual. Check your connection, then try again.</p><a href="index.html?flow=signin" class="ob-btn ob-btn-gold" style="display:inline-block;text-decoration:none">Back to sign in</a></div>';
+      }, 12000);
+
+      auth.onAuthStateChanged(async user => {
+        if(!user){
+          window.location.replace('index.html?flow=signin');
+          return;
+        }
+        try{
+        const udoc = await db.collection('users').doc(user.uid).get();
+        if(!udoc.exists || udoc.data().role !== 'landlord'){
+          window.location.replace('index.html?flow=signin');
+          return;
+        }
+        state.uid = user.uid;
+        state.email = user.email || '';
+        window.__nestiqLandlordUid = user.uid;
+        window.nestiqCurrentLandlordUid = () => user.uid;
+        window.landlordSettings = window.landlordSettings || { email: state.email };
+
+        const obState = typeof window.nestiqResolveOnboardingState === 'function'
+          ? await window.nestiqResolveOnboardingState(db, user.uid)
+          : { complete: false, paused: false, settings: { data: {}, ref: settingsRef(user.uid) } };
+        const data = obState.settings.data || {};
+        if(obState.complete){
+          if(obState.settings.ref && data.onboardingComplete !== true){
+            try{
+              await obState.settings.ref.set({ onboardingComplete: true }, { merge: true });
+            }catch(_e){}
+          }
+          const nextCnt = typeof window.nestiqBumpRedirectLoop === 'function'
+            ? window.nestiqBumpRedirectLoop()
+            : 1;
+          if(nextCnt >= 4){
+            showRedirectLoopGate(user.uid);
+            bootDone = true;
+            return;
+          }
+          window.nestiqClearRedirectLoop?.();
+          window.location.replace('index.html');
+          return;
+        }
+        await loadSavedSettings(data);
+        if(state.propertyId && !state.propertyName){
+          try{
+            const ps = await propsCol(user.uid).doc(state.propertyId).get();
+            if(ps.exists) state.propertyName = ps.data().name || state.propertyName;
+          }catch(_e){}
+        }
+        const prof = state.draft.profile || {};
+        const fullName = [prof.firstName, prof.lastName].filter(Boolean).join(' ') || data.name || user.displayName || '';
+        window.landlordSettings = {
+          name: fullName,
+          email: state.email,
+          phone: prof.phone || data.phone || ''
+        };
+        if(data.onboardingPaused){
+          await settingsRef(user.uid).set({ onboardingPaused: false }, { merge: true });
+        }
+        bootDone = true;
+        document.getElementById('obGate').style.display = 'none';
+        document.getElementById('obApp').style.display = 'flex';
+        document.getElementById('obContinueBtn').onclick = onContinue;
+        document.getElementById('obBackBtn').onclick = onBack;
+        document.getElementById('obSaveLater').onclick = saveAndContinueLater;
+        renderStep();
+        }catch(err){
+          console.error('NestIQ onboarding boot', err);
+          bootDone = true;
+          document.getElementById('obGate').innerHTML = '<div style="max-width:480px;margin:24px auto;padding:20px"><h2 style="margin:0 0 8px">Could not load onboarding</h2><p style="color:var(--muted);line-height:1.55">' + String(err?.message || err).replace(/</g,'&lt;') + '</p><a href="index.html?flow=signin" class="ob-btn ob-btn-gold" style="display:inline-block;margin-top:16px;text-decoration:none">Back to sign in</a></div>';
+        }
+      });
+    }
+
+    boot();
+  })();
+  </script>
+  <script src="./js/billing.js"></script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

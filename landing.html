@@ -1,0 +1,874 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="NestIQ — property management for South African landlords. Collect rent, manage tenants, maintenance, and grow your portfolio." />
+  <title>NestIQ — Property Management for South African Landlords</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            gold: '#C46A3A',
+            ink: '#0E1117',
+            cream: '#F5F0E8',
+            rust: '#A63D2F',
+            paper: '#FFFFFF',
+          },
+          fontFamily: {
+            display: ['"Playfair Display"', 'serif'],
+            sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    :root {
+      --gold: #C46A3A;
+      --ink: #0E1117;
+      --cream: #F5F0E8;
+      --rust: #A63D2F;
+      --paper: #FFFFFF;
+      --border: rgba(14, 17, 23, 0.1);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      overflow-x: hidden;
+    }
+    .font-display { font-family: 'Playfair Display', serif; }
+
+    /* Animated hero background */
+    .hero-bg {
+      background: linear-gradient(135deg, #F5F0E8 0%, #fff 40%, rgba(196, 106, 58, 0.12) 70%, #F5F0E8 100%);
+      background-size: 200% 200%;
+      animation: heroShift 14s ease-in-out infinite alternate;
+    }
+    @keyframes heroShift {
+      0% { background-position: 0% 50%; }
+      100% { background-position: 100% 50%; }
+    }
+
+    /* Nav */
+    #siteNav {
+      transition: box-shadow 0.25s ease, background 0.25s ease;
+    }
+    #siteNav.scrolled {
+      box-shadow: 0 4px 24px rgba(14, 17, 23, 0.08);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(10px);
+    }
+    .nav-link {
+      position: relative;
+      transition: color 0.2s;
+    }
+    .nav-link::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      bottom: -4px;
+      width: 0;
+      height: 2px;
+      background: var(--gold);
+      transition: width 0.25s ease;
+    }
+    .nav-link:hover { color: var(--gold); }
+    .nav-link.active { color: var(--gold); }
+    .nav-link.active::after { width: 100%; }
+
+    .btn-gold {
+      background: var(--gold);
+      color: #fff;
+      border: 2px solid var(--gold);
+      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    }
+    .btn-gold:hover {
+      background: #b35f34;
+      border-color: #b35f34;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px rgba(196, 106, 58, 0.35);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--ink);
+      border: 2px solid rgba(14, 17, 23, 0.2);
+      transition: border-color 0.2s, color 0.2s, transform 0.2s;
+    }
+    .btn-outline:hover {
+      border-color: var(--gold);
+      color: var(--gold);
+      transform: translateY(-1px);
+    }
+    .btn-outline-light {
+      background: transparent;
+      color: #fff;
+      border: 2px solid rgba(255, 255, 255, 0.5);
+    }
+    .btn-outline-light:hover {
+      border-color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+    .btn-white {
+      background: #fff;
+      color: var(--gold);
+      border: 2px solid #fff;
+      font-weight: 600;
+    }
+    .btn-white:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Mobile menu */
+    #mobileMenu {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease;
+    }
+    #mobileMenu.open { max-height: 420px; }
+
+    /* Dashboard mockup */
+    .mock-window {
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      box-shadow: 0 24px 64px rgba(14, 17, 23, 0.12);
+      background: #fff;
+      overflow: hidden;
+    }
+    .mock-bar {
+      height: 36px;
+      background: var(--cream);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 12px;
+    }
+    .mock-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .ui-card {
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #fff;
+      padding: 14px;
+    }
+
+    /* Steps */
+    .step-line {
+      flex: 1;
+      height: 2px;
+      border-top: 2px dashed rgba(196, 106, 58, 0.45);
+      margin-top: 24px;
+      min-width: 24px;
+    }
+    .step-circle {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #fff;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    @media (max-width: 767px) {
+      .steps-row { flex-direction: column; align-items: stretch; }
+      .step-line-h { display: none; }
+      .step-line-v {
+        width: 2px;
+        height: 32px;
+        border-left: 2px dashed rgba(196, 106, 58, 0.45);
+        margin: 0 auto;
+      }
+    }
+
+    /* Pricing */
+    .pricing-card {
+      border: 2px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+      transition: transform 0.25s, box-shadow 0.25s;
+    }
+    .pricing-card:hover { transform: translateY(-4px); box-shadow: 0 16px 40px rgba(14, 17, 23, 0.08); }
+    .pricing-card.popular {
+      border-color: var(--gold);
+      box-shadow: 0 16px 48px rgba(196, 106, 58, 0.2);
+      position: relative;
+    }
+    .popular-badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--gold);
+      color: #fff;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 4px 14px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+    .billing-toggle button.active {
+      background: var(--gold);
+      color: #fff;
+    }
+    .save-badge {
+      display: none;
+      font-size: 0.7rem;
+      background: #5a7a60;
+      color: #fff;
+      padding: 2px 8px;
+      border-radius: 6px;
+      margin-left: 6px;
+    }
+    body.annual-billing .save-badge { display: inline-block; }
+    body.annual-billing .price-monthly { display: none; }
+    body:not(.annual-billing) .price-annual { display: none; }
+
+    /* FAQ */
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-q {
+      width: 100%;
+      text-align: left;
+      padding: 18px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      background: none;
+      border: none;
+      color: var(--ink);
+      font-size: 1rem;
+    }
+    .faq-a {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+      color: rgba(14, 17, 23, 0.72);
+      line-height: 1.65;
+    }
+    .faq-item.open .faq-a {
+      max-height: 200px;
+      padding-bottom: 18px;
+    }
+    .faq-icon { transition: transform 0.3s; color: var(--gold); font-size: 1.25rem; }
+    .faq-item.open .faq-icon { transform: rotate(45deg); }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* Testimonial stars */
+    .star { color: var(--gold); }
+
+    /* Prevent app dashboard nav rules from affecting marketing header */
+    header#siteNav nav {
+      position: static;
+      width: auto;
+      padding: 0;
+      background: transparent;
+      border: none;
+      backdrop-filter: none;
+      box-shadow: none;
+      display: flex;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 1. Navigation -->
+  <header id="siteNav" class="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-sm">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16 md:h-[72px]">
+        <a href="#" class="font-display text-xl md:text-2xl font-bold text-gold flex items-center gap-2 shrink-0">
+          <span aria-hidden="true">🏠</span> NestIQ
+        </a>
+
+        <nav class="hidden md:flex items-center gap-8" aria-label="Main">
+          <a href="#features" class="nav-link text-sm font-medium text-ink" data-section="features">Features</a>
+          <a href="#pricing" class="nav-link text-sm font-medium text-ink" data-section="pricing">Pricing</a>
+          <a href="#tenants" class="nav-link text-sm font-medium text-ink" data-section="tenants">For Tenants</a>
+          <a href="#contact" class="nav-link text-sm font-medium text-ink" data-section="contact">Contact</a>
+        </nav>
+
+        <div class="hidden md:flex items-center gap-3 shrink-0">
+          <a href="index.html#auth-signin" class="btn-outline text-sm font-semibold px-5 py-2.5 rounded-full">Sign In</a>
+          <a href="index.html#auth-signup" class="btn-gold text-sm font-semibold px-5 py-2.5 rounded-full">Start Free Trial</a>
+        </div>
+
+        <button type="button" id="menuBtn" class="md:hidden p-2 rounded-lg border border-black/10" aria-label="Open menu" aria-expanded="false">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+      </div>
+
+      <div id="mobileMenu" class="md:hidden border-t border-black/5">
+        <nav class="py-4 flex flex-col gap-1" aria-label="Mobile">
+          <a href="#features" class="nav-link px-2 py-3 text-sm font-medium">Features</a>
+          <a href="#pricing" class="nav-link px-2 py-3 text-sm font-medium">Pricing</a>
+          <a href="#tenants" class="nav-link px-2 py-3 text-sm font-medium">For Tenants</a>
+          <a href="#contact" class="nav-link px-2 py-3 text-sm font-medium">Contact</a>
+          <div class="flex flex-col gap-2 pt-3 border-t border-black/5 mt-2">
+            <a href="index.html#auth-signin" class="btn-outline text-center text-sm font-semibold px-5 py-2.5 rounded-full">Sign In</a>
+            <a href="index.html#auth-signup" class="btn-gold text-center text-sm font-semibold px-5 py-2.5 rounded-full">Start Free Trial</a>
+          </div>
+        </nav>
+      </div>
+    </div>
+  </header>
+
+  <main class="pt-16 md:pt-[72px]">
+
+    <!-- 2. Hero -->
+    <section id="hero" class="hero-bg relative overflow-hidden">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24 lg:py-28">
+        <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
+          <div>
+            <h1 class="font-display text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-tight text-ink hero-headline">
+              Property Management, Simplified for South African Landlords
+            </h1>
+            <p class="mt-5 text-lg text-ink/70 max-w-xl leading-relaxed hero-sub">
+              Collect rent, manage tenants, handle maintenance, and grow your portfolio — all from one beautiful dashboard.
+            </p>
+            <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-4 hero-cta">
+              <a href="index.html#auth-signup" class="btn-gold inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
+                Start Free — No Credit Card
+              </a>
+              <a href="index.html#auth-signin" class="btn-outline-light inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
+                Sign In
+              </a>
+              <a href="#how-it-works" class="btn-outline inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
+                <span aria-hidden="true">▶</span> See How It Works
+              </a>
+            </div>
+            <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-x-6 gap-y-2 text-sm text-ink/75">
+              <span>✅ Free 14-day trial</span>
+              <span>✅ No credit card required</span>
+              <span>✅ Cancel anytime</span>
+            </div>
+          </div>
+
+          <div class="hero-mockup">
+            <div class="mock-window">
+              <div class="mock-bar">
+                <span class="mock-dot bg-red-400"></span>
+                <span class="mock-dot bg-amber-400"></span>
+                <span class="mock-dot bg-green-500"></span>
+                <span class="ml-2 text-xs text-ink/50 font-medium">NestIQ Dashboard</span>
+              </div>
+              <div class="p-4 sm:p-5 bg-cream/50 grid gap-3">
+                <div class="ui-card flex justify-between items-start gap-3">
+                  <div>
+                    <p class="text-xs text-ink/50 uppercase tracking-wide">Property</p>
+                    <p class="font-semibold text-ink mt-1">Sandton View Apartment</p>
+                    <p class="text-sm text-ink/60 mt-0.5">Unit 4B · Vacant</p>
+                  </div>
+                  <span class="text-xs font-bold text-gold bg-gold/10 px-2 py-1 rounded-full">R 12,500/mo</span>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                  <div class="ui-card">
+                    <p class="text-xs text-ink/50">Tenants</p>
+                    <p class="text-2xl font-bold text-ink mt-1">24</p>
+                    <p class="text-xs text-green-700 mt-1">↑ 3 this month</p>
+                  </div>
+                  <div class="ui-card border-gold/30 bg-gold/5">
+                    <p class="text-xs text-ink/50">Rent collected</p>
+                    <p class="text-2xl font-bold text-gold mt-1">R 186k</p>
+                    <p class="text-xs text-ink/60 mt-1">March 2026</p>
+                  </div>
+                </div>
+                <div class="ui-card flex items-center gap-3">
+                  <div class="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center font-bold text-gold text-sm">TM</div>
+                  <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-sm truncate">Thabo Mokoena</p>
+                    <p class="text-xs text-ink/55">Paid · Receipt #REC-2026-0412</p>
+                  </div>
+                  <span class="text-xs font-semibold text-green-700 bg-green-100 px-2 py-1 rounded-full shrink-0">Paid</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Stats bar -->
+    <section class="bg-ink text-white py-10 md:py-12 reveal">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 text-center">
+          <div class="stats-bar-item reveal na-delay-1">
+            <p class="text-2xl md:text-3xl mb-1">🏘️</p>
+            <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="2400" data-suffix="+">0</span></p>
+            <p class="text-sm text-white/65 mt-1">Properties Managed</p>
+          </div>
+          <div class="stats-bar-item reveal na-delay-2">
+            <p class="text-2xl md:text-3xl mb-1">👥</p>
+            <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="8100" data-suffix="+">0</span></p>
+            <p class="text-sm text-white/65 mt-1">Tenants Onboarded</p>
+          </div>
+          <div class="stats-bar-item reveal na-delay-3">
+            <p class="text-2xl md:text-3xl mb-1">💰</p>
+            <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="42" data-prefix="R " data-suffix="M+">0</span></p>
+            <p class="text-sm text-white/65 mt-1">Rent Collected</p>
+          </div>
+          <div class="stats-bar-item reveal na-delay-4">
+            <p class="text-2xl md:text-3xl mb-1">⭐</p>
+            <p class="font-display text-2xl md:text-3xl font-bold">4.9/5</p>
+            <p class="text-sm text-white/65 mt-1">Landlord Rating</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Features -->
+    <section id="features" class="py-16 md:py-24 bg-cream/40">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">
+          Everything You Need to Run Your Rental Portfolio
+        </h2>
+        <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-1">
+            <p class="text-3xl mb-3">🏠</p>
+            <h3 class="font-bold text-lg text-ink">Property Management</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Add and track all your properties in one place. Monitor occupancy, lease dates, and rental income at a glance.</p>
+          </article>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-2">
+            <p class="text-3xl mb-3">👥</p>
+            <h3 class="font-bold text-lg text-ink">Tenant Portal</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Give tenants their own self-service portal. They can view rent status, submit maintenance requests, and access documents.</p>
+          </article>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-3">
+            <p class="text-3xl mb-3">💳</p>
+            <h3 class="font-bold text-lg text-ink">Rent Tracking</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Never miss a payment again. Track who has paid, who is overdue, and send WhatsApp reminders in one click.</p>
+          </article>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-4">
+            <p class="text-3xl mb-3">🔧</p>
+            <h3 class="font-bold text-lg text-ink">Maintenance Management</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Tenants submit requests directly through their portal. Track every job from open to resolved.</p>
+          </article>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-5">
+            <p class="text-3xl mb-3">🤖</p>
+            <h3 class="font-bold text-lg text-ink">AI-Powered Tools</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Get AI rent price suggestions, tenant screening scores, and lease clause recommendations powered by Gemini.</p>
+          </article>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-6">
+            <p class="text-3xl mb-3">📊</p>
+            <h3 class="font-bold text-lg text-ink">Financial Reports</h3>
+            <p class="mt-2 text-ink/70 text-sm leading-relaxed">Generate income statements, expense reports, and tax summaries for your full portfolio in seconds.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. How it works -->
+    <section id="how-it-works" class="py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Up and Running in Minutes</h2>
+        <div class="mt-14 steps-row flex flex-col md:flex-row md:items-start gap-0 md:gap-2">
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-1">
+            <div class="step-circle">1</div>
+            <div class="step-line-v md:hidden"></div>
+            <p class="mt-4 font-semibold text-ink">Create your account</p>
+          </div>
+          <div class="step-line step-line-h hidden md:block"></div>
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-2">
+            <div class="step-circle">2</div>
+            <div class="step-line-v md:hidden"></div>
+            <p class="mt-4 font-semibold text-ink">Add your properties</p>
+          </div>
+          <div class="step-line step-line-h hidden md:block"></div>
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-3">
+            <div class="step-circle">3</div>
+            <div class="step-line-v md:hidden"></div>
+            <p class="mt-4 font-semibold text-ink">Invite your tenants</p>
+          </div>
+          <div class="step-line step-line-h hidden md:block"></div>
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-4">
+            <div class="step-circle">4</div>
+            <p class="mt-4 font-semibold text-ink">Manage everything from your dashboard</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 6. Pricing -->
+    <section id="pricing" class="py-16 md:py-24 bg-cream/40">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Simple, Transparent Pricing</h2>
+        <p class="text-center text-ink/65 mt-3">Start free. Upgrade when you're ready.</p>
+
+        <div class="billing-toggle flex justify-center mt-10">
+          <div class="inline-flex rounded-full border border-black/10 p-1 bg-white">
+            <button type="button" id="billMonthly" class="active px-5 py-2 rounded-full text-sm font-semibold transition-colors">Monthly</button>
+            <button type="button" id="billAnnual" class="px-5 py-2 rounded-full text-sm font-semibold transition-colors">Annual</button>
+          </div>
+        </div>
+
+        <div class="mt-10 grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
+          <!-- Starter -->
+          <div class="pricing-card p-8 flex flex-col reveal na-delay-1">
+            <h3 class="font-display text-2xl font-bold">Starter</h3>
+            <p class="mt-2 text-ink/60 text-sm">Free</p>
+            <p class="mt-4 font-display text-4xl font-bold text-ink">R0</p>
+            <ul class="mt-6 space-y-3 text-sm text-ink/75 flex-1">
+              <li>✓ Up to 2 properties</li>
+              <li>✓ Up to 5 tenants</li>
+              <li>✓ Basic rent tracking</li>
+              <li>✓ Tenant portal</li>
+              <li>✓ Community support</li>
+            </ul>
+            <a href="index.html#auth-signup" class="btn-outline mt-8 block text-center font-semibold py-3 rounded-full">Get Started Free</a>
+          </div>
+
+          <!-- Pro -->
+          <div class="pricing-card popular p-8 flex flex-col md:-mt-2 md:mb-2 reveal na-delay-2">
+            <span class="popular-badge">⭐ Most Popular</span>
+            <h3 class="font-display text-2xl font-bold mt-2">Pro</h3>
+            <p class="mt-2 text-ink/60 text-sm">
+              <span class="price-monthly">R299<span class="text-base font-normal">/month</span></span>
+              <span class="price-annual">R239<span class="text-base font-normal">/month</span> <span class="save-badge">Save 20%</span></span>
+            </p>
+            <p class="price-annual text-xs text-ink/50 mt-1">Billed annually at R2,870/year</p>
+            <ul class="mt-6 space-y-3 text-sm text-ink/75 flex-1">
+              <li>✓ Unlimited properties</li>
+              <li>✓ Unlimited tenants</li>
+              <li>✓ AI-powered tools</li>
+              <li>✓ Financial reports &amp; exports</li>
+              <li>✓ EmailJS notifications</li>
+              <li>✓ WhatsApp reminders</li>
+              <li>✓ Priority support</li>
+            </ul>
+            <a href="index.html#auth-signup" class="btn-gold mt-8 block text-center font-semibold py-3 rounded-full">Start 14-Day Free Trial</a>
+          </div>
+
+          <!-- Enterprise -->
+          <div class="pricing-card p-8 flex flex-col reveal na-delay-3">
+            <h3 class="font-display text-2xl font-bold">Enterprise</h3>
+            <p class="mt-2 text-ink/60 text-sm">
+              <span class="price-monthly">R799<span class="text-base font-normal">/month</span></span>
+              <span class="price-annual">R639<span class="text-base font-normal">/month</span> <span class="save-badge">Save 20%</span></span>
+            </p>
+            <p class="price-annual text-xs text-ink/50 mt-1">Billed annually at R7,670/year</p>
+            <ul class="mt-6 space-y-3 text-sm text-ink/75 flex-1">
+              <li>✓ Everything in Pro</li>
+              <li>✓ Multiple team members</li>
+              <li>✓ Custom branding</li>
+              <li>✓ Dedicated account manager</li>
+              <li>✓ API access</li>
+            </ul>
+            <a href="#contact" class="btn-outline mt-8 block text-center font-semibold py-3 rounded-full">Contact Us</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 7. Tenants -->
+    <section id="tenants" class="py-16 md:py-24">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6">
+        <div class="grid lg:grid-cols-2 gap-12 items-center reveal">
+          <div>
+            <h2 class="font-display text-3xl md:text-4xl font-bold text-ink">A Better Experience for Your Tenants Too</h2>
+            <p class="mt-5 text-ink/70 leading-relaxed">
+              Give your tenants a professional self-service portal where they can check their rent balance, submit maintenance requests, download their lease, and receive notices — all from their phone.
+            </p>
+            <ul class="mt-6 space-y-3 text-sm text-ink/80">
+              <li>✅ No app download required</li>
+              <li>✅ Works on any device</li>
+              <li>✅ Available in 5 South African languages</li>
+            </ul>
+            <a href="index.html#auth-signup" class="inline-flex items-center gap-2 mt-8 font-semibold text-gold hover:underline">
+              See the Tenant Portal →
+            </a>
+          </div>
+          <div class="mock-window max-w-md mx-auto lg:mx-0 lg:ml-auto w-full">
+            <div class="mock-bar">
+              <span class="mock-dot bg-red-400"></span>
+              <span class="mock-dot bg-amber-400"></span>
+              <span class="mock-dot bg-green-500"></span>
+              <span class="ml-2 text-xs text-ink/50">Tenant Portal</span>
+            </div>
+            <div class="p-4 bg-cream/40 space-y-3">
+              <div class="ui-card border-l-4 border-l-green-600">
+                <p class="text-xs text-ink/50">Rent status</p>
+                <p class="font-display text-xl font-bold text-green-700 mt-1">PAID</p>
+                <p class="text-sm text-ink/60">March 2026 · R 8,500</p>
+              </div>
+              <div class="ui-card">
+                <div class="flex justify-between items-start">
+                  <div>
+                    <p class="font-semibold text-sm">🔧 Leaking tap — Kitchen</p>
+                    <p class="text-xs text-ink/55 mt-1">Submitted 2 days ago</p>
+                  </div>
+                  <span class="text-xs font-bold text-amber-700 bg-amber-100 px-2 py-1 rounded-full">Open</span>
+                </div>
+              </div>
+              <div class="ui-card flex justify-between items-center">
+                <div>
+                  <p class="font-semibold text-sm">📄 Lease agreement</p>
+                  <p class="text-xs text-ink/55">PDF · Uploaded by landlord</p>
+                </div>
+                <span class="text-xs font-semibold text-gold">Download</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 8. Testimonials -->
+    <section class="py-16 md:py-24 bg-cream/40">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Loved by Landlords Across South Africa</h2>
+        <div class="mt-12 grid md:grid-cols-3 gap-6">
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-1">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">TM</div>
+              <div class="star text-sm" aria-label="5 stars">★★★★★</div>
+            </div>
+            <p class="mt-4 text-ink/75 text-sm leading-relaxed">"NestIQ completely transformed how I manage my 6 properties. The tenant portal alone saves me hours every month."</p>
+            <footer class="mt-4 font-semibold text-sm text-ink">Thabo M., Johannesburg</footer>
+          </blockquote>
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-2">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">SK</div>
+              <div class="star text-sm" aria-label="5 stars">★★★★★</div>
+            </div>
+            <p class="mt-4 text-ink/75 text-sm leading-relaxed">"The WhatsApp rent reminders are a game changer. My overdue payments dropped by 80% in the first month."</p>
+            <footer class="mt-4 font-semibold text-sm text-ink">Sarah K., Cape Town</footer>
+          </blockquote>
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-3">
+            <div class="flex items-center gap-3">
+              <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">PV</div>
+              <div class="star text-sm" aria-label="5 stars">★★★★★</div>
+            </div>
+            <p class="mt-4 text-ink/75 text-sm leading-relaxed">"Finally a property management tool built for South Africa. The AI rent suggestions are surprisingly accurate."</p>
+            <footer class="mt-4 font-semibold text-sm text-ink">Pieter V., Pretoria</footer>
+          </blockquote>
+        </div>
+      </div>
+    </section>
+
+    <!-- 9. FAQ -->
+    <section id="faq" class="py-16 md:py-24">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Frequently Asked Questions</h2>
+        <div class="mt-10" id="faqList">
+          <div class="faq-item reveal na-delay-1">
+            <button type="button" class="faq-q" aria-expanded="false">Is NestIQ really free to start?<span class="faq-icon">+</span></button>
+            <div class="faq-a">Yes. The Starter plan is free forever for up to 2 properties and 5 tenants. You can upgrade to Pro anytime when your portfolio grows — no credit card required to sign up.</div>
+          </div>
+          <div class="faq-item reveal na-delay-2">
+            <button type="button" class="faq-q" aria-expanded="false">Do my tenants need to download an app?<span class="faq-icon">+</span></button>
+            <div class="faq-a">No. The tenant portal works in any mobile or desktop browser. Tenants sign in with an invitation code or email link — nothing to install from an app store.</div>
+          </div>
+          <div class="faq-item reveal na-delay-3">
+            <button type="button" class="faq-q" aria-expanded="false">Can I import my existing tenant data?<span class="faq-icon">+</span></button>
+            <div class="faq-a">You can add tenants manually or bulk-import from spreadsheets. Our team can help Enterprise customers migrate from other tools on request.</div>
+          </div>
+          <div class="faq-item reveal na-delay-4">
+            <button type="button" class="faq-q" aria-expanded="false">Is my data safe and private?<span class="faq-icon">+</span></button>
+            <div class="faq-a">Your data is stored securely with industry-standard encryption. Only you and your invited tenants can access their respective information. We never sell your data.</div>
+          </div>
+          <div class="faq-item reveal na-delay-5">
+            <button type="button" class="faq-q" aria-expanded="false">What payment methods do you accept?<span class="faq-icon">+</span></button>
+            <div class="faq-a">We accept card payments and EFT for Pro and Enterprise subscriptions. Rent collection from tenants is tracked in NestIQ; payments are made directly between tenant and landlord as you arrange.</div>
+          </div>
+          <div class="faq-item reveal na-delay-6">
+            <button type="button" class="faq-q" aria-expanded="false">Can I cancel my subscription anytime?<span class="faq-icon">+</span></button>
+            <div class="faq-a">Absolutely. There are no long-term contracts. Cancel from your account settings and you will retain access until the end of your billing period.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 10. Final CTA -->
+    <section id="cta" class="py-16 md:py-20 bg-gold text-white">
+      <div class="max-w-3xl mx-auto px-4 sm:px-6 text-center reveal">
+        <h2 class="font-display text-3xl md:text-4xl font-bold">Ready to Take Control of Your Rental Portfolio?</h2>
+        <p class="mt-4 text-white/90 text-lg">Join thousands of South African landlords already using NestIQ.</p>
+        <a href="index.html#auth-signup" class="btn-white inline-block mt-8 text-lg font-semibold px-10 py-4 rounded-full">
+          Start Free Today — No Credit Card Required
+        </a>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- 11. Footer -->
+  <footer id="contact" class="bg-ink text-white pt-14 pb-8">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
+        <div>
+          <p class="font-display text-2xl font-bold text-gold flex items-center gap-2"><span>🏠</span> NestIQ</p>
+          <p class="mt-3 text-sm text-white/60">Property management, simplified.</p>
+          <div class="flex gap-3 mt-5" aria-label="Social links">
+            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="Facebook">f</a>
+            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="Instagram">ig</a>
+            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="LinkedIn">in</a>
+            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="X">𝕏</a>
+          </div>
+        </div>
+        <div>
+          <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Product</p>
+          <ul class="space-y-2 text-sm text-white/70">
+            <li><a href="#features" class="hover:text-gold">Features</a></li>
+            <li><a href="#pricing" class="hover:text-gold">Pricing</a></li>
+            <li><a href="changelog.html" class="hover:text-gold">Changelog</a></li>
+            <li><a href="changelog.html#roadmap" class="hover:text-gold">Roadmap</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Company</p>
+          <ul class="space-y-2 text-sm text-white/70">
+            <li><a href="#" class="hover:text-gold">About</a></li>
+            <li><a href="#" class="hover:text-gold">Blog</a></li>
+            <li><a href="#" class="hover:text-gold">Careers</a></li>
+            <li><a href="#" class="hover:text-gold">Press</a></li>
+          </ul>
+        </div>
+        <div>
+          <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Support</p>
+          <ul class="space-y-2 text-sm text-white/70">
+            <li><a href="#" class="hover:text-gold">Help Centre</a></li>
+            <li><a href="mailto:hello@nestiq.co.za" class="hover:text-gold">Contact Us</a></li>
+            <li><a href="#" class="hover:text-gold">Privacy Policy</a></li>
+            <li><a href="#" class="hover:text-gold">Terms of Service</a></li>
+          </ul>
+        </div>
+      </div>
+      <div class="mt-12 pt-8 border-t border-white/10 text-center text-sm text-white/50">
+        © 2026 NestIQ. Built with ❤️ for South African landlords.
+      </div>
+    </div>
+  </footer>
+
+  <script src="./js/animations.js"></script>
+  <script src="./js/auth.js?v=demo-off1"></script>
+  <script>
+    (function () {
+      /* Sticky nav shadow */
+      var nav = document.getElementById('siteNav');
+      function onScrollNav() {
+        if (window.scrollY > 8) nav.classList.add('scrolled');
+        else nav.classList.remove('scrolled');
+      }
+      window.addEventListener('scroll', onScrollNav, { passive: true });
+      onScrollNav();
+
+      document.addEventListener('click', function (e) {
+        var a = e.target.closest('a[href*="index.html"]');
+        if (!a) return;
+        var h = a.getAttribute('href') || '';
+        try {
+          if (/auth-signup|flow=signup|#signup/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'signup');
+          if (/auth-signin|flow=signin|flow=login|#signin/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'signin');
+        } catch (_e) {}
+      }, true);
+
+      /* Mobile menu */
+      var menuBtn = document.getElementById('menuBtn');
+      var mobileMenu = document.getElementById('mobileMenu');
+      menuBtn.addEventListener('click', function () {
+        var open = mobileMenu.classList.toggle('open');
+        menuBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+      mobileMenu.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', function () {
+          mobileMenu.classList.remove('open');
+          menuBtn.setAttribute('aria-expanded', 'false');
+        });
+      });
+
+      /* Billing toggle */
+      var billMonthly = document.getElementById('billMonthly');
+      var billAnnual = document.getElementById('billAnnual');
+      function setBilling(annual) {
+        document.body.classList.toggle('annual-billing', annual);
+        billMonthly.classList.toggle('active', !annual);
+        billAnnual.classList.toggle('active', annual);
+      }
+      billMonthly.addEventListener('click', function () { setBilling(false); });
+      billAnnual.addEventListener('click', function () { setBilling(true); });
+      setBilling(false);
+
+      /* FAQ accordion */
+      document.querySelectorAll('.faq-item').forEach(function (item) {
+        var btn = item.querySelector('.faq-q');
+        btn.addEventListener('click', function () {
+          var wasOpen = item.classList.contains('open');
+          document.querySelectorAll('.faq-item').forEach(function (i) {
+            i.classList.remove('open');
+            i.querySelector('.faq-q').setAttribute('aria-expanded', 'false');
+          });
+          if (!wasOpen) {
+            item.classList.add('open');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+
+      /* Scroll reveal */
+      if (typeof nestiqInitScrollReveal === 'function') {
+        nestiqInitScrollReveal();
+        nestiqInitCounters();
+      } else {
+        var revealEls = document.querySelectorAll('.reveal');
+        if ('IntersectionObserver' in window) {
+          var io = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+              if (e.isIntersecting) {
+                e.target.classList.add('visible');
+                io.unobserve(e.target);
+              }
+            });
+          }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+          revealEls.forEach(function (el) { io.observe(el); });
+        } else {
+          revealEls.forEach(function (el) { el.classList.add('visible'); });
+        }
+      }
+
+      /* Active nav on scroll */
+      var sections = ['features', 'pricing', 'tenants', 'contact'];
+      var navLinks = document.querySelectorAll('.nav-link[data-section]');
+      var sectionEls = sections.map(function (id) {
+        return document.getElementById(id);
+      }).filter(Boolean);
+
+      function setActiveNav() {
+        var scrollY = window.scrollY + 120;
+        var current = '';
+        sectionEls.forEach(function (sec) {
+          if (sec.offsetTop <= scrollY) current = sec.id;
+        });
+        navLinks.forEach(function (link) {
+          var sec = link.getAttribute('data-section');
+          link.classList.toggle('active', sec === current);
+        });
+      }
+      window.addEventListener('scroll', setActiveNav, { passive: true });
+      setActiveNav();
+    })();
+  </script>
+</body>
+</html>

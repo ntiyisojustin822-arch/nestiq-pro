@@ -1,0 +1,41 @@
+<div class="page" id="page-tax" style="padding-top:70px">
+  <div class="print-header" style="display:none">
+    <div class="print-logo">🏠 NestIQ Pro</div>
+    <div class="print-date" id="printDateLabel"></div>
+  </div>
+  <section class="section reveal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;flex-wrap:wrap;gap:14px">
+      <div>
+        <div class="eyebrow" style="justify-content:flex-start">Financials</div>
+        <h2 class="section-title reveal" style="margin-bottom:4px">Tax Summary Report</h2>
+        <p style="color:var(--muted);font-size:0.88rem">Annual rental income vs expenses — formatted for SARS filing</p>
+      </div>
+      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
+        <select class="form-input" id="taxYear" style="width:auto;padding:9px 16px;font-size:0.85rem" onchange="renderTaxReport()">
+          <option value="2026">Tax Year 2026</option>
+          <option value="2025">Tax Year 2025</option>
+          <option value="2024">Tax Year 2024</option>
+        </select>
+        <button class="btn-outline btn-sm" onclick="openCommunicationReportModal()">Communication summary</button>
+        <button class="btn-outline btn-sm" onclick="exportTaxCSV()">⬇ Export CSV</button>
+        <button class="btn-outline btn-sm" onclick="generateTaxReportPDF()">⬇ PDF</button>
+        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start" id="taxLayout">
+      <div>
+        <div id="taxReportContent" style="background:var(--card-bg);border-radius:var(--radius);padding:32px;border:1px solid var(--border);box-shadow:var(--shadow)"></div>
+        <div id="taxRenewalSection" style="background:var(--card-bg);border-radius:var(--radius);padding:32px;border:1px solid var(--border);box-shadow:var(--shadow);margin-top:20px"></div>
+        <div id="taxLateFeeSection" style="background:var(--card-bg);border-radius:var(--radius);padding:32px;border:1px solid var(--border);box-shadow:var(--shadow);margin-top:20px"></div>
+      </div>
+      <div>
+        <div style="background:var(--ink);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow-lg)" id="taxSummaryBox">
+        </div>
+        <div style="background:var(--card-bg);border-radius:var(--radius);padding:24px;border:1px solid var(--border);box-shadow:var(--shadow);margin-top:16px">
+          <div style="font-family:'Playfair Display',serif;font-size:0.95rem;font-weight:600;margin-bottom:14px">Expense Breakdown</div>
+          <div class="mini-chart-wrap chart-wrap reveal"><canvas id="taxExpChart"></canvas></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

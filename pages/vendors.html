@@ -1,0 +1,44 @@
+<div id="page-vendors" class="page" style="padding-top:70px">
+
+  <!-- Page header -->
+  <div class="page-header reveal">
+    <div>
+      <h1 class="page-title">🛠️ Vendors &amp; Contractors</h1>
+      <p class="page-sub">Manage your trusted tradespeople and contractors</p>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <button class="btn-outline btn-sm" onclick="nestiqVendorReportPrint()">📊 Vendor Report</button>
+      <button class="btn-outline btn-sm" onclick="nestiqExportVendorsCSV()">⬇ Export CSV</button>
+      <button class="btn-gold btn-sm" onclick="nestiqOpenAddVendorModal()">+ Add Vendor</button>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row reveal" id="vendorStatsRow"></div>
+
+  <!-- Filter chips -->
+  <div id="vendorFilterChips" class="filter-chips reveal" style="margin-bottom:16px"></div>
+
+  <!-- Search bar -->
+  <div class="reveal" style="margin-bottom:16px">
+    <input type="text" class="form-input" id="vendorSearchInput"
+      placeholder="🔍 Search vendors by name, trade, or phone..."
+      oninput="nestiqFilterVendors(this.value)"
+      style="max-width:420px">
+  </div>
+
+  <p id="nestiqVendorCountLine" style="color:var(--muted);font-size:0.88rem;margin:0 0 12px">0 contractors in your network</p>
+
+  <!-- Vendors list + detail -->
+  <div id="nestiqVendorListView">
+    <div id="vendorsList" class="vendors-grid nestiq-vendor-grid"></div>
+    <div id="nestiqVendorEmpty" style="display:none;text-align:center;padding:48px 20px;border:1px dashed var(--border);border-radius:16px;background:var(--paper)">
+      <div style="font-size:2.4rem;margin-bottom:10px">🛠️</div>
+      <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px">No vendors yet</div>
+      <p style="color:var(--muted);font-size:0.88rem;max-width:36ch;margin:0 auto 16px">Add plumbers, electricians and other contractors so you can assign them on maintenance jobs.</p>
+      <button type="button" class="btn-gold btn-sm" onclick="nestiqOpenAddVendorModal()">Add Your First Vendor</button>
+    </div>
+  </div>
+  <div id="nestiqVendorDetailView" style="display:none"></div>
+
+</div>

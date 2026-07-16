@@ -1,0 +1,20 @@
+<div class="page" id="page-valuation" style="padding-top:70px">
+  <section class="section reveal">
+    <div class="eyebrow">Portfolio</div>
+    <h1 class="section-title reveal" style="margin-bottom:4px">Portfolio Valuation</h1>
+    <p style="font-size:0.88rem;color:var(--muted);max-width:56ch;margin-bottom:8px">Track property values and portfolio net worth. Estimates only — not formal valuations.</p>
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:18px;align-items:center">
+      <button type="button" class="btn-primary btn-sm" onclick="nestiqPrintNetWorthReport()">Generate Net Worth Report</button>
+    </div>
+    <div id="nestiqPortfolioGrowthWrap" class="settings-card" style="margin-bottom:18px;display:none">
+      <h3 class="settings-card-title">Portfolio value vs debt vs equity</h3>
+      <p style="font-size:0.8rem;color:var(--muted);margin:-6px 0 10px">Shown when at least two valuation data points exist across the portfolio (illustrative).</p>
+      <div style="height:280px"><canvas id="nestiqPortfolioGrowthChart"></canvas></div>
+    </div>
+    <div id="nestiqValHero"></div>
+    <div id="nestiqValStats"></div>
+    <div id="nestiqValDisclaimer" style="margin-bottom:16px"></div>
+    <div id="nestiqValMarketContext" style="margin-bottom:20px"></div>
+    <div id="nestiqValPropertyCards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px"></div>
+  </section>
+</div>

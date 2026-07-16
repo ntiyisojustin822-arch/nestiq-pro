@@ -1,0 +1,171 @@
+<div class="page" id="page-expenses" style="padding-top:70px">
+
+  <div class="print-header" style="display:none">
+    <div class="print-logo">🏠 NestIQ Pro</div>
+    <div class="print-date" id="printDateLabel"></div>
+  </div>
+
+  <section class="section reveal">
+
+    <div class="expense-header-row">
+
+      <div>
+
+        <div class="eyebrow" style="justify-content:flex-start">Financial Control</div>
+
+        <h2 class="section-title reveal" style="margin-bottom:0">Expense Tracker</h2>
+
+      </div>
+
+      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
+
+        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
+
+        <button class="btn-outline btn-sm" onclick="exportExpensesCSV()">⬇ Export CSV</button>
+
+        <button class="btn-outline btn-sm" onclick="showPage('reconcile')">🏦 Bank reconcile</button>
+
+        <button class="btn-primary" onclick="document.getElementById('addExpenseForm').scrollIntoView({behavior:'smooth'})">+ Log Expense</button>
+
+      </div>
+
+    </div>
+
+    <div class="expense-grid">
+
+      <div>
+
+        <div class="expense-table">
+
+          <div class="exp-table-head">
+
+            <span>Category</span><span>Description</span><span>Amount</span><span>Property</span><span>Date</span><span></span>
+
+          </div>
+
+          <div id="expenseRows"></div>
+
+        </div>
+
+        <div class="recurring-exp-card" id="recurringExpensesCard">
+
+          <div class="recurring-exp-card-head">
+
+            <div class="recurring-exp-card-title">Recurring expenses</div>
+
+            <button type="button" class="btn-outline btn-sm" onclick="nestiqScrollToRecurringForm()">Add recurring expense</button>
+
+          </div>
+
+          <p class="recurring-exp-card-sub">Insurance, levies, rates and other scheduled costs. Paused items are not auto-logged.</p>
+
+          <div id="recurringExpensesList" class="recurring-exp-list"></div>
+
+        </div>
+
+      </div>
+
+      <div class="expense-sidebar">
+
+        <div class="add-expense-form" id="addExpenseForm">
+
+          <div class="add-form-title">Log New Expense</div>
+
+          <div class="form-group"><label>Category</label>
+
+            <select class="form-input" id="exp_cat">
+
+              <option value="Maintenance">🔧 Maintenance</option>
+
+              <option value="Insurance">🛡️ Insurance</option>
+
+              <option value="Rates & Taxes">🏛️ Rates & Taxes</option>
+
+              <option value="Utilities">💡 Utilities</option>
+
+              <option value="Agent Fees">🤝 Agent Fees</option>
+
+              <option value="Other">📦 Other</option>
+
+            </select>
+
+          </div>
+
+          <div class="form-group"><label>Description</label><input class="form-input" id="exp_desc" placeholder="e.g. Plumbing repair"></div>
+
+          <div class="form-group"><label>Amount (R)</label><div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="exp_amount" type="number" placeholder="0"></div></div>
+
+          <div class="form-group"><label>Property</label>
+
+            <select class="form-input" id="exp_prop"></select>
+
+          </div>
+
+          <div class="form-group"><label>Date</label><input class="form-input" id="exp_date" type="date"></div>
+
+          <label class="recurring-toggle-row">
+
+            <input type="checkbox" id="exp_recurring_toggle" onchange="nestiqToggleExpRecurring()">
+
+            <span>Make this a recurring expense</span>
+
+          </label>
+
+          <div id="exp_recurring_fields" class="recurring-fields-wrap" style="display:none">
+
+            <div class="form-group"><label>Frequency</label>
+
+              <select class="form-input" id="exp_rec_freq">
+
+                <option value="monthly">Monthly</option>
+
+                <option value="quarterly">Quarterly</option>
+
+                <option value="annual">Annually</option>
+
+              </select>
+
+            </div>
+
+            <div class="form-group"><label>Day of month</label>
+
+              <select class="form-input" id="exp_rec_dom"></select>
+
+            </div>
+
+            <div class="form-group"><label>End date (optional)</label>
+
+              <input class="form-input" id="exp_rec_end" type="date" placeholder="Ongoing if empty">
+
+              <div class="form-hint-mini">Leave blank for ongoing</div>
+
+            </div>
+
+            <button type="button" class="btn-gold" style="width:100%;justify-content:center;margin-top:6px" onclick="addRecurringExpenseFromForm()">Add recurring expense</button>
+
+          </div>
+
+          <button class="btn-primary" style="width:100%;justify-content:center;margin-top:4px" onclick="addExpense()">Add Expense</button>
+
+        </div>
+
+        <div class="upcoming-rec-card" id="upcomingRecurringCard">
+
+          <div class="upcoming-rec-title">Upcoming this month</div>
+
+          <div id="upcomingRecurringBody" class="upcoming-rec-body"></div>
+
+          <div id="upcomingRecurringTotal" class="upcoming-rec-total"></div>
+
+        </div>
+
+        <div class="expense-summary" id="expSummary"></div>
+
+      </div>
+
+    </div>
+
+  </section>
+
+</div>
+

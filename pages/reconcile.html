@@ -1,0 +1,64 @@
+<div class="page" id="page-reconcile" style="padding-top:70px">
+  <section class="section reveal">
+    <div class="expense-header-row">
+      <div>
+        <div class="eyebrow" style="justify-content:flex-start">Cash &amp; rent</div>
+        <h2 class="section-title reveal" style="margin-bottom:0">Bank reconciliation</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin-top:8px;max-width:640px">Import a CSV bank statement, review suggested tenant matches, then record rent payments in one step.</p>
+      </div>
+    </div>
+    <div class="recon-warn-banner">
+      <strong>Important:</strong> This feature is a tool to help you. Always verify matches against your bank statement before confirming. NestIQ does not replace professional bookkeeping.
+    </div>
+    <div id="reconStepUpload" class="recon-card">
+      <div class="recon-step-title">Step 1 — Upload statement</div>
+      <p class="recon-muted">Supported banks: <strong>Standard Bank, FNB, Nedbank, Absa</strong>. Download your statement as <strong>CSV</strong> from your bank’s internet banking.</p>
+      <label class="recon-upload-zone" id="reconDropZone">
+        <input type="file" id="reconFileInput" accept=".csv,text/csv" style="display:none" onchange="nestiqReconOnFileSelect(event)">
+        <div class="recon-upload-icon">📄</div>
+        <div class="recon-upload-text">Upload your bank statement CSV</div>
+        <div class="recon-upload-hint">Click or drag a file here · .csv only</div>
+      </label>
+      <div id="reconParseError" class="recon-error" style="display:none"></div>
+      <div id="reconPreviewWrap" style="display:none;margin-top:20px">
+        <div class="recon-preview-meta" id="reconPreviewMeta"></div>
+        <div style="overflow:auto;max-height:220px;border:1px solid var(--border);border-radius:10px;margin-top:10px">
+          <table class="rentroll-table" style="font-size:0.78rem;min-width:480px" id="reconPreviewTable"></table>
+        </div>
+        <button type="button" class="btn-primary btn-sm" style="margin-top:14px" onclick="nestiqReconGoToMatch()">Continue to matching →</button>
+      </div>
+    </div>
+    <div id="reconStepMatch" class="recon-card" style="display:none">
+      <div class="recon-step-title">Step 2 — Match transactions</div>
+      <p class="recon-muted">Credits only are shown. Adjust the tenant per row or mark as not rent. Already recorded payments are flagged and skipped.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+        <button type="button" class="btn-outline btn-sm" onclick="nestiqReconConfirmAllAuto()">Confirm All Auto-Matched</button>
+        <span class="recon-legend"><span class="recon-badge recon-b-auto">Auto</span> High confidence</span>
+        <span class="recon-legend"><span class="recon-badge recon-b-pos">Possible</span> Review</span>
+        <span class="recon-legend"><span class="recon-badge recon-b-un">Unmatched</span></span>
+        <span class="recon-legend"><span class="recon-badge recon-b-rec">Recorded</span></span>
+      </div>
+      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
+        <table class="rentroll-table" style="font-size:0.76rem;min-width:920px" id="reconMatchTable">
+          <thead><tr>
+            <th>Record</th><th>Date</th><th>Description</th><th>Amount</th><th>Matched tenant</th><th>Status</th>
+          </tr></thead>
+          <tbody id="reconMatchBody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:18px;display:flex;gap:12px;flex-wrap:wrap;align-items:center">
+        <button type="button" class="btn-primary" onclick="nestiqReconOpenRecordConfirm()">Record selected payments</button>
+        <button type="button" class="btn-outline btn-sm" onclick="nestiqReconReset()">Start over</button>
+      </div>
+    </div>
+    <div class="recon-card" style="margin-top:24px">
+      <div class="recon-step-title">Previous reconciliations</div>
+      <div style="overflow:auto">
+        <table class="rentroll-table" style="font-size:0.8rem;min-width:640px" id="reconHistoryTable">
+          <thead><tr><th>Date</th><th>Bank</th><th>Transactions</th><th>Matched</th><th>Recorded</th><th>Amount</th></tr></thead>
+          <tbody id="reconHistoryBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

@@ -1,0 +1,78 @@
+rules_version = '2';
+
+// NestIQ Pro uploads: properties/{id}/…, maintenance/{id}/…
+// Landlord vs tenant is taken from Firestore users/{uid} (same as the web app),
+// not from Auth custom claims — so you do NOT need set-admin.js for these rules.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDocPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function isLandlord() {
+      return isSignedIn()
+        && firestore.exists(userDocPath())
+        && firestore.get(userDocPath()).data.role == 'landlord';
+    }
+
+    /** Landlord-scoped property doc (current NestIQ data model). */
+    function landlordPropertyDocPath(landlordId, pid) {
+      return /databases/(default)/documents/landlords/$(landlordId)/properties/$(pid);
+    }
+
+    /** Legacy flat collection (pre-migration). */
+    function legacyPropertyDocPath(pid) {
+      return /databases/(default)/documents/properties/$(pid);
+    }
+
+    /** True when this Storage path matches a Firestore property owned by the signed-in user. */
+    function ownsPropertyInFirestore(pid) {
+      return isSignedIn() && (
+        firestore.exists(landlordPropertyDocPath(request.auth.uid, pid))
+        || (
+          firestore.exists(legacyPropertyDocPath(pid))
+          && firestore.get(legacyPropertyDocPath(pid)).data.landlordId == request.auth.uid
+        )
+      );
+    }
+
+    // Property photos — owner uploads (by Firestore landlordId), not only users/{uid}.role.
+    // Any signed-in user can read (landlord + tenant UIs).
+    match /properties/{propertyId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if ownsPropertyInFirestore(propertyId);
+    }
+
+    // Maintenance photos — landlord or tenant may upload
+    match /maintenance/{maintId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // Tenant profile photos: landlords/{landlordId}/tenants/{tenantId}/...
+    match /tenants/{landlordId}/{tenantId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && (
+        request.auth.uid == landlordId
+        || (
+          firestore.exists(/databases/(default)/documents/tenantAccounts/$(request.auth.uid))
+          && firestore.get(/databases/(default)/documents/tenantAccounts/$(request.auth.uid)).data.landlordId == landlordId
+          && firestore.get(/databases/(default)/documents/tenantAccounts/$(request.auth.uid)).data.tenantId == tenantId
+        )
+      );
+    }
+
+    // Optional path for future document uploads
+    match /documents/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isLandlord();
+    }
+  }
+}
+

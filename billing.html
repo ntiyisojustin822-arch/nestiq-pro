@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Billing &amp; Plan — NestIQ Pro</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { gold: '#C46A3A', ink: '#0E1117', cream: '#F5F0E8', rust: '#A63D2F', paper: '#FFFFFF' },
+          fontFamily: { display: ['"Playfair Display"', 'serif'], sans: ['"DM Sans"', 'system-ui', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root { --gold:#C46A3A; --ink:#0E1117; --cream:#F5F0E8; --muted:rgba(14,17,23,.55); --border:rgba(14,17,23,.1); }
+    body { font-family:'DM Sans',system-ui,sans-serif; color:var(--ink); background:var(--cream); margin:0; min-height:100vh; }
+    .font-display { font-family:'Playfair Display',serif; }
+    .bill-wrap { max-width:1100px; margin:0 auto; padding:24px 16px 48px; }
+    .bill-top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; margin-bottom:24px; }
+    .bill-card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; margin-bottom:20px; box-shadow:0 4px 20px rgba(14,17,23,.04); }
+    .bill-badge { display:inline-block; padding:4px 10px; border-radius:999px; font-size:.72rem; font-weight:600; }
+    .bill-badge-green { background:#d4edda; color:#155724; }
+    .bill-badge-red { background:#f8d7da; color:#721c24; }
+    .bill-badge-amber { background:#fff3cd; color:#856404; }
+    .bill-btn { display:inline-flex; align-items:center; justify-content:center; padding:10px 18px; border-radius:10px; font-weight:600; font-size:.88rem; cursor:pointer; border:none; width:100%; margin-top:12px; }
+    .bill-btn-gold { background:var(--gold); color:#fff; }
+    .bill-btn-outline { background:transparent; border:1px solid var(--border); color:var(--ink); }
+    .bill-btn-muted { background:#eee; color:#666; cursor:not-allowed; }
+    .bill-btn-sm { width:auto; padding:6px 12px; font-size:.78rem; margin-top:0; }
+    .bill-btn-red { border-color:#dc3545; color:#dc3545; }
+    .bill-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:16px; }
+    .bill-actions .bill-btn { width:auto; flex:1; min-width:140px; }
+    @media(max-width:640px){ .bill-actions .bill-btn { flex:1 1 100%; } }
+    .bill-usage-item { margin-bottom:14px; }
+    .bill-usage-head { display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:6px; }
+    .bill-bar-track { height:8px; background:#eee; border-radius:4px; overflow:hidden; }
+    .bill-bar-fill { height:100%; border-radius:4px; transition:width .3s; }
+    .bill-usage-disabled { opacity:.5; }
+    .bill-upgrade-link { color:var(--gold); font-weight:600; font-size:.75rem; }
+    .bill-plan-grid { display:grid; grid-template-columns:1fr; gap:16px; }
+    @media(min-width:768px){ .bill-plan-grid { grid-template-columns:repeat(3,1fr); } }
+    .bill-plan-card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; position:relative; }
+    .bill-plan-popular { border-color:var(--gold); box-shadow:0 8px 32px rgba(196,106,58,.15); }
+    .bill-popular-tag { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--gold); color:#fff; font-size:.7rem; padding:4px 12px; border-radius:999px; font-weight:600; }
+    .bill-price { font-size:1.75rem; font-weight:700; margin:8px 0 16px; }
+    .bill-price-sub { font-size:.9rem; font-weight:400; color:var(--muted); }
+    .bill-features { list-style:none; padding:0; margin:0 0 8px; font-size:.85rem; line-height:1.7; color:var(--muted); }
+    .bill-cycle-toggle { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; margin:12px 0 20px; }
+    .bill-cycle-toggle button { padding:8px 16px; font-size:.82rem; border:none; background:transparent; cursor:pointer; }
+    .bill-cycle-toggle button.active { background:var(--gold); color:#fff; }
+    .bill-table { width:100%; border-collapse:collapse; font-size:.85rem; }
+    .bill-table th, .bill-table td { padding:12px 8px; text-align:left; border-bottom:1px solid var(--border); }
+    .bill-table-wrap { overflow-x:auto; }
+    .bill-form-input { width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; font-size:.9rem; }
+    .bill-banner { display:none; padding:14px 16px; border-radius:10px; margin-bottom:16px; font-size:.9rem; }
+    .bill-banner-success { background:#d4edda; color:#155724; }
+    .bill-banner-warn { background:#fff3cd; color:#856404; }
+    .bill-sandbox { background:#fff9e6; border:1px solid #ffeeba; border-radius:12px; padding:16px; margin-top:24px; font-size:.85rem; }
+    .bill-sandbox ul { margin:8px 0 0 18px; }
+    #billGate { text-align:center; padding:80px 24px; }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+  <div id="billGate">
+    <p>Loading billing…</p>
+  </div>
+  <div id="billApp" style="display:none">
+    <div class="bill-wrap">
+      <div class="bill-top">
+        <a href="index.html" style="color:var(--gold);font-weight:600;text-decoration:none">← Back to NestIQ</a>
+        <h1 class="font-display text-2xl font-bold">Billing &amp; Plan</h1>
+      </div>
+      <div id="billReturnBanner" class="bill-banner"></div>
+
+      <section class="bill-card">
+        <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px">
+          <div>
+            <p style="font-size:.78rem;color:var(--muted);margin:0 0 4px">Current plan</p>
+            <h2 class="font-display text-2xl font-bold" id="billCurrentPlanName">—</h2>
+            <div id="billStatusBadge" style="margin-top:8px"></div>
+          </div>
+        </div>
+        <div id="billCurrentMeta" style="margin-top:16px;font-size:.9rem;line-height:1.8"></div>
+        <div class="bill-actions">
+          <button type="button" class="bill-btn bill-btn-gold" onclick="nestiqScrollToPlans()">Upgrade Plan</button>
+          <button type="button" class="bill-btn bill-btn-outline" onclick="nestiqRefreshPaidPlanStatus()">I've already paid — refresh plan</button>
+          <button type="button" class="bill-btn bill-btn-outline bill-btn-red" id="billCancelBtn" style="display:none" onclick="nestiqCancelSubscription()">Cancel Subscription</button>
+          <button type="button" class="bill-btn bill-btn-outline" id="billDownloadInvoiceBtn" style="display:none" onclick="nestiqDownloadReceiptById(window.__nestiqPaymentRows?.[0]?.id)">Download Invoice</button>
+        </div>
+      </section>
+
+      <section class="bill-card">
+        <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Usage summary</h3>
+        <div id="billUsageBars"></div>
+      </section>
+
+      <section class="bill-card" id="billPlanSection">
+        <h3 class="font-display text-xl font-bold" style="margin:0">Choose the Right Plan for Your Portfolio</h3>
+        <p style="font-size:.85rem;color:var(--muted);margin:8px 0 0">Annual billing saves 20%</p>
+        <div class="bill-cycle-toggle">
+          <button type="button" id="billCycleMonthly" class="active" onclick="nestiqSetBillingCycleToggle('monthly')">Monthly</button>
+          <button type="button" id="billCycleAnnual" onclick="nestiqSetBillingCycleToggle('annual')">Annual (save 20%)</button>
+        </div>
+        <div class="bill-plan-grid" id="billPlanGrid"></div>
+        <p style="font-size:.78rem;color:var(--muted);margin-top:16px;text-align:center">
+          Prefer international cards? <button type="button" class="bill-btn bill-btn-outline bill-btn-sm" style="width:auto;display:inline" onclick="nestiqInitiateStripeCheckout('pro','monthly')">Pay with Stripe</button>
+        </p>
+      </section>
+
+      <section class="bill-card">
+        <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Payment history</h3>
+        <div class="bill-table-wrap">
+          <table class="bill-table">
+            <thead><tr><th>Date</th><th>Description</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+            <tbody id="billPaymentBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="bill-card">
+        <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Billing details</h3>
+        <label style="font-size:.82rem">Email for invoices</label>
+        <input type="email" id="billInvoiceEmail" class="bill-form-input" placeholder="you@example.com" />
+        <label style="font-size:.82rem">VAT number (optional)</label>
+        <input type="text" id="billVatNumber" class="bill-form-input" placeholder="4123456789" />
+        <button type="button" class="bill-btn bill-btn-gold" style="max-width:240px" onclick="nestiqSaveBillingDetails()">Save Billing Details</button>
+      </section>
+
+      <div id="billSandboxPanel" class="bill-sandbox" style="display:none">
+        <strong>PayFast Sandbox Mode</strong>
+        <ul>
+          <li>Merchant ID <code>10000100</code>, key <code>46f0cd694581a</code></li>
+          <li>Test card: Visa <code>4000000000000002</code>, any future expiry, CVV <code>123</code></li>
+          <li>After payment, PayFast redirects to <code>https://nestiq-pro.web.app/?payment=success</code></li>
+          <li>ITN webhook: run <code>firebase emulators:start --only functions,firestore</code> and set <code>NESTIQ_PAYFAST_ITN_URL</code> in firebase-config.js to the emulator function URL</li>
+        </ul>
+        <button type="button" class="bill-btn bill-btn-outline" style="margin-top:12px" onclick="nestiqSimulateSuccessfulPayment('pro');nestiqRenderBillingPage()">Simulate Successful Payment</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="./js/utils.js"></script>
+  <script src="./js/data.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/firestore-paths.js"></script>
+  <script src="./js/firebase-db.js"></script>
+  <script src="./js/billing.js"></script>
+  <script>
+    (async function bootBillingPage(){
+      const gate = document.getElementById('billGate');
+      const app = document.getElementById('billApp');
+      const failGate = msg => { gate.innerHTML = '<p>'+msg+' <a href="index.html">Return to app</a></p>'; };
+      const fsGet = (ref, ms) => Promise.race([
+        ref.get(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Firestore read timed out')), ms || 8000))
+      ]);
+      if(!window.NESTIQ_FIREBASE_CONFIG || !NESTIQ_FIREBASE_CONFIG.apiKey){
+        failGate('Firebase is not configured.');
+        return;
+      }
+      if(!firebase.apps.length) firebase.initializeApp(NESTIQ_FIREBASE_CONFIG);
+      window.nestiqDb = firebase.firestore();
+      firebase.auth().onAuthStateChanged(async user => {
+        if(!user){
+          failGate('Sign in as a landlord to manage billing.');
+          return;
+        }
+        try{
+          const udoc = await fsGet(window.nestiqDb.collection('users').doc(user.uid));
+          const role = udoc.exists ? udoc.data().role : 'landlord';
+          if(role !== 'landlord'){
+            failGate('Billing is only available for landlord accounts.');
+            return;
+          }
+          window.__nestiqLandlordUid = user.uid;
+          window.landlordSettings = window.landlordSettings || {};
+          const sref = window.nestiqFs.settingsRef(window.nestiqDb, user.uid);
+          const ss = await fsGet(sref);
+          if(ss.exists && typeof mergeSettingsPayload === 'function') mergeSettingsPayload(ss.data());
+          else if(ss.exists && ss.data().billing) window.landlordSettings.billing = ss.data().billing;
+          window.landlordName = window.landlordName || ss.data()?.name || user.displayName;
+          if(typeof nestiqCheckTrialStatus === 'function') await nestiqCheckTrialStatus();
+          gate.style.display = 'none';
+          app.style.display = 'block';
+          if(typeof nestiqInitBillingPage === 'function') await nestiqInitBillingPage();
+        }catch(err){
+          console.error('NestIQ billing boot', err);
+          failGate('Could not load billing ('+(err?.message||'error')+'). Check your connection and try again.');
+        }
+      });
+    })();
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

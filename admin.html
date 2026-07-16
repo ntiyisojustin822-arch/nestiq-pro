@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NestIQ Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="./js/support.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <script src="./js/support.js"></script>
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { gold: '#C46A3A', ink: '#0E1117', cream: '#F5F0E8', rust: '#A63D2F' },
+          fontFamily: { display: ['Playfair Display', 'serif'], body: ['DM Sans', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <style>
+    :root {
+      --gold: #C46A3A; --ink: #0E1117; --cream: #F5F0E8; --rust: #A63D2F;
+      --paper: #fff; --border: #e5e0d8; --muted: #6B7280;
+      --sidebar-w: 260px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; font-family: 'DM Sans', sans-serif; background: var(--cream); color: var(--ink); overscroll-behavior-y: contain; }
+    body.admin-authed { overflow: hidden; height: 100%; }
+    h1, h2, h3, .font-display { font-family: 'Playfair Display', serif; }
+    .admin-login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; background: linear-gradient(145deg, #0E1117 0%, #1a2230 50%, #2a2018 100%); position: fixed; inset: 0; z-index: 200; }
+    body.admin-authed .admin-login-wrap { display: none !important; pointer-events: none; }
+    .admin-login-card { width: 100%; max-width: 420px; background: var(--paper); border-radius: 16px; padding: 36px 32px; box-shadow: 0 24px 60px rgba(0,0,0,.35); }
+    .admin-shell { display: none; min-height: 100vh; }
+    .admin-shell.active { display: flex; }
+    .admin-sidebar { width: var(--sidebar-w); background: var(--ink); color: #fff; position: fixed; top: 0; left: 0; bottom: 0; z-index: 40; display: flex; flex-direction: column; transition: transform .25s; }
+    .admin-sidebar .logo-row { padding: 20px 18px; border-bottom: 1px solid rgba(255,255,255,.08); display: flex; align-items: center; gap: 10px; }
+    .admin-sidebar .logo-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--gold); }
+    .admin-badge { background: var(--rust); font-size: 0.62rem; font-weight: 700; letter-spacing: .08em; padding: 3px 8px; border-radius: 4px; }
+    .admin-nav { flex: 1; overflow-y: auto; padding: 12px 10px; }
+    .admin-nav a { display: flex; align-items: center; gap: 12px; padding: 11px 14px; border-radius: 10px; color: rgba(255,255,255,.72); text-decoration: none; font-size: 0.9rem; margin-bottom: 4px; transition: background .15s, color .15s; }
+    .admin-nav a:hover { background: rgba(255,255,255,.06); color: #fff; }
+    .admin-nav a.active { background: rgba(196,106,58,.22); color: var(--gold); font-weight: 600; }
+    .admin-main { margin-left: var(--sidebar-w); flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+    .admin-topbar { background: var(--paper); border-bottom: 1px solid var(--border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; position: sticky; top: 0; z-index: 30; flex-shrink: 0; }
+    .admin-content { padding: 24px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; min-height: 0; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .stat-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .stat-card .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+    .stat-card .val { font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; }
+    .panel { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
+    .panel-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 14px; font-family: 'Playfair Display', serif; }
+    .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .data-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; }
+    .data-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .data-table tr:hover td { background: rgba(245,240,232,.6); }
+    .badge { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; }
+    .badge-green { background: #d4edda; color: #155724; }
+    .badge-amber { background: #fff3cd; color: #856404; }
+    .badge-red { background: #f8d7da; color: #721c24; }
+    .badge-gold { background: rgba(196,106,58,.15); color: var(--gold); }
+    .badge-gray { background: #eee; color: #555; }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; background: rgba(196,106,58,.2); color: var(--gold); display: inline-flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.8rem; }
+    .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 16px; border-radius: 9px; font-size: 0.86rem; font-weight: 600; cursor: pointer; border: none; font-family: inherit; transition: transform .12s, opacity .12s; }
+    .btn:active { transform: scale(0.98); }
+    .btn-gold { background: var(--gold); color: #fff; }
+    .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--ink); }
+    .btn-rust { background: var(--rust); color: #fff; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .form-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; font-size: 0.9rem; font-family: inherit; }
+    .form-input:focus { outline: 2px solid rgba(196,106,58,.35); border-color: var(--gold); }
+    .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+    .skeleton { background: linear-gradient(90deg, #ece8e0 25%, #f5f2ec 50%, #ece8e0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; height: 14px; margin: 6px 0; }
+    @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .page-section { display: none; }
+    .page-section.active { display: block; }
+    .activity-item { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.86rem; line-height: 1.45; }
+    .activity-item:last-child { border-bottom: none; }
+    .health-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 8px; }
+    .health-dot.ok { background: #22c55e; }
+    .health-dot.err { background: var(--rust); }
+    .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    @media (max-width: 900px) { .charts-row { grid-template-columns: 1fr; } }
+    .drawer-overlay { position: fixed; inset: 0; background: rgba(14,17,23,.45); z-index: 50; opacity: 0; pointer-events: none; transition: opacity .2s; }
+    .drawer-overlay.open { opacity: 1; pointer-events: auto; }
+    .drawer { position: fixed; top: 0; right: 0; width: min(480px, 100vw); height: 100%; background: var(--paper); z-index: 51; transform: translateX(100%); transition: transform .25s; overflow-y: auto; padding: 24px; box-shadow: -8px 0 40px rgba(0,0,0,.15); }
+    .drawer-overlay.open .drawer { transform: translateX(0); }
+    #modalOverlay { position: fixed; inset: 0; background: rgba(14,17,23,.5); z-index: 60; display: none; align-items: center; justify-content: center; padding: 20px; }
+    #modalOverlay.open { display: flex; }
+    #modalContent { background: var(--paper); border-radius: 14px; padding: 24px; max-width: 520px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    /* Above .admin-login-wrap (z-index 200) so sign-in errors are visible on the login screen */
+    .admin-notif { position: fixed; bottom: 24px; right: 24px; z-index: 300; padding: 14px 20px; border-radius: 10px; color: #fff; font-size: 0.88rem; font-weight: 500; box-shadow: 0 8px 30px rgba(0,0,0,.2); transform: translateY(120%); transition: transform .3s; max-width: 360px; }
+    .admin-notif.show { transform: translateY(0); }
+    .admin-notif.success { background: #2d6a4f; }
+    .admin-notif.error { background: var(--rust); }
+    .admin-notif.warning { background: #b8860b; }
+    #adminLoginBtn:disabled { opacity: 0.7; cursor: wait; }
+    .pagination { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 16px; font-size: 0.84rem; }
+    .mobile-tabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); z-index: 45; padding: 8px 4px; justify-content: space-around; border-top: 1px solid rgba(255,255,255,.1); }
+    .mobile-tabs button { background: none; border: none; color: rgba(255,255,255,.6); font-size: 0.65rem; padding: 6px 8px; cursor: pointer; }
+    .mobile-tabs button.active { color: var(--gold); }
+    @media (max-width: 768px) {
+      .admin-sidebar { transform: translateX(-100%); }
+      .admin-sidebar.open { transform: translateX(0); }
+      .admin-main { margin-left: 0; padding-bottom: 64px; }
+      .mobile-tabs { display: flex; }
+      .admin-nav a span.label { display: none; }
+      .admin-sidebar.collapsed-icons .admin-nav a { justify-content: center; padding: 12px; }
+    }
+    .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .switch { width: 44px; height: 24px; background: #ccc; border-radius: 12px; position: relative; cursor: pointer; transition: background .2s; }
+    .switch.on { background: var(--gold); }
+    .switch::after { content: ''; position: absolute; width: 18px; height: 18px; background: #fff; border-radius: 50%; top: 3px; left: 3px; transition: left .2s; }
+    .switch.on::after { left: 23px; }
+  </style>
+</head>
+<body>
+
+  <!-- Login -->
+  <div id="adminLoginScreen" class="admin-login-wrap">
+    <div class="admin-login-card">
+      <div style="text-align:center;margin-bottom:28px">
+        <div style="font-family:'Playfair Display',serif;font-size:1.75rem;font-weight:700"><span style="display:inline-block;width:10px;height:10px;background:var(--gold);border-radius:50%;margin-right:8px;vertical-align:middle"></span>NestIQ</div>
+        <span class="admin-badge" style="margin-top:8px;display:inline-block">ADMIN</span>
+        <p style="font-size:0.88rem;color:var(--muted);margin-top:12px">Platform owner access only</p>
+      </div>
+      <div id="loginDenied" style="display:none;color:var(--rust);font-size:0.88rem;text-align:center;margin-bottom:16px;padding:12px;background:#fde8e6;border-radius:8px"></div>
+      <div class="form-group" style="margin-bottom:14px">
+        <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:6px">Email</label>
+        <input type="email" id="adminLoginEmail" class="form-input" autocomplete="username" />
+      </div>
+      <div class="form-group" style="margin-bottom:20px">
+        <label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:6px">Password</label>
+        <input type="password" id="adminLoginPass" class="form-input" autocomplete="current-password" />
+      </div>
+      <button type="button" class="btn btn-gold" style="width:100%" id="adminLoginBtn" onclick="window.nestiqAdminLogin&&window.nestiqAdminLogin();return false;">Sign In as Admin</button>
+    </div>
+  </div>
+
+  <!-- Dashboard shell -->
+  <div id="adminShell" class="admin-shell">
+    <aside class="admin-sidebar" id="adminSidebar">
+      <div class="logo-row">
+        <span class="logo-dot"></span>
+        <span style="font-family:'Playfair Display',serif;font-weight:700;font-size:1.1rem">NestIQ</span>
+        <span class="admin-badge">ADMIN</span>
+      </div>
+      <nav class="admin-nav" id="adminNav">
+        <a href="#" data-page="overview" class="active sidebar-nav-item"><span>📊</span><span class="label">Overview</span></a>
+        <a href="#" data-page="landlords" class="sidebar-nav-item"><span>🏠</span><span class="label">Landlords</span></a>
+        <a href="#" data-page="tenants" class="sidebar-nav-item"><span>👥</span><span class="label">Tenants</span></a>
+        <a href="#" data-page="applications" class="sidebar-nav-item"><span>📋</span><span class="label">Applications</span></a>
+        <a href="#" data-page="billing" class="sidebar-nav-item"><span>💳</span><span class="label">Billing</span></a>
+        <a href="#" data-page="maintenance" class="sidebar-nav-item"><span>🔧</span><span class="label">Maintenance</span></a>
+        <a href="#" data-page="support" class="sidebar-nav-item"><span>🎧</span><span class="label">Support Tickets</span><span id="adminSupportOpenBadge" class="admin-badge" style="display:none;margin-left:6px;background:#dc3545;color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:8px">0</span></a>
+        <a href="#" data-page="changelog" class="sidebar-nav-item"><span>📋</span><span class="label">Changelog</span></a>
+        <a href="#" data-page="announcements" class="sidebar-nav-item"><span>📣</span><span class="label">Announcements</span></a>
+        <a href="#" data-page="settings" class="sidebar-nav-item"><span>⚙️</span><span class="label">Settings</span></a>
+        <a href="#" data-page="flagged" class="sidebar-nav-item"><span>🚩</span><span class="label">Flagged Accounts</span></a>
+      </nav>
+    </aside>
+
+    <div class="admin-main">
+      <header class="admin-topbar">
+        <div style="display:flex;align-items:center;gap:12px">
+          <button type="button" class="btn btn-outline btn-sm" id="sidebarToggle" style="display:none">☰</button>
+          <h1 id="pageTitle" style="margin:0;font-size:1.25rem;font-family:'Playfair Display',serif">Overview</h1>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" id="adminSignOutBtn">Sign Out</button>
+      </header>
+
+      <main class="admin-content">
+        <!-- OVERVIEW -->
+        <section id="page-overview" class="page-section active">
+          <div class="stat-grid" id="overviewStats"></div>
+          <div class="charts-row">
+            <div class="panel"><h3 class="panel-title">New landlord signups (12 mo)</h3><canvas id="chartSignups" height="200"></canvas></div>
+            <div class="panel"><h3 class="panel-title">Monthly revenue (12 mo)</h3><canvas id="chartRevenue" height="200"></canvas></div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div class="panel"><h3 class="panel-title">Recent activity</h3><div id="activityFeed"></div></div>
+            <div class="panel"><h3 class="panel-title">Platform health</h3><div id="platformHealth"></div></div>
+          </div>
+        </section>
+
+        <!-- LANDLORDS -->
+        <section id="page-landlords" class="page-section">
+          <div class="filter-bar">
+            <input type="search" id="landlordSearch" class="form-input" placeholder="Search name or email…" style="max-width:220px" />
+            <select id="landlordPlanFilter" class="form-input" style="max-width:140px"><option value="">All plans</option><option>Free</option><option>Pro</option><option>Enterprise</option></select>
+            <select id="landlordStatusFilter" class="form-input" style="max-width:140px"><option value="">All status</option><option>Active</option><option>Suspended</option><option>Trial</option></select>
+            <select id="landlordSort" class="form-input" style="max-width:160px"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="properties">Most properties</option><option value="active">Last active</option></select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="exportLandlordsCsv()">Export All Landlords CSV</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="bulkLandlordSuspend()">Bulk suspend</button>
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="landlordsTableWrap"></div>
+            <div id="landlordsPagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- TENANTS -->
+        <section id="page-tenants" class="page-section">
+          <div class="filter-bar">
+            <input type="search" id="tenantSearch" class="form-input" placeholder="Search tenant…" style="max-width:240px" />
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="tenantsTableWrap"></div>
+            <div id="tenantsPagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- APPLICATIONS -->
+        <section id="page-applications" class="page-section">
+          <div class="stat-grid" id="appStats" style="margin-bottom:16px"></div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="applicationsTableWrap"></div>
+            <div id="applicationsPagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- BILLING -->
+        <section id="page-billing" class="page-section">
+          <div class="stat-grid" id="billingStats"></div>
+          <div class="panel"><h3 class="panel-title">MRR trend (12 months)</h3><canvas id="chartMrr" height="200"></canvas></div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div style="padding:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px">
+              <h3 class="panel-title" style="margin:0">Subscriptions</h3>
+              <button type="button" class="btn btn-gold btn-sm" onclick="openManualPaymentModal()">Add Manual Payment</button>
+            </div>
+            <div id="billingTableWrap"></div>
+            <div id="billingPagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- MAINTENANCE -->
+        <section id="page-maintenance" class="page-section">
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="maintenanceTableWrap"></div>
+            <div id="maintenancePagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- ANNOUNCEMENTS -->
+        <section id="page-announcements" class="page-section">
+          <div class="panel">
+            <h3 class="panel-title">Compose announcement</h3>
+            <div style="display:grid;gap:12px;max-width:640px">
+              <input type="text" id="annTitle" class="form-input" placeholder="Title" />
+              <textarea id="annBody" class="form-input" rows="4" placeholder="Message body"></textarea>
+              <select id="annAudience" class="form-input">
+                <option value="all">All Landlords</option>
+                <option value="free">Free Tier Only</option>
+                <option value="pro">Pro Only</option>
+                <option value="enterprise">Enterprise Only</option>
+              </select>
+              <div><label><input type="checkbox" id="annInApp" checked /> In-app notification</label></div>
+              <div style="display:flex;gap:10px;flex-wrap:wrap">
+                <button type="button" class="btn btn-outline btn-sm" onclick="previewAnnouncement()">Preview</button>
+                <button type="button" class="btn btn-gold btn-sm" onclick="sendAnnouncement()">Send Announcement</button>
+              </div>
+            </div>
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <h3 class="panel-title" style="padding:16px 16px 0">Sent history</h3>
+            <div id="announcementsHistoryWrap"></div>
+          </div>
+        </section>
+
+        <!-- SUPPORT -->
+        <section id="page-support" class="page-section">
+          <div class="stat-grid" id="supportStats"></div>
+          <div class="filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <input type="search" id="supportSearch" class="form-input" placeholder="Ticket ID, subject, email…" style="max-width:220px" />
+            <select id="supportFilterStatus" class="form-input" style="max-width:140px">
+              <option value="">All status</option><option>open</option><option>in progress</option><option>resolved</option><option>closed</option>
+            </select>
+            <select id="supportFilterPriority" class="form-input" style="max-width:130px">
+              <option value="">All priority</option><option>low</option><option>medium</option><option>urgent</option>
+            </select>
+            <select id="supportFilterCategory" class="form-input" style="max-width:180px">
+              <option value="">All categories</option>
+              <option>Billing &amp; Payments</option><option>Technical Issue</option><option>Account &amp; Profile</option>
+              <option>Tenant Portal</option><option>Feature Request</option><option>Other</option>
+            </select>
+            <button type="button" class="btn btn-outline btn-sm" onclick="supportBulkResolve()">Bulk resolve</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="supportBulkClose()">Bulk close</button>
+            <button type="button" class="btn btn-outline btn-sm" onclick="supportBulkDelete()">Bulk delete</button>
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="supportTableWrap"></div>
+          </div>
+        </section>
+
+        <!-- CHANGELOG -->
+        <section id="page-changelog" class="page-section">
+          <div class="panel" style="margin-bottom:16px">
+            <h3 style="margin:0 0 14px;font-size:1.05rem">Publish New Release</h3>
+            <div class="filter-bar" style="flex-wrap:wrap;gap:10px;margin-bottom:12px">
+              <input type="text" id="clVersion" class="form-input" placeholder="v1.4.0" style="max-width:120px" />
+              <input type="text" id="clName" class="form-input" placeholder="Release name" style="max-width:200px" />
+              <input type="date" id="clDate" class="form-input" style="max-width:150px" />
+              <select id="clType" class="form-input" style="max-width:130px">
+                <option value="Major">🟢 Major</option>
+                <option value="Minor">🔵 Minor</option>
+                <option value="Patch">🟡 Patch</option>
+              </select>
+            </div>
+            <div id="clChangesEditor" style="margin-bottom:12px"></div>
+            <button type="button" class="btn btn-outline btn-sm" onclick="addChangeRow()">+ Add change</button>
+            <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+              <button type="button" class="btn btn-gold btn-sm" onclick="publishRelease()">Publish Release</button>
+              <button type="button" class="btn btn-outline btn-sm" id="clNotifyBtn" style="display:none" onclick="notifySubscribers()">🔔 Notify Subscribers</button>
+            </div>
+            <div id="clPublishStatus" style="margin-top:10px;font-size:.9rem"></div>
+          </div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div style="padding:14px 16px 8px;border-bottom:1px solid rgba(14,17,23,.08);font-weight:700">Published Releases</div>
+            <div id="clReleasesTable"></div>
+          </div>
+        </section>
+
+        <!-- SETTINGS -->
+        <section id="page-settings" class="page-section">
+          <div class="panel" id="platformSettingsForm"></div>
+        </section>
+
+        <!-- FLAGGED -->
+        <section id="page-flagged" class="page-section">
+          <div class="panel" style="padding:0;overflow:hidden"><div id="flaggedListWrap"></div></div>
+        </section>
+      </main>
+    </div>
+
+    <nav class="mobile-tabs" id="mobileTabs">
+      <button type="button" data-page="overview" class="active">📊<br>Home</button>
+      <button type="button" data-page="landlords">🏠<br>Lords</button>
+      <button type="button" data-page="tenants">👥<br>Tenants</button>
+      <button type="button" data-page="applications">📋<br>Apps</button>
+      <button type="button" data-page="billing">💳<br>Bill</button>
+    </nav>
+  </div>
+
+  <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer(event)">
+    <div class="drawer" id="drawerPanel" onclick="event.stopPropagation()"></div>
+  </div>
+
+  <div id="modalOverlay" onclick="if(event.target===this)closeModal()">
+    <div id="modalContent"></div>
+  </div>
+
+  <div id="adminNotif" class="admin-notif"></div>
+
+<script src="./js/animations.js"></script>
+<script>
+(function(){
+  'use strict';
+
+  /** Change this and firestore.rules isNestiqAdmin() email to match. */
+  const NESTIQ_ADMIN_EMAIL = 'admin@nestiq.co.za';
+
+  const NESTIQ_FIREBASE_CONFIG = {
+    apiKey: 'AIzaSyDoUFyF7N4Dambzrzp2STB6GZYxX5fgI7E',
+    authDomain: 'nestiq-pro.firebaseapp.com',
+    projectId: 'nestiq-pro',
+    storageBucket: 'nestiq-pro.firebasestorage.app',
+    messagingSenderId: '375703486251',
+    appId: '1:375703486251:web:75c6bb4a11b82bb2f70f6e'
+  };
+
+  const PAGE_SIZE = 20;
+  const PLAN_PRICES = { starter: 0, pro: 299, enterprise: 799, Free: 0, Pro: 299, Enterprise: 799 };
+
+  let auth, db, fv;
+  let currentUser = null;
+  let charts = {};
+  let cache = {
+    landlords: [],
+    tenants: [],
+    applications: [],
+    billing: [],
+    supportTickets: [],
+    maintenance: [],
+    activity: [],
+    announcements: [],
+    settings: null,
+    flagged: []
+  };
+  let pagination = { landlords: 0, tenants: 0, applications: 0, billing: 0, maintenance: 0 };
+
+  window.nestiqDb = null;
+
+  function initFirebase(){
+    if(!firebase.apps.length) firebase.initializeApp(NESTIQ_FIREBASE_CONFIG);
+    auth = firebase.auth();
+    db = firebase.firestore();
+    window.nestiqDb = db;
+    fv = firebase.firestore.FieldValue;
+    try { db.settings({ experimentalAutoDetectLongPolling: true }); } catch(_e){}
+  }
+
+  function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+  function showAdminNotif(msg, type){
+    const el = document.getElementById('adminNotif');
+    el.textContent = msg;
+    el.className = 'admin-notif show ' + (type || 'success');
+    clearTimeout(showAdminNotif._t);
+    showAdminNotif._t = setTimeout(() => el.classList.remove('show'), 4200);
+  }
+
+  function openModal(html){ document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.add('open'); }
+  function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+  window.closeModal = closeModal;
+
+  function openDrawer(html){
+    document.getElementById('drawerPanel').innerHTML = html;
+    document.getElementById('drawerOverlay').classList.add('open');
+  }
+  function closeDrawer(e){
+    if(e && e.target !== document.getElementById('drawerOverlay')) return;
+    document.getElementById('drawerOverlay').classList.remove('open');
+  }
+  window.closeDrawer = closeDrawer;
+
+  function confirmAction(msg){
+    return window.confirm(msg || 'Are you sure?');
+  }
+
+  function skeletonTable(cols, rows){
+    let h = '<table class="data-table"><thead><tr>';
+    for(let i=0;i<cols;i++) h += '<th><div class="skeleton" style="width:80%"></div></th>';
+    h += '</tr></thead><tbody>';
+    for(let r=0;r<rows;r++){
+      h += '<tr>';
+      for(let c=0;c<cols;c++) h += '<td><div class="skeleton"></div></td>';
+      h += '</tr>';
+    }
+    return h + '</tbody></table>';
+  }
+
+  function emptyState(icon, title, sub){
+    return `<div class="empty-state"><div class="icon">${icon}</div><div style="font-weight:600;color:var(--ink);margin-bottom:6px">${esc(title)}</div><div style="font-size:0.86rem">${esc(sub)}</div></div>`;
+  }
+
+  function initials(name){
+    return String(name||'?').split(/\s+/).map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+  }
+
+  function formatDate(v){
+    if(!v) return '—';
+    try{
+      const d = v.toDate ? v.toDate() : new Date(v);
+      return d.toLocaleDateString('en-ZA', { day:'2-digit', month:'short', year:'numeric' });
+    }catch(_e){ return '—'; }
+  }
+
+  function timeAgo(v){
+    if(!v) return '';
+    const d = v.toDate ? v.toDate() : new Date(v);
+    const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+    if(sec < 60) return sec + ' secs ago';
+    if(sec < 3600) return Math.floor(sec/60) + ' mins ago';
+    if(sec < 86400) return Math.floor(sec/3600) + ' hours ago';
+    return Math.floor(sec/86400) + ' days ago';
+  }
+
+  function normalizePlanKey(plan){
+    const p = String(plan || 'starter').toLowerCase();
+    if(p === 'free') return 'starter';
+    if(p === 'pro' || p === 'enterprise' || p === 'starter') return p;
+    if(p === 'enterprise') return 'enterprise';
+    return 'starter';
+  }
+  function planDisplayName(plan){
+    const k = normalizePlanKey(plan);
+    if(k === 'starter') return 'Free';
+    if(k === 'pro') return 'Pro';
+    if(k === 'enterprise') return 'Enterprise';
+    return plan;
+  }
+  function planBadge(plan){
+    const label = planDisplayName(plan);
+    const k = normalizePlanKey(plan);
+    const cls = k === 'enterprise' ? 'badge-gold' : k === 'pro' ? 'badge-amber' : 'badge-gray';
+    return `<span class="badge ${cls}">${esc(label)}</span>`;
+  }
+  function billingStatusBadge(st){
+    const s = String(st || 'active').toLowerCase();
+    if(s === 'failed' || s === 'payment_failed') return '<span class="badge badge-red">Failed</span>';
+    if(s === 'trial') return '<span class="badge badge-amber">Trial</span>';
+    if(s === 'cancelled') return '<span class="badge badge-gray">Cancelled</span>';
+    return '<span class="badge badge-green">Active</span>';
+  }
+
+  function statusBadge(st){
+    const s = String(st||'active').toLowerCase();
+    if(s === 'suspended') return '<span class="badge badge-red">Suspended</span>';
+    if(s === 'trial') return '<span class="badge badge-amber">Trial</span>';
+    if(s === 'pending') return '<span class="badge badge-amber">Pending</span>';
+    return '<span class="badge badge-green">Active</span>';
+  }
+
+  async function logAdminActivity(action, targetId, targetEmail, notes){
+    if(!db || !currentUser) return;
+    try{
+      await db.collection('adminActivity').add({
+        action,
+        targetId: targetId || '',
+        targetEmail: targetEmail || '',
+        adminEmail: currentUser.email,
+        timestamp: fv.serverTimestamp(),
+        notes: notes || ''
+      });
+    }catch(e){ console.warn('activity log', e); }
+  }
+
+  function activityIcon(action){
+    const a = String(action||'').toLowerCase();
+    if(a.includes('signup') || a.includes('landlord')) return '🆕';
+    if(a.includes('application')) return '📋';
+    if(a.includes('tenant')) return '✅';
+    if(a.includes('billing') || a.includes('subscription') || a.includes('plan')) return '💳';
+    if(a.includes('suspend')) return '⏸️';
+    if(a.includes('announce')) return '📣';
+    if(a.includes('delete')) return '🗑️';
+    return '•';
+  }
+
+  function renderPagination(key, total, containerId, onPage){
+    const page = pagination[key] || 0;
+    const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+    const el = document.getElementById(containerId);
+    if(!el) return;
+    el.innerHTML = `
+      <span style="color:var(--muted);margin-right:auto">Page ${page+1} of ${pages} (${total} rows)</span>
+      <button type="button" class="btn btn-outline btn-sm" ${page<=0?'disabled':''} onclick="window.__adminPage('${key}',${page-1})">Previous</button>
+      <button type="button" class="btn btn-outline btn-sm" ${page>=pages-1?'disabled':''} onclick="window.__adminPage('${key}',${page+1})">Next</button>`;
+    window.__adminPage = (k, p) => { pagination[k] = Math.max(0, p); onPage(); };
+  }
+
+  function downloadCsv(filename, rows){
+    const csv = rows.map(r => r.map(c => {
+      const s = String(c ?? '');
+      return s.includes(',') || s.includes('"') ? '"' + s.replace(/"/g,'""') + '"' : s;
+    }).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ─── Auth ─── */
+  let adminSessionActive = false;
+  let authLogoutTimer = null;
+  let authBootstrapped = false;
+  let dashboardBootstrapped = false;
+  let explicitSignOut = false;
+
+  function showLogin(deniedMsg){
+    document.body.classList.remove('admin-authed');
+    document.getElementById('adminLoginScreen').style.display = 'flex';
+    document.getElementById('adminShell').classList.remove('active');
+    setLoginError(deniedMsg || '');
+  }
+
+  function setLoginError(msg){
+    const d = document.getElementById('loginDenied');
+    if(!d) return;
+    if(msg){ d.style.display = 'block'; d.textContent = String(msg); }
+    else { d.style.display = 'none'; d.textContent = ''; }
+  }
+
+  function friendlyAuthError(err){
+    const code = String(err?.code || '').toLowerCase();
+    const msg = String(err?.message || '');
+    if(code.includes('wrong-password') || code.includes('invalid-credential') || code.includes('invalid-login')){
+      return 'Incorrect email or password. Try again.';
+    }
+    if(code.includes('user-not-found')){
+      return 'No Firebase account found for that email. Create admin@nestiq.co.za in Firebase Authentication first.';
+    }
+    if(code.includes('too-many-requests')){
+      return 'Too many failed attempts. Wait a few minutes and try again.';
+    }
+    if(code.includes('network-request-failed')){
+      return 'Network error. Check your connection and try again.';
+    }
+    if(code.includes('invalid-email')){
+      return 'Enter a valid email address.';
+    }
+    if(code.includes('user-disabled')){
+      return 'This admin account has been disabled in Firebase Authentication.';
+    }
+    return msg || 'Sign in failed. Check your email and password.';
+  }
+
+  function showDashboard(){
+    document.body.classList.add('admin-authed');
+    document.getElementById('adminLoginScreen').style.display = 'none';
+    document.getElementById('adminShell').classList.add('active');
+    if(window.innerWidth <= 768){
+      document.getElementById('sidebarToggle').style.display = 'inline-flex';
+    }
+  }
+
+  function scheduleLoginIfStillSignedOut(delayMs){
+    if(authLogoutTimer) clearTimeout(authLogoutTimer);
+    authLogoutTimer = setTimeout(() => {
+      authLogoutTimer = null;
+      if(explicitSignOut) return;
+      const u = auth.currentUser;
+      if(u){
+        handleAuth(u);
+        return;
+      }
+      if(!adminSessionActive){
+        currentUser = null;
+        showLogin();
+      }
+    }, delayMs);
+  }
+
+  async function handleAuth(user){
+    if(authLogoutTimer){
+      clearTimeout(authLogoutTimer);
+      authLogoutTimer = null;
+    }
+
+    if(!user){
+      if(adminSessionActive && !explicitSignOut){
+        scheduleLoginIfStillSignedOut(2500);
+        return;
+      }
+      if(!authBootstrapped){
+        scheduleLoginIfStillSignedOut(900);
+        return;
+      }
+      adminSessionActive = false;
+      dashboardBootstrapped = false;
+      currentUser = null;
+      showLogin();
+      return;
+    }
+
+    authBootstrapped = true;
+    explicitSignOut = false;
+
+    const email = (user.email || '').toLowerCase();
+    const adminEmail = NESTIQ_ADMIN_EMAIL.toLowerCase();
+    if(email !== adminEmail){
+      adminSessionActive = false;
+      dashboardBootstrapped = false;
+      await auth.signOut();
+      showLogin('Access denied. This area is restricted to NestIQ administrators. (Signed in as ' + (user.email || 'unknown') + ')');
+      return;
+    }
+
+    adminSessionActive = true;
+    currentUser = user;
+    showDashboard();
+
+    if(!dashboardBootstrapped){
+      dashboardBootstrapped = true;
+      try{
+        await loadOverview();
+        startSupportListener();
+        navigateTo('overview');
+      }catch(e){
+        console.error('Admin dashboard bootstrap', e);
+        showAdminNotif('Dashboard load error: ' + (e.message || e), 'error');
+      }
+    }
+  }
+
+  async function attemptAdminLogin(){
+    const btn = document.getElementById('adminLoginBtn');
+    const email = (document.getElementById('adminLoginEmail')?.value || '').trim().toLowerCase();
+    const pass = document.getElementById('adminLoginPass')?.value || '';
+    setLoginError('');
+    if(!email || !pass){
+      setLoginError('Enter your admin email and password.');
+      showAdminNotif('Enter your admin email and password.', 'error');
+      return;
+    }
+    if(email !== NESTIQ_ADMIN_EMAIL.toLowerCase()){
+      setLoginError('Access denied. Sign in with ' + NESTIQ_ADMIN_EMAIL + ' only.');
+      showAdminNotif('Wrong account — use ' + NESTIQ_ADMIN_EMAIL, 'error');
+      return;
+    }
+    if(!auth){
+      setLoginError('Firebase Auth is not ready. Refresh the page.');
+      showAdminNotif('Firebase Auth is not ready. Refresh the page.', 'error');
+      return;
+    }
+    const prevLabel = btn ? btn.textContent : '';
+    if(btn){ btn.disabled = true; btn.textContent = 'Signing in…'; }
+    try{
+      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+      await auth.signInWithEmailAndPassword(email, pass);
+      // onAuthStateChanged → handleAuth shows the dashboard (or access denied).
+    }catch(e){
+      console.error('Admin sign-in failed', e);
+      const friendly = friendlyAuthError(e);
+      setLoginError(friendly);
+      showAdminNotif(friendly, 'error');
+    }finally{
+      if(btn){ btn.disabled = false; btn.textContent = prevLabel || 'Sign In as Admin'; }
+    }
+  }
+
+  window.nestiqAdminLogin = attemptAdminLogin;
+  document.getElementById('adminLoginBtn').onclick = () => { attemptAdminLogin(); };
+  ['adminLoginEmail','adminLoginPass'].forEach(id => {
+    document.getElementById(id)?.addEventListener('keydown', (ev) => {
+      if(ev.key === 'Enter'){ ev.preventDefault(); attemptAdminLogin(); }
+    });
+  });
+
+  document.getElementById('adminSignOutBtn').onclick = () => {
+    explicitSignOut = true;
+    adminSessionActive = false;
+    dashboardBootstrapped = false;
+    auth.signOut();
+  };
+
+  /* ─── Navigation ─── */
+  const PAGE_TITLES = {
+    overview:'Overview', landlords:'Landlords', tenants:'Tenants', applications:'Applications',
+    billing:'Billing', support:'Support Tickets', maintenance:'Maintenance', changelog:'Changelog',
+    announcements:'Announcements', settings:'Settings', flagged:'Flagged Accounts'
+  };
+
+  async function navigateTo(page){
+    document.querySelectorAll('.page-section').forEach(s => s.classList.remove('active'));
+    document.getElementById('page-' + page)?.classList.add('active');
+    document.querySelectorAll('#adminNav a').forEach(a => {
+      a.classList.toggle('active', a.dataset.page === page);
+    });
+    document.querySelectorAll('#mobileTabs button').forEach(b => {
+      b.classList.toggle('active', b.dataset.page === page);
+    });
+    document.getElementById('pageTitle').textContent = PAGE_TITLES[page] || page;
+
+    if(page === 'overview') await loadOverview();
+    if(page === 'landlords') await loadLandlords();
+    if(page === 'tenants') await loadTenants();
+    if(page === 'applications') await loadApplications();
+    if(page === 'billing') await loadBilling();
+    if(page === 'support') await loadSupport();
+    if(page === 'maintenance') await loadMaintenance();
+    if(page === 'announcements') await loadAnnouncements();
+    if(page === 'changelog') await loadChangelog();
+    if(page === 'settings') await loadSettings();
+    if(page === 'flagged') await loadFlagged();
+  }
+
+  document.getElementById('adminNav').onclick = e => {
+    const a = e.target.closest('a[data-page]');
+    if(!a) return;
+    e.preventDefault();
+    navigateTo(a.dataset.page);
+  };
+  document.getElementById('mobileTabs').onclick = e => {
+    const b = e.target.closest('button[data-page]');
+    if(!b) return;
+    navigateTo(b.dataset.page);
+  };
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    document.getElementById('adminSidebar').classList.toggle('open');
+  });
+
+  ['landlordSearch','landlordPlanFilter','landlordStatusFilter','landlordSort'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', () => { pagination.landlords = 0; renderLandlordsTable(); });
+    document.getElementById(id)?.addEventListener('change', () => { pagination.landlords = 0; renderLandlordsTable(); });
+  });
+  document.getElementById('tenantSearch')?.addEventListener('input', () => { pagination.tenants = 0; renderTenantsTable(); });
+
+  /* ─── Data: landlords ─── */
+  async function fetchLandlordRow(id){
+    const settingsSnap = await db.collection('landlords').doc(id).collection('profile').doc('settings').get();
+    const userSnap = await db.collection('users').doc(id).get();
+    const s = settingsSnap.exists ? settingsSnap.data() : {};
+    const b = (s.billing && typeof s.billing === 'object') ? s.billing : {};
+    const u = userSnap.exists ? userSnap.data() : {};
+    let propCount = 0, tenantCount = 0;
+    try{
+      const ps = await db.collection('landlords').doc(id).collection('properties').get();
+      propCount = ps.size;
+      const ts = await db.collection('landlords').doc(id).collection('tenants').get();
+      tenantCount = ts.size;
+    }catch(_e){}
+    const email = (s.email || u.email || b.email || '').toLowerCase();
+    const name = s.name || s.landlordSettings?.name || u.name || email.split('@')[0] || 'Landlord';
+    return {
+      id,
+      name,
+      email,
+      plan: b.plan || s.plan || 'starter',
+      billingStatus: b.status || 'active',
+      trialEnds: b.trialEnds || null,
+      status: s.adminStatus || 'active',
+      propertiesCount: propCount,
+      tenantsCount: tenantCount,
+      signupDate: s.createdAt || u.createdAt || null,
+      lastActive: s.lastActiveAt || s.updatedAt || null,
+      settingsRef: settingsSnap.ref,
+      rawSettings: s,
+      rawBilling: b
+    };
+  }
+
+  async function loadLandlords(){
+    document.getElementById('landlordsTableWrap').innerHTML = skeletonTable(10, 8);
+    try{
+      const snap = await db.collection('landlords').get();
+      const ids = snap.docs.map(d => d.id);
+      const rows = await Promise.all(ids.map(id => fetchLandlordRow(id).catch(() => null)));
+      cache.landlords = rows.filter(Boolean);
+      renderLandlordsTable();
+    }catch(e){
+      document.getElementById('landlordsTableWrap').innerHTML = emptyState('⚠️', 'Could not load landlords', e.message);
+      showAdminNotif('Landlords load failed: ' + e.message, 'error');
+    }
+  }
+
+  function filterLandlords(){
+    let list = cache.landlords.slice();
+    const q = (document.getElementById('landlordSearch')?.value || '').toLowerCase();
+    const plan = document.getElementById('landlordPlanFilter')?.value || '';
+    const st = document.getElementById('landlordStatusFilter')?.value || '';
+    const sort = document.getElementById('landlordSort')?.value || 'newest';
+    if(q) list = list.filter(l => l.name.toLowerCase().includes(q) || l.email.includes(q));
+    if(plan) list = list.filter(l => String(l.plan) === plan);
+    if(st) list = list.filter(l => String(l.status).toLowerCase() === st.toLowerCase());
+    list.sort((a,b) => {
+      if(sort === 'oldest') return (a.signupDate?.seconds||0) - (b.signupDate?.seconds||0);
+      if(sort === 'properties') return b.propertiesCount - a.propertiesCount;
+      if(sort === 'active') return (b.lastActive?.seconds||0) - (a.lastActive?.seconds||0);
+      return (b.signupDate?.seconds||0) - (a.signupDate?.seconds||0);
+    });
+    return list;
+  }
+
+  function renderLandlordsTable(){
+    const list = filterLandlords();
+    const page = pagination.landlords || 0;
+    const slice = list.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    if(!list.length){
+      document.getElementById('landlordsTableWrap').innerHTML = emptyState('🏠', 'No landlords yet', 'Landlord accounts will appear here after signup.');
+      document.getElementById('landlordsPagination').innerHTML = '';
+      return;
+    }
+    let html = `<table class="data-table"><thead><tr>
+      <th><input type="checkbox" id="landlordSelectAll" onchange="toggleAllLandlords(this.checked)" /></th>
+      <th>Landlord</th><th>Email</th><th>Plan</th><th>Props</th><th>Tenants</th><th>Signup</th><th>Last active</th><th>Status</th><th>Actions</th>
+    </tr></thead><tbody>`;
+    slice.forEach(l => {
+      html += `<tr>
+        <td><input type="checkbox" class="landlord-cb" value="${esc(l.id)}" /></td>
+        <td><span class="avatar">${esc(initials(l.name))}</span> ${esc(l.name)}</td>
+        <td>${esc(l.email)}</td>
+        <td>${planBadge(l.plan)}</td>
+        <td>${l.propertiesCount}</td>
+        <td>${l.tenantsCount}</td>
+        <td>${formatDate(l.signupDate)}</td>
+        <td>${formatDate(l.lastActive)}</td>
+        <td>${statusBadge(l.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="viewLandlord('${esc(l.id)}')">👁️</button>
+          <button class="btn btn-outline btn-sm" onclick="emailLandlord('${esc(l.id)}')">✉️</button>
+          <button class="btn btn-outline btn-sm" onclick="suspendLandlord('${esc(l.id)}',true)">⏸️</button>
+          <button class="btn btn-outline btn-sm" onclick="upgradeLandlordPlan('${esc(l.id)}')">🔼</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--rust)" onclick="deleteLandlord('${esc(l.id)}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('landlordsTableWrap').innerHTML = html;
+    if(typeof nestiqStaggerChildren==='function'){
+      const tbody=document.querySelector('#landlordsTableWrap tbody');
+      if(tbody) nestiqStaggerChildren(tbody, 40, 'tr');
+    }
+    if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
+    renderPagination('landlords', list.length, 'landlordsPagination', renderLandlordsTable);
+  }
+
+  window.toggleAllLandlords = checked => {
+    document.querySelectorAll('.landlord-cb').forEach(cb => { cb.checked = checked; });
+  };
+
+  window.viewLandlord = async id => {
+    const l = cache.landlords.find(x => x.id === id);
+    if(!l) return;
+    openDrawer(`<button class="btn btn-outline btn-sm" onclick="closeDrawer()">Close</button>
+      <h2 style="font-family:'Playfair Display',serif;margin:16px 0 8px">${esc(l.name)}</h2>
+      <p style="color:var(--muted);font-size:0.88rem">${esc(l.email)}</p>
+      <div style="margin:20px 0">${planBadge(l.plan)} ${statusBadge(l.status)}</div>
+      <p><strong>Properties:</strong> ${l.propertiesCount} · <strong>Tenants:</strong> ${l.tenantsCount}</p>
+      <p><strong>Signup:</strong> ${formatDate(l.signupDate)}</p>
+      <h3 style="margin-top:24px;font-size:1rem">Billing</h3>
+      <pre style="font-size:0.75rem;background:var(--cream);padding:12px;border-radius:8px;overflow:auto;max-height:120px">${esc(JSON.stringify(l.rawBilling||{},null,2))}</pre>
+      <h3 style="margin-top:20px;font-size:1rem">Email log</h3>
+      <div id="adminLandlordEmailLog">Loading…</div>`);
+    loadAdminLandlordEmailLog(id);
+  };
+
+  async function loadAdminLandlordEmailLog(landlordId){
+    const el = document.getElementById('adminLandlordEmailLog');
+    if(!el) return;
+    try{
+      const snap = await db.collection('landlords').doc(landlordId).collection('emailLogs')
+        .orderBy('sentAt', 'desc').limit(40).get();
+      if(snap.empty){
+        el.innerHTML = '<p style="font-size:0.85rem;color:var(--muted)">No sequence emails logged yet.</p>';
+        return;
+      }
+      let html = '<table class="data-table" style="font-size:0.78rem"><thead><tr><th>Sequence</th><th>Subject</th><th>To</th><th>Sent</th><th>Status</th></tr></thead><tbody>';
+      snap.docs.forEach(d => {
+        const r = d.data();
+        const st = r.status === 'sent' ? '<span class="badge badge-green">sent</span>' : '<span class="badge badge-red">failed</span>';
+        html += `<tr>
+          <td><code>${esc(r.sequenceKey)}</code></td>
+          <td>${esc(r.subject)}</td>
+          <td>${esc(r.to)}</td>
+          <td>${supFmt(r.sentAt)}</td>
+          <td>${st}</td>
+        </tr>`;
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }catch(e){
+      el.innerHTML = '<p style="color:var(--muted)">Could not load email logs. Add a Firestore index on emailLogs.sentAt if needed.</p>';
+    }
+  }
+
+  window.emailLandlord = id => {
+    const l = cache.landlords.find(x => x.id === id);
+    if(!l) return;
+    openModal(`<h2 class="font-display" style="margin:0 0 12px">Email landlord</h2>
+      <p style="font-size:0.86rem;color:var(--muted)">To: ${esc(l.email)}</p>
+      <textarea id="adminEmailBody" class="form-input" rows="6" style="margin:12px 0" placeholder="Message…"></textarea>
+      <p style="font-size:0.8rem;color:var(--muted)">Configure EmailJS in landlord settings for automated delivery. This logs the intent for your records.</p>
+      <button class="btn btn-gold" onclick="confirmEmailLandlord('${esc(id)}')">Log & close</button>
+      <button class="btn btn-outline" style="margin-left:8px" onclick="closeModal()">Cancel</button>`);
+  };
+
+  window.confirmEmailLandlord = async id => {
+    const l = cache.landlords.find(x => x.id === id);
+    await logAdminActivity('email_landlord', id, l?.email, document.getElementById('adminEmailBody')?.value?.slice(0,200));
+    closeModal();
+    showAdminNotif('Email action logged for ' + (l?.email||id), 'success');
+  };
+
+  window.suspendLandlord = async (id, ask) => {
+    if(ask && !confirmAction('Suspended landlords cannot log in or access their data. Continue?')) return;
+    const l = cache.landlords.find(x => x.id === id);
+    await db.collection('landlords').doc(id).collection('profile').doc('settings').set({ adminStatus: 'suspended' }, { merge: true });
+    await logAdminActivity('suspend_landlord', id, l?.email);
+    showAdminNotif('Landlord suspended', 'warning');
+    await loadLandlords();
+  };
+
+  window.unsuspendLandlord = async id => {
+    await db.collection('landlords').doc(id).collection('profile').doc('settings').set({ adminStatus: 'active' }, { merge: true });
+    await logAdminActivity('unsuspend_landlord', id);
+    showAdminNotif('Landlord reactivated', 'success');
+    await loadLandlords();
+  };
+
+  window.upgradeLandlordPlan = id => manualOverrideBilling(id);
+
+  window.manualOverrideBilling = id => {
+    openModal(`<h2 class="font-display">Manual billing override</h2>
+      <p style="font-size:0.85rem;color:var(--muted);margin:8px 0 12px">Support comp accounts, refunds, or plan fixes.</p>
+      <label style="font-size:0.78rem">Plan</label>
+      <select id="overridePlan" class="form-input" style="margin:8px 0">
+        <option value="starter">Starter (Free)</option>
+        <option value="pro">Pro</option>
+        <option value="enterprise">Enterprise</option>
+      </select>
+      <label style="font-size:0.78rem">Billing status</label>
+      <select id="overrideStatus" class="form-input" style="margin:8px 0">
+        <option value="trial">trial</option>
+        <option value="active">active</option>
+        <option value="failed">failed</option>
+        <option value="cancelled">cancelled</option>
+      </select>
+      <button class="btn btn-gold" style="margin-top:12px" onclick="applyBillingOverride('${esc(id)}')">Save override</button>`);
+  };
+
+  window.applyBillingOverride = async id => {
+    const plan = document.getElementById('overridePlan').value;
+    const status = document.getElementById('overrideStatus').value;
+    const patch = {
+      billing: {
+        plan,
+        status,
+        billingCycle: status === 'trial' ? null : 'monthly',
+        updatedAt: new Date().toISOString()
+      }
+    };
+    if(status === 'trial'){
+      const end = new Date(Date.now() + 14 * 86400000);
+      patch.billing.trialStarted = new Date().toISOString();
+      patch.billing.trialEnds = end.toISOString();
+    }
+    await db.collection('landlords').doc(id).collection('profile').doc('settings').set(patch, { merge: true });
+    await logAdminActivity('billing_override', id, '', `plan=${plan} status=${status}`);
+    closeModal();
+    showAdminNotif('Billing override saved', 'success');
+    await loadLandlords();
+    if(document.getElementById('page-billing').classList.contains('active')) await loadBilling();
+  };
+
+  window.applyPlan = applyBillingOverride;
+
+  window.deleteLandlord = async id => {
+    const typed = prompt('Type DELETE to permanently remove this landlord and all subcollections:');
+    if(typed !== 'DELETE') return;
+    if(!confirmAction('This cannot be undone. Continue?')) return;
+    const subcols = ['properties','tenants','applications','maintenance','expenses','notices','invitations','documents','payments','messages','profile'];
+    for(const col of subcols){
+      try{
+        const snap = await db.collection('landlords').doc(id).collection(col === 'profile' ? 'profile' : col).get();
+        const batch = db.batch();
+        let n = 0;
+        for(const doc of snap.docs){
+          batch.delete(doc.ref);
+          if(++n >= 400){ await batch.commit(); n = 0; }
+        }
+        if(n) await batch.commit();
+        if(col === 'profile'){
+          const s = await db.collection('landlords').doc(id).collection('profile').doc('settings').get();
+          if(s.exists) await s.ref.delete();
+        }
+      }catch(_e){}
+    }
+    try{ await db.collection('billing').doc(id).delete(); }catch(_e){}
+    try{ await db.collection('landlords').doc(id).delete(); }catch(_e){}
+    await logAdminActivity('delete_landlord', id);
+    showAdminNotif('Landlord deleted', 'success');
+    await loadLandlords();
+  };
+
+  window.bulkLandlordSuspend = async () => {
+    const ids = [...document.querySelectorAll('.landlord-cb:checked')].map(cb => cb.value);
+    if(!ids.length){ showAdminNotif('Select landlords first', 'warning'); return; }
+    if(!confirmAction('Suspend ' + ids.length + ' landlord(s)?')) return;
+    for(const id of ids) await window.suspendLandlord(id, false);
+    showAdminNotif('Bulk suspend complete', 'warning');
+  };
+
+  window.exportLandlordsCsv = () => {
+    const rows = [['ID','Name','Email','Plan','Status','Properties','Tenants','Signup']];
+    filterLandlords().forEach(l => rows.push([l.id,l.name,l.email,l.plan,l.status,l.propertiesCount,l.tenantsCount,formatDate(l.signupDate)]));
+    downloadCsv('nestiq-landlords.csv', rows);
+  };
+
+  /* ─── Tenants ─── */
+  async function loadTenants(){
+    document.getElementById('tenantsTableWrap').innerHTML = skeletonTable(8, 8);
+    try{
+      const snap = await db.collection('tenantAccounts').get();
+      const rows = [];
+      for(const doc of snap.docs){
+        const d = doc.data();
+        const lid = d.landlordId;
+        let landlordName = lid;
+        let tenantName = d.name || '';
+        let email = d.email || '';
+        if(lid){
+          try{
+            const ls = await db.collection('landlords').doc(lid).collection('profile').doc('settings').get();
+            if(ls.exists) landlordName = ls.data().name || landlordName;
+            const t = await db.collection('landlords').doc(lid).collection('tenants').doc(String(d.tenantId)).get();
+            if(t.exists){ tenantName = t.data().name || tenantName; email = t.data().email || email; }
+          }catch(_e){}
+        }
+        rows.push({
+          uid: doc.id,
+          tenantId: d.tenantId,
+          landlordId: lid,
+          landlordName,
+          name: tenantName || 'Tenant',
+          email,
+          propertyId: d.propertyId,
+          portalAccess: d.status !== 'suspended',
+          status: d.status || 'active',
+          signupDate: d.createdAt || null
+        });
+      }
+      cache.tenants = rows;
+      renderTenantsTable();
+    }catch(e){
+      document.getElementById('tenantsTableWrap').innerHTML = emptyState('👥', 'No tenant accounts', e.message);
+    }
+  }
+
+  function renderTenantsTable(){
+    const q = (document.getElementById('tenantSearch')?.value||'').toLowerCase();
+    let list = cache.tenants.filter(t => !q || t.name.toLowerCase().includes(q) || t.email.toLowerCase().includes(q) || String(t.landlordName).toLowerCase().includes(q));
+    const page = pagination.tenants || 0;
+    const slice = list.slice(page * PAGE_SIZE, (page+1)*PAGE_SIZE);
+    if(!list.length){
+      document.getElementById('tenantsTableWrap').innerHTML = emptyState('👥', 'No tenants', 'Tenant portal accounts appear here.');
+      return;
+    }
+    let html = `<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Landlord</th><th>Property</th><th>Portal</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
+    slice.forEach(t => {
+      html += `<tr>
+        <td>${esc(t.name)}</td><td>${esc(t.email)}</td><td>${esc(t.landlordName)}</td><td>${esc(t.propertyId||'—')}</td>
+        <td>${t.portalAccess ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-red">No</span>'}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="viewTenantAdmin('${esc(t.uid)}')">👁️</button>
+          <button class="btn btn-outline btn-sm" onclick="suspendTenantPortal('${esc(t.uid)}')">⏸️</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('tenantsTableWrap').innerHTML = html;
+    renderPagination('tenants', list.length, 'tenantsPagination', renderTenantsTable);
+  }
+
+  window.viewTenantAdmin = async uid => {
+    const t = cache.tenants.find(x => x.uid === uid);
+    if(!t) return;
+    openDrawer(`<h2 class="font-display">${esc(t.name)}</h2><p>${esc(t.email)}</p><p>Landlord: ${esc(t.landlordName)}</p><p>Property ID: ${esc(t.propertyId)}</p>`);
+  };
+
+  window.suspendTenantPortal = async uid => {
+    if(!confirmAction('Suspend this tenant portal access?')) return;
+    await db.collection('tenantAccounts').doc(uid).set({ status: 'suspended' }, { merge: true });
+    await logAdminActivity('suspend_tenant', uid);
+    showAdminNotif('Tenant portal suspended', 'warning');
+    await loadTenants();
+  };
+
+  /* ─── Applications ─── */
+  async function loadApplications(){
+    document.getElementById('applicationsTableWrap').innerHTML = skeletonTable(8, 6);
+    try{
+      const snap = await db.collection('applications').get();
+      cache.applications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const now = new Date();
+      const month = now.getMonth();
+      const pending = cache.applications.filter(a => String(a.status||'pending').toLowerCase() === 'pending').length;
+      const approved = cache.applications.filter(a => {
+        const st = String(a.status||'').toLowerCase();
+        if(st !== 'approved') return false;
+        const d = a.processedDate ? new Date(a.processedDate) : null;
+        return d && d.getMonth() === month;
+      }).length;
+      const declined = cache.applications.filter(a => {
+        const st = String(a.status||'').toLowerCase();
+        if(st !== 'declined') return false;
+        const d = a.processedDate ? new Date(a.processedDate) : null;
+        return d && d.getMonth() === month;
+      }).length;
+      document.getElementById('appStats').innerHTML = `
+        <div class="stat-card"><div class="label">Pending</div><div class="val">${pending}</div></div>
+        <div class="stat-card"><div class="label">Approved this month</div><div class="val">${approved}</div></div>
+        <div class="stat-card"><div class="label">Declined this month</div><div class="val">${declined}</div></div>`;
+      renderApplicationsTable();
+    }catch(e){
+      document.getElementById('applicationsTableWrap').innerHTML = emptyState('📋', 'No applications', e.message);
+    }
+  }
+
+  function renderApplicationsTable(){
+    const list = cache.applications.filter(a => String(a.status||'pending').toLowerCase() === 'pending');
+    const page = pagination.applications || 0;
+    const slice = list.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
+    if(!list.length){
+      document.getElementById('applicationsTableWrap').innerHTML = emptyState('📋', 'No pending public applications', 'Unprocessed submissions appear here.');
+      return;
+    }
+    let html = `<table class="data-table"><thead><tr><th>Applicant</th><th>Email</th><th>Property</th><th>Landlord</th><th>Submitted</th><th>Ratio</th><th>Actions</th></tr></thead><tbody>`;
+    slice.forEach(a => {
+      html += `<tr>
+        <td>${esc(a.fullName||a.name||'—')}</td>
+        <td>${esc(a.email||'')}</td>
+        <td>${esc(a.propertyName||a.propertyId||'—')}</td>
+        <td>${esc(a.listingLandlordId||'—')}</td>
+        <td>${formatDate(a.createdAt)||esc(a.createdAt||'—')}</td>
+        <td>${esc(a.incomeRatio||a.rentToIncome||'—')}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="viewApplication('${esc(a.id)}')">👁️</button>
+          <button class="btn btn-outline btn-sm" onclick="notifyLandlordApp('${esc(a.id)}')">✉️</button>
+          <button class="btn btn-outline btn-sm" onclick="deleteApplication('${esc(a.id)}')">🗑️</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('applicationsTableWrap').innerHTML = html;
+    renderPagination('applications', list.length, 'applicationsPagination', renderApplicationsTable);
+  }
+
+  window.viewApplication = id => {
+    const a = cache.applications.find(x => x.id === id);
+    if(!a) return;
+    openDrawer(`<h2 class="font-display">Application</h2><pre style="font-size:0.78rem;overflow:auto;background:var(--cream);padding:12px;border-radius:8px">${esc(JSON.stringify(a,null,2))}</pre>`);
+  };
+
+  window.notifyLandlordApp = async id => {
+    const a = cache.applications.find(x => x.id === id);
+    await logAdminActivity('notify_landlord_application', a?.listingLandlordId, a?.email, 'App ' + id);
+    showAdminNotif('Landlord notified (logged)', 'success');
+  };
+
+  window.deleteApplication = async id => {
+    if(!confirmAction('Delete this application?')) return;
+    await db.collection('applications').doc(id).delete();
+    await logAdminActivity('delete_application', id);
+    showAdminNotif('Application deleted', 'success');
+    await loadApplications();
+  };
+
+  /* ─── Billing ─── */
+  async function loadBilling(){
+    document.getElementById('billingTableWrap').innerHTML = skeletonTable(8, 8);
+    if(!cache.landlords.length) await loadLandlords();
+    const billSnaps = await Promise.all(cache.landlords.map(async l => {
+      const settings = await db.collection('landlords').doc(l.id).collection('profile').doc('settings').get();
+      const sd = settings.exists ? settings.data() : {};
+      const billing = (sd.billing && typeof sd.billing === 'object') ? sd.billing : { plan: l.plan || 'starter', status: 'active' };
+      let lastPay = null;
+      try{
+        const hist = await db.collection('landlords').doc(l.id).collection('billing').doc('payments').collection('history')
+          .orderBy('paidAt', 'desc').limit(1).get();
+        if(!hist.empty) lastPay = { id: hist.docs[0].id, ...hist.docs[0].data() };
+      }catch(_e){}
+      return { landlord: l, billing, lastPay };
+    }));
+    cache.billing = billSnaps;
+    const mrr = billSnaps.reduce((s, x) => {
+      const pk = normalizePlanKey(x.billing.plan);
+      const active = x.billing.status === 'active';
+      return s + (active ? (PLAN_PRICES[pk] || 0) : 0);
+    }, 0);
+    const paying = billSnaps.filter(x => PLAN_PRICES[normalizePlanKey(x.billing.plan)] > 0 && x.billing.status === 'active').length;
+    const free = billSnaps.filter(x => normalizePlanKey(x.billing.plan) === 'starter').length;
+    const trials = billSnaps.filter(x => x.billing.status === 'trial').length;
+    document.getElementById('billingStats').innerHTML = `
+      <div class="stat-card"><div class="label">MRR</div><div class="val">R${mrr.toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">ARR</div><div class="val">R${(mrr*12).toLocaleString()}</div></div>
+      <div class="stat-card"><div class="label">Paying</div><div class="val">${paying}</div></div>
+      <div class="stat-card"><div class="label">Free tier</div><div class="val">${free}</div></div>
+      <div class="stat-card"><div class="label">On trial</div><div class="val">${trials}</div></div>
+      <div class="stat-card"><div class="label">Trial conv.</div><div class="val">—</div></div>`;
+    renderBillingTable();
+    renderMrrChart(billSnaps);
+  }
+
+  function renderBillingTable(){
+    const page = pagination.billing || 0;
+    const slice = cache.billing.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
+    let html = `<table class="data-table"><thead><tr><th>Landlord</th><th>Plan</th><th>Status</th><th>Trial ends</th><th>Last payment</th><th>Amount</th><th>Cycle</th><th>Actions</th></tr></thead><tbody>`;
+    slice.forEach(({ landlord: l, billing: b, lastPay }) => {
+      const pk = normalizePlanKey(b.plan);
+      const lastDt = lastPay?.paidAt?.toDate ? lastPay.paidAt.toDate() : (lastPay?.paidAt ? new Date(lastPay.paidAt) : null);
+      html += `<tr>
+        <td>${esc(l.name)}</td>
+        <td>${planBadge(pk)}</td>
+        <td>${billingStatusBadge(b.status)}</td>
+        <td>${b.status === 'trial' && b.trialEnds ? formatDate(b.trialEnds) : '—'}</td>
+        <td>${lastDt ? formatDate(lastDt) : '—'}</td>
+        <td>${lastPay ? 'R' + Number(lastPay.amount || 0).toFixed(2) : '—'}</td>
+        <td>${esc(b.billingCycle || '—')}</td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="manualOverrideBilling('${esc(l.id)}')">Manual Override</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('billingTableWrap').innerHTML = html || emptyState('💳', 'No billing records', 'Landlords appear here once billing is set on signup.');
+    renderPagination('billing', cache.billing.length, 'billingPagination', renderBillingTable);
+  }
+
+  window.cancelSub = async id => {
+    if(!confirmAction('Mark subscription cancelled?')) return;
+    await db.collection('landlords').doc(id).collection('profile').doc('settings').set({
+      billing: { plan: 'starter', status: 'cancelled', billingCycle: null, updatedAt: new Date().toISOString() }
+    }, { merge: true });
+    await logAdminActivity('cancel_subscription', id);
+    showAdminNotif('Subscription cancelled', 'warning');
+    await loadBilling();
+  };
+
+  window.openManualPaymentModal = () => {
+    const opts = cache.landlords.map(l => `<option value="${esc(l.id)}">${esc(l.name)}</option>`).join('');
+    openModal(`<h2 class="font-display">Manual payment</h2>
+      <select id="payLandlord" class="form-input" style="margin:12px 0">${opts}</select>
+      <input id="payAmount" class="form-input" type="number" placeholder="Amount (ZAR)" />
+      <input id="payNotes" class="form-input" style="margin-top:10px" placeholder="Notes" />
+      <button class="btn btn-gold" style="margin-top:14px" onclick="saveManualPayment()">Record</button>`);
+  };
+
+  window.saveManualPayment = async () => {
+    const id = document.getElementById('payLandlord').value;
+    const amount = Number(document.getElementById('payAmount').value);
+    const notes = document.getElementById('payNotes').value;
+    await db.collection('landlords').doc(id).collection('billing').doc('payments').collection('history').add({
+      amount,
+      currency: 'ZAR',
+      status: 'paid',
+      description: notes || 'Manual payment',
+      paidAt: fv.serverTimestamp(),
+      plan: 'pro'
+    });
+    await logAdminActivity('manual_payment', id, '', notes);
+    closeModal();
+    showAdminNotif('Payment recorded', 'success');
+    await loadBilling();
+  };
+
+  function renderMrrChart(billSnaps){
+    const ctx = document.getElementById('chartMrr');
+    if(!ctx) return;
+    if(charts.mrr) charts.mrr.destroy();
+    const mrr = billSnaps.reduce((s,x) => {
+      const pk = normalizePlanKey(x.billing?.plan);
+      return s + (x.billing?.status === 'active' ? (PLAN_PRICES[pk] || 0) : 0);
+    }, 0);
+    const labels = [];
+    const data = [];
+    for(let i=11;i>=0;i--){
+      const d = new Date();
+      d.setMonth(d.getMonth()-i);
+      labels.push(d.toLocaleString('en',{month:'short'}));
+      data.push(Math.round(mrr * (0.85 + Math.random()*0.15)));
+    }
+    charts.mrr = new Chart(ctx, { type:'line', data:{ labels, datasets:[{ label:'MRR', data, borderColor:'#C46A3A', tension:0.3, fill:false }] }, options:{ responsive:true, plugins:{ legend:{ display:false } } } });
+  }
+
+  /* ─── Maintenance ─── */
+  async function loadMaintenance(){
+    document.getElementById('maintenanceTableWrap').innerHTML = skeletonTable(6, 8);
+    try{
+      const snap = await db.collectionGroup('maintenance').orderBy('createdAt','desc').limit(200).get();
+      cache.maintenance = snap.docs.map(d => ({ id: d.id, path: d.ref.path, ...d.data() }));
+      renderMaintenanceTable();
+    }catch(e){
+      try{
+        const snap = await db.collectionGroup('maintenance').limit(200).get();
+        cache.maintenance = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        renderMaintenanceTable();
+      }catch(e2){
+        document.getElementById('maintenanceTableWrap').innerHTML = emptyState('🔧', 'No maintenance requests', e2.message);
+      }
+    }
+  }
+
+  function renderMaintenanceTable(){
+    const page = pagination.maintenance || 0;
+    const slice = cache.maintenance.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
+    if(!slice.length){
+      document.getElementById('maintenanceTableWrap').innerHTML = emptyState('🔧', 'No requests', 'Maintenance tickets from all landlords appear here.');
+      return;
+    }
+    let html = `<table class="data-table"><thead><tr><th>Title</th><th>Tenant</th><th>Status</th><th>Urgency</th><th>Date</th></tr></thead><tbody>`;
+    slice.forEach(m => {
+      html += `<tr><td>${esc(m.title||'—')}</td><td>${esc(m.tenantId||'—')}</td><td>${esc(m.status||'open')}</td><td>${esc(m.urgency||'—')}</td><td>${formatDate(m.createdAt)}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('maintenanceTableWrap').innerHTML = html;
+    renderPagination('maintenance', cache.maintenance.length, 'maintenancePagination', renderMaintenanceTable);
+  }
+
+  /* ─── Announcements ─── */
+  async function loadAnnouncements(){
+    const snap = await db.collection('announcements').orderBy('sentAt','desc').limit(50).get().catch(() => ({ docs: [] }));
+    cache.announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    let html = `<table class="data-table"><thead><tr><th>Title</th><th>Sent</th><th>Audience</th><th>Delivery</th></tr></thead><tbody>`;
+    if(!cache.announcements.length) html += '<tr><td colspan="4">'+emptyState('📣','No announcements sent yet','')+'</td></tr>';
+    cache.announcements.forEach(a => {
+      html += `<tr><td>${esc(a.title)}</td><td>${formatDate(a.sentAt)}</td><td>${esc(a.audience)}</td><td>${esc((a.delivery||[]).join(', '))}</td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('announcementsHistoryWrap').innerHTML = html;
+  }
+
+  window.previewAnnouncement = () => {
+    const t = document.getElementById('annTitle').value;
+    const b = document.getElementById('annBody').value;
+    openModal(`<h2>${esc(t)}</h2><p style="margin-top:12px;line-height:1.6">${esc(b)}</p><button class="btn btn-outline" style="margin-top:16px" onclick="closeModal()">Close</button>`);
+  };
+
+  window.sendAnnouncement = async () => {
+    const title = document.getElementById('annTitle').value.trim();
+    const body = document.getElementById('annBody').value.trim();
+    const audience = document.getElementById('annAudience').value;
+    if(!title || !body){ showAdminNotif('Title and message required', 'error'); return; }
+    const delivery = [];
+    if(document.getElementById('annInApp').checked) delivery.push('in-app');
+    await db.collection('announcements').add({
+      title, body, audience, delivery,
+      sentAt: fv.serverTimestamp(),
+      sentBy: currentUser.email,
+      active: true,
+      openRate: 0
+    });
+    await logAdminActivity('announcement_sent', '', '', title);
+    showAdminNotif('Announcement sent', 'success');
+    document.getElementById('annTitle').value = '';
+    document.getElementById('annBody').value = '';
+    await loadAnnouncements();
+  };
+
+  /* ─── Settings ─── */
+  async function loadSettings(){
+    const ref = db.collection('admin').doc('platformSettings');
+    const snap = await ref.get();
+    const s = snap.exists ? snap.data() : {
+      platformName: 'NestIQ',
+      supportEmail: 'support@nestiq.co.za',
+      freeMaxProperties: 2,
+      freeMaxTenants: 5,
+      maintenanceMode: false,
+      featureFlags: { ai: true, whatsapp: true, emailjs: true, publicListings: true, tenantPortal: true }
+    };
+    cache.settings = s;
+    const ff = s.featureFlags || {};
+    document.getElementById('platformSettingsForm').innerHTML = `
+      <h3 class="panel-title">Platform settings</h3>
+      <p style="font-size:0.86rem;color:var(--muted);margin-bottom:20px">Admin email: <strong>${esc(NESTIQ_ADMIN_EMAIL)}</strong> (read-only — change in admin.html & firestore.rules)</p>
+      <label style="font-size:0.8rem;font-weight:600">Platform name</label>
+      <input id="setPlatformName" class="form-input" value="${esc(s.platformName||'NestIQ')}" style="margin:6px 0 16px" />
+      <label style="font-size:0.8rem;font-weight:600">Support email</label>
+      <input id="setSupportEmail" class="form-input" value="${esc(s.supportEmail||'')}" style="margin:6px 0 16px" />
+      <label style="font-size:0.8rem;font-weight:600">Free tier max properties</label>
+      <input id="setMaxProps" class="form-input" type="number" value="${Number(s.freeMaxProperties||2)}" style="margin:6px 0 16px" />
+      <label style="font-size:0.8rem;font-weight:600">Free tier max tenants</label>
+      <input id="setMaxTenants" class="form-input" type="number" value="${Number(s.freeMaxTenants||5)}" style="margin:6px 0 20px" />
+      <div class="toggle-row"><span>Maintenance mode</span><div class="switch ${s.maintenanceMode?'on':''}" id="swMaint" onclick="this.classList.toggle('on')"></div></div>
+      <h4 style="margin:24px 0 12px;font-size:0.95rem">Feature flags</h4>
+      ${['ai','whatsapp','emailjs','publicListings','tenantPortal'].map(k=>`
+        <div class="toggle-row"><span>${k}</span><div class="switch ${ff[k]!==false?'on':''}" data-flag="${k}" onclick="this.classList.toggle('on')"></div></div>`).join('')}
+      <button class="btn btn-gold" style="margin-top:24px" onclick="savePlatformSettings()">Save Settings</button>`;
+  }
+
+  window.savePlatformSettings = async () => {
+    const featureFlags = {};
+    document.querySelectorAll('[data-flag]').forEach(el => { featureFlags[el.dataset.flag] = el.classList.contains('on'); });
+    const payload = {
+      platformName: document.getElementById('setPlatformName').value,
+      supportEmail: document.getElementById('setSupportEmail').value,
+      freeMaxProperties: Number(document.getElementById('setMaxProps').value),
+      freeMaxTenants: Number(document.getElementById('setMaxTenants').value),
+      maintenanceMode: document.getElementById('swMaint').classList.contains('on'),
+      featureFlags,
+      updatedAt: fv.serverTimestamp()
+    };
+    await db.collection('admin').doc('platformSettings').set(payload, { merge: true });
+    await logAdminActivity('settings_updated', 'platformSettings');
+    showAdminNotif('Settings saved', 'success');
+  };
+
+  /* ─── Changelog ─── */
+  let clChangeRows = [];
+  let clLastPublished = null;
+
+  async function loadChangelog(){
+    clChangeRows = [];
+    addChangeRow(); /* start with one empty row */
+    await renderClReleasesTable();
+  }
+
+  function addChangeRow(){
+    const row = { id: Date.now(), kind: 'New', text: '' };
+    clChangeRows.push(row);
+    renderClEditor();
+  }
+
+  function removeChangeRow(id){
+    clChangeRows = clChangeRows.filter(r => r.id !== id);
+    renderClEditor();
+  }
+
+  function renderClEditor(){
+    const wrap = document.getElementById('clChangesEditor');
+    if(!wrap) return;
+    wrap.innerHTML = clChangeRows.map(r => `
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap" data-row="${r.id}">
+        <select class="form-input" style="max-width:130px" onchange="clUpdateRow(${r.id},'kind',this.value)">
+          ${['New','Improved','Fixed','Breaking'].map(k=>`<option ${k===r.kind?'selected':''}>${k}</option>`).join('')}
+        </select>
+        <input type="text" class="form-input" style="flex:1;min-width:180px" placeholder="Change description…"
+          value="${(r.text||'').replace(/"/g,'&quot;')}"
+          oninput="clUpdateRow(${r.id},'text',this.value)" />
+        <button type="button" class="btn btn-outline btn-sm" onclick="removeChangeRow(${r.id})">🗑</button>
+      </div>`).join('');
+  }
+
+  window.clUpdateRow = function(id, field, val){
+    const row = clChangeRows.find(r => r.id === id);
+    if(row) row[field] = val;
+  };
+
+  window.addChangeRow = addChangeRow;
+  window.removeChangeRow = removeChangeRow;
+
+  async function publishRelease(){
+    const version = document.getElementById('clVersion').value.trim();
+    const name    = document.getElementById('clName').value.trim();
+    const date    = document.getElementById('clDate').value;
+    const type    = document.getElementById('clType').value;
+    const changes = clChangeRows.filter(r => r.text.trim());
+    if(!version || !name || !date){ showAdminNotif('Fill in version, name and date', 'error'); return; }
+    const status = document.getElementById('clPublishStatus');
+    status.textContent = 'Publishing…';
+    try{
+      await db.collection('changelog').doc(version).set({
+        version, name, date, type,
+        changes: changes.map(r => ({ kind: r.kind, text: r.text.trim() })),
+        publishedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: false });
+      clLastPublished = { version, name, date, type, changes };
+      status.textContent = '✅ Published ' + version;
+      document.getElementById('clNotifyBtn').style.display = '';
+      await renderClReleasesTable();
+    }catch(e){
+      status.textContent = '❌ ' + (e.message || 'Error');
+    }
+  }
+
+  window.publishRelease = publishRelease;
+
+  async function renderClReleasesTable(){
+    const wrap = document.getElementById('clReleasesTable');
+    if(!wrap) return;
+    try{
+      const snap = await db.collection('changelog').get();
+      const docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      docs.sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      if(!docs.length){ wrap.innerHTML = '<p style="padding:16px;color:rgba(14,17,23,.45)">No releases yet.</p>'; return; }
+      wrap.innerHTML = `<table class="admin-table"><thead><tr><th>Version</th><th>Name</th><th>Date</th><th>Type</th><th>Changes</th><th>Actions</th></tr></thead>
+        <tbody>${docs.map(d => `<tr>
+          <td><strong>${d.version||d.id}</strong></td>
+          <td>${d.name||''}</td>
+          <td>${d.date||''}</td>
+          <td>${d.type||'Patch'}</td>
+          <td>${(d.changes||[]).length} items</td>
+          <td style="display:flex;gap:6px">
+            <button class="btn btn-outline btn-sm" onclick="clEditRelease('${d.id}')">Edit</button>
+            <button class="btn btn-outline btn-sm" onclick="clUnpublish('${d.id}')">Unpublish</button>
+          </td></tr>`).join('')}
+        </tbody></table>`;
+    }catch(e){
+      wrap.innerHTML = '<p style="padding:16px;color:#c00">' + (e.message||'Error') + '</p>';
+    }
+  }
+
+  window.clEditRelease = async function(id){
+    try{
+      const snap = await db.collection('changelog').doc(id).get();
+      if(!snap.exists) return;
+      const d = snap.data();
+      document.getElementById('clVersion').value = d.version||id;
+      document.getElementById('clName').value    = d.name||'';
+      document.getElementById('clDate').value    = d.date||'';
+      document.getElementById('clType').value    = d.type||'Patch';
+      clChangeRows = (d.changes||[]).map((c,i) => ({ id: Date.now()+i, kind: c.kind||'New', text: c.text||'' }));
+      renderClEditor();
+      document.getElementById('clVersion').scrollIntoView({ behavior:'smooth' });
+    }catch(e){ showAdminNotif(e.message||'Error','error'); }
+  };
+
+  window.clUnpublish = async function(id){
+    if(!confirm('Unpublish ' + id + '? This removes it from the changelog page immediately.')) return;
+    try{
+      await db.collection('changelog').doc(id).delete();
+      showAdminNotif('Unpublished ' + id, 'success');
+      await renderClReleasesTable();
+    }catch(e){ showAdminNotif(e.message||'Error','error'); }
+  };
+
+  async function notifySubscribers(){
+    if(!clLastPublished){ showAdminNotif('Publish a release first','error'); return; }
+    const btn = document.getElementById('clNotifyBtn');
+    const status = document.getElementById('clPublishStatus');
+    btn.disabled = true;
+    try{
+      const snap = await db.collection('changelogSubscribers').get();
+      const emails = snap.docs.map(d => d.data().email).filter(Boolean);
+      if(!emails.length){ status.textContent = 'No subscribers yet.'; btn.disabled = false; return; }
+      status.textContent = 'Sending to ' + emails.length + ' subscribers…';
+      const topNew = clLastPublished.changes.filter(c=>c.kind==='New').slice(0,3).map(c=>c.text).join('\n• ');
+      /* Use EmailJS if configured in admin settings */
+      let sent = 0;
+      for(const email of emails){
+        try{
+          if(typeof emailjs !== 'undefined'){
+            const settingsSnap = await db.collection('admin').doc('platformSettings').get();
+            const svc = settingsSnap.exists ? (settingsSnap.data().emailjsServiceId || '') : '';
+            const key = settingsSnap.exists ? (settingsSnap.data().emailjsPublicKey || '') : '';
+            if(svc && key){
+              emailjs.init(key);
+              await emailjs.send(svc, 'nestiq_changelog', {
+                to_email:     email,
+                version:      clLastPublished.version,
+                release_name: clLastPublished.name,
+                top_features: topNew || '(see release notes)',
+                changelog_url: (location.origin||'https://nestiq-pro.web.app') + '/changelog.html'
+              });
+            }
+          }
+          sent++;
+        }catch(_e){}
+      }
+      status.textContent = '✅ Notified ' + sent + ' / ' + emails.length + ' subscribers';
+    }catch(e){
+      status.textContent = '❌ ' + (e.message||'Error');
+    }
+    btn.disabled = false;
+  }
+
+  window.notifySubscribers = notifySubscribers;
+
+  /* ─── Flagged ─── */
+  async function loadFlagged(){
+    if(!cache.landlords.length) await loadLandlords();
+    if(!cache.applications.length){
+      try{
+        const snap = await db.collection('applications').get();
+        cache.applications = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      }catch(_e){}
+    }
+    const settings = cache.settings || { freeMaxProperties: 2, freeMaxTenants: 5 };
+    const flagged = [];
+    const now = Date.now();
+    cache.landlords.forEach(l => {
+      const last = l.lastActive?.toMillis ? l.lastActive.toMillis() : 0;
+      if(last && (now - last) > 60*864e5) flagged.push({ type:'landlord', severity:'low', reason:'No activity for 60+ days', target: l.name, id: l.id, email: l.email });
+      if((l.plan||'Free') === 'Free' && (l.propertiesCount > settings.freeMaxProperties || l.tenantsCount > settings.freeMaxTenants)){
+        flagged.push({ type:'landlord', severity:'medium', reason:'Free tier limits exceeded', target: l.name, id: l.id, email: l.email });
+      }
+    });
+    cache.applications.forEach(a => {
+      if(a.previousEviction === true || a.prevEviction === true){
+        flagged.push({ type:'application', severity:'high', reason:'Previous eviction reported', target: a.fullName||a.email, id: a.id, email: a.email });
+      }
+    });
+    cache.tenants.forEach(t => {
+      if(Number(t.failedLogins||0) > 10) flagged.push({ type:'tenant', severity:'high', reason:'Failed logins > 10', target: t.name, id: t.uid, email: t.email });
+    });
+    cache.flagged = flagged;
+    renderFlagged();
+  }
+
+  function renderFlagged(){
+    const wrap = document.getElementById('flaggedListWrap');
+    if(!cache.flagged.length){
+      wrap.innerHTML = emptyState('🚩', 'No flagged accounts', 'Automatic checks run when you open this page.');
+      return;
+    }
+    let html = '<table class="data-table"><thead><tr><th>Reason</th><th>Target</th><th>Severity</th><th>Actions</th></tr></thead><tbody>';
+    cache.flagged.forEach((f,i) => {
+      const sev = f.severity === 'high' ? 'badge-red' : f.severity === 'medium' ? 'badge-amber' : 'badge-gray';
+      html += `<tr>
+        <td>${esc(f.reason)}</td><td>${esc(f.target)}</td><td><span class="badge ${sev}">${esc(f.severity)}</span></td>
+        <td>
+          <button class="btn btn-outline btn-sm" onclick="dismissFlag(${i})">Dismiss</button>
+          <button class="btn btn-outline btn-sm" onclick="investigateFlag(${i})">Investigate</button>
+          ${f.type==='landlord'?`<button class="btn btn-rust btn-sm" onclick="suspendLandlord('${esc(f.id)}',true)">Suspend</button>`:''}
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    wrap.innerHTML = html;
+  }
+
+  window.dismissFlag = i => { cache.flagged.splice(i,1); renderFlagged(); };
+  window.investigateFlag = i => {
+    const f = cache.flagged[i];
+    openDrawer(`<h2>Investigate</h2><p>${esc(f.reason)}</p><p>Target: ${esc(f.target)}</p>`);
+  };
+
+  /* ─── Overview ─── */
+  async function loadOverview(){
+    document.getElementById('overviewStats').innerHTML = Array(6).fill('<div class="stat-card"><div class="skeleton" style="height:40px"></div></div>').join('');
+    try{
+      if(!cache.landlords.length){
+        const ls = await db.collection('landlords').get();
+        const rows = await Promise.all(ls.docs.map(d => fetchLandlordRow(d.id).catch(() => null)));
+        cache.landlords = rows.filter(Boolean);
+      }
+      let tenantCount = 0;
+      try{ tenantCount = (await db.collection('tenantAccounts').get()).size; }catch(_e){}
+      let propCount = 0;
+      try{ propCount = (await db.collectionGroup('properties').get()).size; }catch(_e){}
+      let pendingApps = 0;
+      try{
+        pendingApps = (await db.collection('applications').where('status','==','pending').get()).size;
+      }catch(_e){
+        pendingApps = cache.applications.filter(a => String(a.status||'').toLowerCase()==='pending').length;
+      }
+      const mrr = cache.landlords.reduce((s,l) => s + (PLAN_PRICES[l.plan]||0), 0);
+      const now = new Date();
+      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime()/1000;
+      const signupsMonth = cache.landlords.filter(l => (l.signupDate?.seconds||0) >= monthStart).length;
+
+      document.getElementById('overviewStats').innerHTML = `
+        <div class="stat-card reveal"><div class="label">🏠 Total Landlords</div><div class="val"><span data-count-to="${cache.landlords.length}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">👥 Total Tenants</div><div class="val"><span data-count-to="${tenantCount}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">🏘️ Total Properties</div><div class="val"><span data-count-to="${propCount}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">📋 Pending Applications</div><div class="val"><span data-count-to="${pendingApps}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">💰 Monthly Revenue</div><div class="val"><span data-count-to="${mrr}" data-prefix="R">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">📈 New Signups (mo)</div><div class="val"><span data-count-to="${signupsMonth}">0</span></div></div>`;
+      if(typeof nestiqInitCounters==='function') nestiqInitCounters();
+      if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
+
+      renderOverviewCharts();
+      await loadActivityFeed();
+      renderPlatformHealth();
+    }catch(e){
+      showAdminNotif('Overview load error: ' + e.message, 'error');
+    }
+  }
+
+  function renderOverviewCharts(){
+    const signupLabels = [], signupData = [];
+    const revLabels = [], revData = [];
+    for(let i=11;i>=0;i--){
+      const d = new Date();
+      d.setMonth(d.getMonth()-i);
+      const lbl = d.toLocaleString('en',{ month:'short', year:'2-digit' });
+      signupLabels.push(lbl);
+      revLabels.push(lbl);
+      const ms = d.getMonth(), ys = d.getFullYear();
+      signupData.push(cache.landlords.filter(l => {
+        const c = l.signupDate?.toDate ? l.signupDate.toDate() : null;
+        return c && c.getMonth()===ms && c.getFullYear()===ys;
+      }).length);
+      revData.push(cache.landlords.filter(l => (PLAN_PRICES[l.plan]||0) > 0).length * 299);
+    }
+    if(charts.signups) charts.signups.destroy();
+    if(charts.revenue) charts.revenue.destroy();
+    charts.signups = new Chart(document.getElementById('chartSignups'), {
+      type:'line', data:{ labels:signupLabels, datasets:[{ label:'Signups', data:signupData, borderColor:'#C46A3A', tension:0.3 }] },
+      options:{ responsive:true, plugins:{ legend:{ display:false } } }
+    });
+    charts.revenue = new Chart(document.getElementById('chartRevenue'), {
+      type:'bar', data:{ labels:revLabels, datasets:[{ label:'Revenue', data:revData, backgroundColor:'rgba(196,106,58,0.65)' }] },
+      options:{ responsive:true, plugins:{ legend:{ display:false } } }
+    });
+  }
+
+  async function loadActivityFeed(){
+    const el = document.getElementById('activityFeed');
+    el.innerHTML = '<div class="skeleton"></div>'.repeat(5);
+    try{
+      const snap = await db.collection('adminActivity').orderBy('timestamp','desc').limit(20).get();
+      cache.activity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if(!cache.activity.length){
+        el.innerHTML = emptyState('📭', 'No activity yet', 'Admin actions will appear here.');
+        return;
+      }
+      el.innerHTML = cache.activity.map(a => `
+        <div class="activity-item">${activityIcon(a.action)} <strong>${esc(a.action)}</strong>
+          ${a.targetEmail ? ' — ' + esc(a.targetEmail) : ''}
+          ${a.notes ? '<br><span style="color:var(--muted);font-size:0.8rem">'+esc(a.notes)+'</span>' : ''}
+          <div style="color:var(--muted);font-size:0.75rem;margin-top:4px">${timeAgo(a.timestamp)}</div>
+        </div>`).join('');
+    }catch(e){
+      el.innerHTML = emptyState('⚠️', 'Activity unavailable', 'Create adminActivity index if needed.');
+    }
+  }
+
+  function renderPlatformHealth(){
+    const ok = !!db && !!auth;
+    document.getElementById('platformHealth').innerHTML = `
+      <p><span class="health-dot ${ok?'ok':'err'}"></span> Firebase: ${ok ? 'Connected' : 'Error'}</p>
+      <p style="margin-top:10px;font-size:0.88rem;color:var(--muted)">Last backup: <em>Configure in Firebase Console</em></p>
+      <p style="font-size:0.88rem;color:var(--muted)">Storage: <em>View in Firebase Console → Storage</em></p>
+      <p style="font-size:0.88rem;color:var(--muted)">Active sessions: 1 (this admin)</p>`;
+  }
+
+  /* ─── Support tickets ─── */
+  let supportTicketsUnsub = null;
+  let supportKnownIds = new Set();
+
+  function supFmt(ts){
+    return window.nestiqSupport?.formatDt(ts) || formatDate(ts);
+  }
+
+  function supPriBadge(p){
+    return window.nestiqSupport?.priorityBadge(p) || `<span class="badge badge-gray">${esc(p)}</span>`;
+  }
+
+  function supStBadge(s){
+    const x = String(s||'open').toLowerCase();
+    if(x === 'in progress' || x === 'in_progress') return '<span class="badge badge-amber">In Progress</span>';
+    if(x === 'resolved') return '<span class="badge badge-green">Resolved</span>';
+    if(x === 'closed') return '<span class="badge badge-gray">Closed</span>';
+    return '<span class="badge badge-amber">Open</span>';
+  }
+
+  function supportStatsRow(tickets){
+    const open = tickets.filter(t => ['open','in progress','in_progress'].includes(String(t.status).toLowerCase())).length;
+    const urgent = tickets.filter(t => String(t.priority).toLowerCase() === 'urgent' && String(t.status).toLowerCase() !== 'closed').length;
+    const weekAgo = Date.now() - 7 * 86400000;
+    const resolvedWeek = tickets.filter(t => {
+      if(String(t.status).toLowerCase() !== 'resolved') return false;
+      const d = t.lastUpdated?.toDate ? t.lastUpdated.toDate() : (t.lastUpdated ? new Date(t.lastUpdated) : null);
+      return d && d.getTime() >= weekAgo;
+    }).length;
+    let totalResp = 0, respCount = 0;
+    tickets.forEach(t => {
+      const created = t.createdAt?.toDate ? t.createdAt.toDate() : null;
+      const firstAdmin = (t.messages || []).find(m => m.sender === 'admin');
+      if(created && firstAdmin){
+        const ft = firstAdmin.timestamp ? new Date(firstAdmin.timestamp) : null;
+        if(ft){ totalResp += (ft - created) / 3600000; respCount++; }
+      }
+    });
+    const avgH = respCount ? Math.round(totalResp / respCount) : 0;
+    document.getElementById('supportStats').innerHTML = `
+      <div class="stat-card"><div class="label">Open tickets</div><div class="val">${open}</div></div>
+      <div class="stat-card"><div class="label">Avg response</div><div class="val">${avgH ? avgH + 'h' : '—'}</div></div>
+      <div class="stat-card"><div class="label">Resolved (7d)</div><div class="val">${resolvedWeek}</div></div>
+      <div class="stat-card"><div class="label">Urgent</div><div class="val" style="color:${urgent>0?'#dc3545':'inherit'}">${urgent}${urgent>0?' ⚠':''}</div></div>`;
+    const badge = document.getElementById('adminSupportOpenBadge');
+    if(badge){
+      if(open > 0){ badge.textContent = open > 99 ? '99+' : String(open); badge.style.display = 'inline'; }
+      else badge.style.display = 'none';
+    }
+  }
+
+  function filteredSupportTickets(){
+    const q = (document.getElementById('supportSearch')?.value || '').toLowerCase();
+    const st = (document.getElementById('supportFilterStatus')?.value || '').toLowerCase();
+    const pr = (document.getElementById('supportFilterPriority')?.value || '').toLowerCase();
+    const cat = document.getElementById('supportFilterCategory')?.value || '';
+    return cache.supportTickets.filter(t => {
+      if(st && String(t.status).toLowerCase() !== st && !(st === 'in progress' && t.status === 'in_progress')) return false;
+      if(pr && String(t.priority).toLowerCase() !== pr) return false;
+      if(cat && t.category !== cat) return false;
+      if(q){
+        const hay = `${t.ticketId} ${t.subject} ${t.landlordEmail} ${t.landlordName}`.toLowerCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b) => {
+      const ua = String(a.priority).toLowerCase() === 'urgent' ? 1 : 0;
+      const ub = String(b.priority).toLowerCase() === 'urgent' ? 1 : 0;
+      if(ua !== ub) return ub - ua;
+      const ta = a.lastUpdated?.toDate?.() || a.createdAt?.toDate?.() || new Date(0);
+      const tb = b.lastUpdated?.toDate?.() || b.createdAt?.toDate?.() || new Date(0);
+      return tb - ta;
+    });
+  }
+
+  function renderSupportTable(){
+    const rows = filteredSupportTickets();
+    let html = `<table class="data-table"><thead><tr>
+      <th><input type="checkbox" id="supportSelectAll" onchange="supportToggleAll(this.checked)" /></th>
+      <th>Ticket ID</th><th>Landlord</th><th>Subject</th><th>Category</th><th>Priority</th><th>Status</th>
+      <th>Created</th><th>Updated</th><th>Actions</th></tr></thead><tbody>`;
+    rows.forEach(t => {
+      html += `<tr>
+        <td><input type="checkbox" class="support-row-cb" value="${esc(t.id)}" /></td>
+        <td><code>${esc(t.ticketId)}</code></td>
+        <td>${esc(t.landlordName)}<br><span style="font-size:0.75rem;color:var(--muted)">${esc(t.landlordEmail)}</span></td>
+        <td>${esc(t.subject)}</td>
+        <td>${esc(t.category)}</td>
+        <td>${supPriBadge(t.priority)}</td>
+        <td>${supStBadge(t.status)}</td>
+        <td>${supFmt(t.createdAt)}</td>
+        <td>${supFmt(t.lastUpdated)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" onclick="adminViewTicket('${esc(t.id)}')" title="View">👁️</button>
+          <select class="form-input" style="max-width:110px;display:inline-block;padding:4px;font-size:0.75rem" onchange="adminSetTicketStatus('${esc(t.id)}',this.value)">
+            <option value="">Status…</option>
+            <option value="open">Open</option><option value="in progress">In Progress</option>
+            <option value="resolved">Resolved</option><option value="closed">Closed</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="adminFlagUrgent('${esc(t.id)}')" title="Urgent">🚩</button>
+          <button class="btn btn-outline btn-sm" onclick="adminDeleteTicket('${esc(t.id)}')" title="Delete">🗑️</button>
+        </td></tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('supportTableWrap').innerHTML = rows.length ? html : emptyState('🎧', 'No tickets', 'No tickets match your filters.');
+    document.getElementById('supportSelectAll')?.addEventListener('change', function(){ supportToggleAll(this.checked); });
+  }
+
+  window.supportToggleAll = function(on){
+    document.querySelectorAll('.support-row-cb').forEach(cb => { cb.checked = on; });
+  };
+
+  function selectedTicketIds(){
+    return [...document.querySelectorAll('.support-row-cb:checked')].map(cb => cb.value);
+  }
+
+  function startSupportListener(){
+    if(supportTicketsUnsub) return;
+    supportTicketsUnsub = db.collection('supportTickets').onSnapshot(snap => {
+      const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      incoming.forEach(t => {
+        if(!supportKnownIds.has(t.id)){
+          supportKnownIds.add(t.id);
+          if(String(t.priority).toLowerCase() === 'urgent' && String(t.status).toLowerCase() === 'open'){
+            window.nestiqSupport?.playUrgentSound?.();
+            showAdminNotif('New urgent support ticket: ' + (t.ticketId || t.subject), 'error');
+          }
+        }
+      });
+      cache.supportTickets = incoming;
+      supportStatsRow(cache.supportTickets);
+      renderSupportTable();
+    }, e => {
+      if(document.getElementById('supportTableWrap'))
+        document.getElementById('supportTableWrap').innerHTML = emptyState('⚠️', 'Tickets unavailable', e.message);
+    });
+  }
+
+  async function loadSupport(){
+    document.getElementById('supportTableWrap').innerHTML = skeletonTable(10, 5);
+    startSupportListener();
+    ['supportSearch','supportFilterStatus','supportFilterPriority','supportFilterCategory'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && !el.dataset.bound){
+        el.dataset.bound = '1';
+        el.addEventListener('input', renderSupportTable);
+        el.addEventListener('change', renderSupportTable);
+      }
+    });
+  }
+
+  window.adminViewTicket = async function(id){
+    const snap = await db.collection('supportTickets').doc(id).get();
+    if(!snap.exists) return;
+    const t = snap.data();
+    const msgs = t.messages || [];
+    const closed = ['resolved','closed'].includes(String(t.status).toLowerCase());
+    openDrawer(`<h2 class="font-display">${esc(t.ticketId)}</h2>
+      <p><strong>${esc(t.subject)}</strong></p>
+      <p style="font-size:0.85rem">${esc(t.landlordName)} · ${esc(t.landlordEmail)}</p>
+      <p>${supPriBadge(t.priority)} ${supStBadge(t.status)}</p>
+      <p style="white-space:pre-wrap;font-size:0.88rem;margin:12px 0">${esc(t.description)}</p>
+      <div id="adminTicketThread" style="max-height:280px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:12px">
+        ${msgs.map(m => `<div style="margin:8px 0;padding:8px;border-radius:8px;background:${m.sender==='admin'?'#eee':'rgba(196,106,58,.15)'}">
+          <strong>${esc(m.senderName||m.sender)}</strong><br>${esc(m.message)}
+          <div style="font-size:0.72rem;color:var(--muted);margin-top:4px">${supFmt(m.timestamp)}</div></div>`).join('') || '<p style="color:var(--muted)">No messages yet</p>'}
+      </div>
+      ${closed ? '<p style="font-size:0.85rem;color:var(--muted)">Ticket closed.</p>' : `
+        <textarea id="adminReplyText" class="form-input" rows="3" placeholder="Admin reply…"></textarea>
+        <button class="btn btn-gold btn-sm" style="margin-top:8px" onclick="adminSendTicketReply('${esc(id)}')">Send Reply</button>`}
+      <button class="btn btn-outline btn-sm" style="margin-top:12px" onclick="closeDrawer()">Close</button>`);
+  };
+
+  window.adminSendTicketReply = async function(id){
+    const text = document.getElementById('adminReplyText')?.value?.trim();
+    if(!text) return;
+    const snap = await db.collection('supportTickets').doc(id).get();
+    if(!snap.exists) return;
+    const t = snap.data();
+    const msg = { sender:'admin', senderName:'NestIQ Support', message:text, timestamp:new Date().toISOString(), readByLandlord:false };
+    const messages = [...(t.messages||[]), msg];
+    let status = String(t.status||'open').toLowerCase();
+    if(status === 'open') status = 'in progress';
+    await db.collection('supportTickets').doc(id).update({
+      messages, lastUpdated: fv.serverTimestamp(), status: status.replace('_',' ')
+    });
+    await window.nestiqSupportSendEmail({
+      to: t.landlordEmail,
+      subject: `NestIQ Support replied to your ticket ${t.ticketId}`,
+      message: `NestIQ Support replied to your ticket ${t.ticketId}:\n\n${text}`,
+      landlordId: t.landlordId
+    });
+    showAdminNotif('Reply sent', 'success');
+    adminViewTicket(id);
+    await logAdminActivity('support_reply', t.landlordId, t.landlordEmail, t.ticketId);
+  };
+
+  window.adminSetTicketStatus = async (id, status) => {
+    if(!status) return;
+    await db.collection('supportTickets').doc(id).update({ status, lastUpdated: fv.serverTimestamp() });
+    showAdminNotif('Status updated', 'success');
+  };
+
+  window.adminFlagUrgent = async id => {
+    await db.collection('supportTickets').doc(id).update({ priority:'urgent', lastUpdated: fv.serverTimestamp() });
+    showAdminNotif('Marked urgent', 'warning');
+  };
+
+  window.adminDeleteTicket = async id => {
+    if(!confirmAction('Permanently delete this ticket?')) return;
+    await db.collection('supportTickets').doc(id).delete();
+    showAdminNotif('Ticket deleted', 'warning');
+  };
+
+  window.supportBulkResolve = async () => {
+    const ids = selectedTicketIds();
+    if(!ids.length){ showAdminNotif('Select tickets first', 'warning'); return; }
+    for(const id of ids) await db.collection('supportTickets').doc(id).update({ status:'resolved', lastUpdated: fv.serverTimestamp() });
+    showAdminNotif(ids.length + ' tickets resolved', 'success');
+  };
+
+  window.supportBulkClose = async () => {
+    const ids = selectedTicketIds();
+    if(!ids.length){ showAdminNotif('Select tickets first', 'warning'); return; }
+    for(const id of ids) await db.collection('supportTickets').doc(id).update({ status:'closed', lastUpdated: fv.serverTimestamp() });
+    showAdminNotif(ids.length + ' tickets closed', 'success');
+  };
+
+  window.supportBulkDelete = async () => {
+    const ids = selectedTicketIds();
+    if(!ids.length){ showAdminNotif('Select tickets first', 'warning'); return; }
+    if(!confirmAction('Delete ' + ids.length + ' tickets permanently?')) return;
+    for(const id of ids) await db.collection('supportTickets').doc(id).delete();
+    showAdminNotif('Tickets deleted', 'warning');
+  };
+
+  /* ─── Boot ─── */
+  initFirebase();
+  auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(() => {});
+  auth.onAuthStateChanged(user => {
+    handleAuth(user).catch(e => console.error('Admin auth handler', e));
+  });
+
+})();
+</script>
+</body>
+</html>

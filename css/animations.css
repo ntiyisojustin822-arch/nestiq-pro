@@ -1,0 +1,634 @@
+/* ============================================
+   NESTIQ GLOBAL ANIMATIONS
+   ============================================ */
+
+/* ---- Keyframes ---- */
+
+@keyframes nestiq-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-fade-in-up {
+  from { opacity: 0; transform: translateY(32px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-fade-in-down {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-fade-in-left {
+  from { opacity: 0; transform: translateX(-24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nestiq-fade-in-right {
+  from { opacity: 0; transform: translateX(24px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nestiq-scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes nestiq-scale-bounce {
+  0%   { transform: scale(0.85); opacity: 0; }
+  60%  { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes nestiq-slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-slide-down {
+  from { opacity: 0; transform: translateY(-100%); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-shimmer {
+  0%   { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+@keyframes nestiq-pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(196,106,58,0.4); }
+  50%       { box-shadow: 0 0 0 10px rgba(196,106,58,0); }
+}
+
+@keyframes nestiq-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+@keyframes nestiq-bounce-in {
+  0%   { transform: scale(0); opacity: 0; }
+  50%  { transform: scale(1.15); }
+  75%  { transform: scale(0.95); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes nestiq-count-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nestiq-float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-8px); }
+}
+
+@keyframes nestiq-gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes nestiq-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+@keyframes nestiq-progress-fill {
+  from { width: 0%; }
+  to   { width: var(--target-width); }
+}
+
+@keyframes nestiq-notification-slide {
+  from { opacity: 0; transform: translateX(110%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes nestiq-notification-out {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(110%); }
+}
+
+@keyframes nestiq-overlay-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes nestiq-modal-in {
+  from { opacity: 0; transform: scale(0.94) translateY(20px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes nestiq-modal-out {
+  from { opacity: 1; transform: scale(1) translateY(0); }
+  to   { opacity: 0; transform: scale(0.94) translateY(20px); }
+}
+
+@keyframes nestiq-tab-indicator {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+@keyframes nestiq-ripple {
+  from { transform: scale(0); opacity: 0.4; }
+  to   { transform: scale(4); opacity: 0; }
+}
+
+@keyframes nestiq-badge-pop {
+  0%   { transform: scale(0); }
+  60%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
+/* ---- Utility Animation Classes ---- */
+
+.na-fade-in       { animation: nestiq-fade-in 0.45s ease both; }
+.na-fade-in-up    { animation: nestiq-fade-in-up 0.5s ease both; }
+.na-fade-in-down  { animation: nestiq-fade-in-down 0.4s ease both; }
+.na-fade-in-left  { animation: nestiq-fade-in-left 0.4s ease both; }
+.na-fade-in-right { animation: nestiq-fade-in-right 0.4s ease both; }
+.na-scale-in      { animation: nestiq-scale-in 0.35s ease both; }
+.na-scale-bounce  { animation: nestiq-scale-bounce 0.5s cubic-bezier(.34,1.56,.64,1) both; }
+.na-slide-up      { animation: nestiq-slide-up 0.4s cubic-bezier(.25,.46,.45,.94) both; }
+.na-float         { animation: nestiq-float 3s ease-in-out infinite; }
+.na-shake         { animation: nestiq-shake 0.4s ease; }
+.na-pulse-gold    { animation: nestiq-pulse-gold 2s infinite; }
+.na-spin          { animation: nestiq-spin 1s linear infinite; }
+.na-bounce-in     { animation: nestiq-bounce-in 0.6s cubic-bezier(.34,1.56,.64,1) both; }
+
+.na-delay-1  { animation-delay: 0.05s; }
+.na-delay-2  { animation-delay: 0.10s; }
+.na-delay-3  { animation-delay: 0.15s; }
+.na-delay-4  { animation-delay: 0.20s; }
+.na-delay-5  { animation-delay: 0.25s; }
+.na-delay-6  { animation-delay: 0.30s; }
+.na-delay-7  { animation-delay: 0.35s; }
+.na-delay-8  { animation-delay: 0.40s; }
+
+/* ---- Page Transitions ---- */
+
+/* Router mounts pages with `.page.active` and `js/animations.js` may also toggle `.page-active`.
+   Always animate on active so pages never remain "invisible" due to class mismatches. */
+.page.active,
+.page.page-active,
+.page.active.page-active {
+  opacity: 1;
+  animation: nestiq-fade-in 0.4s ease;
+}
+
+/* ---- Card Animations ---- */
+
+.card,
+.portal-card,
+.prop-card,
+.nestiq-app-card,
+.stat-card,
+[data-stat-card] {
+  transition:
+    transform 0.22s cubic-bezier(.25,.46,.45,.94),
+    box-shadow 0.22s ease,
+    border-color 0.22s ease;
+  will-change: transform;
+}
+
+.card:hover,
+.portal-card:hover,
+.prop-card:hover,
+.nestiq-app-card:hover,
+.stat-card:hover,
+[data-stat-card]:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
+}
+
+/* ---- Button Animations ---- */
+
+.btn-primary,
+.btn-outline,
+.btn-gold,
+.btn-sm {
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-primary:hover,
+.btn-gold:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(196,106,58,0.35);
+}
+
+.btn-outline:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+}
+
+.btn-primary:active,
+.btn-outline:active,
+.btn-gold:active,
+.btn-sm:active {
+  transform: scale(0.96);
+  box-shadow: none;
+}
+
+.btn-ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  pointer-events: none;
+  animation: nestiq-ripple 0.55s ease-out forwards;
+}
+
+/* ---- Modal Animations ---- */
+
+#modalOverlay.open,
+.modal-overlay.open,
+.nestiq-lightbox.open {
+  animation: nestiq-overlay-in 0.25s ease both;
+}
+
+#modalOverlay.open .modal,
+#modalContent,
+.modal-content,
+.modal-box {
+  animation: nestiq-modal-in 0.3s cubic-bezier(.34,1.2,.64,1) both;
+}
+
+.modal-closing#modalOverlay,
+.modal-closing.modal-overlay {
+  animation: nestiq-overlay-in 0.2s ease reverse both;
+}
+
+.modal-closing#modalOverlay .modal,
+.modal-closing .modal-content {
+  animation: nestiq-modal-out 0.2s ease both;
+}
+
+/* ---- Navigation Animations ---- */
+
+.nav-link,
+.sidebar-link,
+.nestiq-nav-item {
+  transition:
+    color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease,
+    padding-left 0.18s ease;
+  position: relative;
+}
+
+.nav-link::after,
+.sidebar-link::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: var(--gold);
+  transition: width 0.25s ease;
+  border-radius: 2px;
+}
+
+.nav-link:hover::after,
+.nav-link.active::after { width: 100%; }
+
+/* ---- Form Input Animations ---- */
+
+.form-input,
+.form-select,
+.form-textarea,
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="password"],
+select,
+textarea {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus,
+.form-textarea:focus,
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px rgba(196,106,58,0.12);
+  outline: none;
+}
+
+.form-input.error,
+input.error,
+select.error,
+textarea.error {
+  animation: nestiq-shake 0.4s ease;
+  border-color: var(--rust);
+  box-shadow: 0 0 0 3px rgba(166,61,47,0.12);
+}
+
+/* ---- Notification Toast Animations ---- */
+
+.notif,
+.toast,
+[class*="notif-"] {
+  animation: nestiq-notification-slide 0.35s cubic-bezier(.25,.46,.45,.94) both;
+}
+
+.notif.hiding,
+.toast.hiding {
+  animation: nestiq-notification-out 0.25s ease forwards;
+}
+
+/* ---- Skeleton Loading ---- */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--border) 25%,
+    var(--cream) 50%,
+    var(--border) 75%
+  );
+  background-size: 1000px 100%;
+  animation: nestiq-shimmer 1.6s infinite linear;
+  border-radius: 8px;
+  color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+
+.skeleton-text  { height: 14px; border-radius: 4px; margin-bottom: 8px; }
+.skeleton-title { height: 22px; border-radius: 6px; width: 60%; margin-bottom: 12px; }
+.skeleton-card  { height: 120px; border-radius: 14px; margin-bottom: 16px; }
+.skeleton-avatar{ height: 44px; width: 44px; border-radius: 50%; flex-shrink: 0; }
+.skeleton-btn   { height: 38px; width: 120px; border-radius: 10px; }
+.skeleton-img   { aspect-ratio: 16/9; border-radius: 12px; }
+
+/* ---- Status Badge Animations ---- */
+
+.badge,
+.status-badge,
+[class*="-badge"] {
+  animation: nestiq-bounce-in 0.4s cubic-bezier(.34,1.56,.64,1) both;
+  transition: transform 0.15s ease, background 0.2s ease;
+}
+
+/* ---- Progress Bar Animations ---- */
+
+.progress-bar,
+.lease-fill,
+[class*="progress-fill"],
+[class*="-bar-fill"] {
+  transition: width 1.2s cubic-bezier(.25,.46,.45,.94);
+}
+
+.progress-animate {
+  animation: nestiq-progress-fill 1.2s cubic-bezier(.25,.46,.45,.94) both;
+}
+
+/* ---- Dropdown / Menu Animations ---- */
+
+.dropdown-menu,
+.wa-menu,
+.theme-mini-menu,
+[id*="Menu"],
+[id*="Dropdown"] {
+  animation: nestiq-fade-in-down 0.2s ease both;
+  transform-origin: top center;
+}
+
+/* ---- Tab Switching Animation ---- */
+
+.tab-content-enter {
+  animation: nestiq-fade-in 0.3s ease both;
+}
+
+.tab-indicator {
+  transition: left 0.3s cubic-bezier(.25,.46,.45,.94),
+              width 0.3s cubic-bezier(.25,.46,.45,.94);
+}
+
+/* ---- Scroll Reveal (applied by JS) ---- */
+
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 0.55s ease,
+    transform 0.55s ease;
+}
+
+.reveal.revealed,
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.reveal-left {
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.reveal-left.revealed,
+.reveal-left.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.reveal-right {
+  opacity: 0;
+  transform: translateX(24px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+
+.reveal-right.revealed,
+.reveal-right.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ---- Chart Animations ---- */
+
+.chart-wrap {
+  animation: nestiq-fade-in 0.6s ease both;
+}
+
+/* ---- Tenant Portal Tab Bar Animation ---- */
+
+.tenant-tab-bar .tab-btn {
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.tenant-tab-bar .tab-btn.active {
+  color: var(--gold);
+  transform: translateY(-2px);
+}
+
+.tenant-tab-bar .tab-btn .tab-icon {
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+
+.tenant-tab-bar .tab-btn.active .tab-icon {
+  transform: scale(1.2);
+}
+
+/* ---- Floating Action Button ---- */
+
+.fab,
+.support-fab {
+  transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease;
+  animation: nestiq-bounce-in 0.6s cubic-bezier(.34,1.56,.64,1) 0.5s both;
+}
+
+.fab:hover,
+.support-fab:hover {
+  transform: scale(1.12) rotate(5deg);
+  box-shadow: 0 8px 28px rgba(196,106,58,0.45);
+}
+
+/* ---- Accordion Sections ---- */
+
+.nestiq-edit-section-body {
+  transition: max-height 0.35s cubic-bezier(.25,.46,.45,.94),
+              padding 0.2s ease,
+              opacity 0.25s ease;
+  opacity: 0;
+}
+
+.nestiq-edit-section-body.open {
+  opacity: 1;
+}
+
+/* ---- Map Marker Pulse ---- */
+
+.map-pulse {
+  animation: nestiq-pulse-gold 2s infinite;
+  border-radius: 50%;
+}
+
+/* ---- Logo Animation ---- */
+
+.nav-logo,
+.logo-dot {
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.nav-logo:hover { transform: scale(1.04); }
+
+/* ---- Landing Page Hero ---- */
+
+.hero-headline {
+  animation: nestiq-fade-in-up 0.7s ease both;
+}
+
+.hero-sub {
+  animation: nestiq-fade-in-up 0.7s ease 0.15s both;
+}
+
+.hero-cta {
+  animation: nestiq-fade-in-up 0.7s ease 0.28s both;
+}
+
+.hero-mockup {
+  animation: nestiq-fade-in-right 0.8s ease 0.2s both;
+}
+
+.stats-bar-item {
+  animation: nestiq-fade-in-up 0.5s ease both;
+}
+
+.feature-card {
+  animation: nestiq-scale-in 0.4s ease both;
+}
+
+/* ---- Number Counter Animation ---- */
+
+.count-up {
+  animation: nestiq-count-up 0.5s ease both;
+  display: inline-block;
+}
+
+/* ---- Onboarding Wizard ---- */
+
+.onboarding-step-content {
+  animation: nestiq-fade-in 0.35s ease both;
+}
+
+.onboarding-step-indicator .step-circle {
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+}
+
+.onboarding-step-indicator .step-circle.done {
+  animation: nestiq-bounce-in 0.4s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ---- Chat Messages ---- */
+
+.chat-bubble {
+  animation: nestiq-scale-bounce 0.3s cubic-bezier(.34,1.56,.64,1) both;
+  transform-origin: bottom left;
+}
+
+.chat-bubble.sent {
+  transform-origin: bottom right;
+}
+
+/* ---- Sidebar Navigation ---- */
+
+.sidebar-nav-item {
+  transition: background 0.18s ease, color 0.18s ease, padding-left 0.18s ease;
+  border-left: 3px solid transparent;
+}
+
+.sidebar-nav-item:hover {
+  padding-left: 20px;
+  background: rgba(196,106,58,0.06);
+}
+
+.sidebar-nav-item.active {
+  border-left-color: var(--gold);
+  background: rgba(196,106,58,0.08);
+  padding-left: 20px;
+}
+
+/* ---- Marketing / standalone page nav reset ---- */
+
+header#siteNav nav,
+nav.admin-nav,
+nav.ob-steps,
+nav.mobile-tabs {
+  position: static;
+  width: auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  backdrop-filter: none;
+  box-shadow: none;
+  z-index: auto;
+}
+
+header#siteNav.scrolled {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

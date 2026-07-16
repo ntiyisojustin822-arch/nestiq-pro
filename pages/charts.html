@@ -1,0 +1,99 @@
+<div class="page" id="page-charts" style="padding-top:70px">
+  <section class="section reveal">
+    <div class="eyebrow section-center" style="justify-content:center">Live Analytics</div>
+    <h2 class="section-title section-center reveal">Your Portfolio at a Glance</h2>
+    <p class="section-sub reveal">Real-time charts powered by Chart.js — revenue, occupancy, expenses and cash flow.</p>
+    <div style="display:flex;justify-content:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <button type="button" class="btn-primary btn-sm charts-tab-btn" data-charts-tab="portfolio" onclick="nestiqChartsSwitchTab('portfolio')">Portfolio</button>
+      <button type="button" class="btn-outline btn-sm charts-tab-btn" data-charts-tab="maint" onclick="nestiqChartsSwitchTab('maint')">Maintenance costs</button>
+      <button type="button" class="btn-outline btn-sm" onclick="showPage('valuation')">Portfolio valuation</button>
+    </div>
+    <div id="chartsPortfolioPanel">
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <button type="button" class="btn-outline btn-sm" data-portfolio-report style="display:none" onclick="openPortfolioReportOptionsModal()">Portfolio Report</button>
+      <button class="btn-outline btn-sm" onclick="runAiPortfolioAnalysis()">AI Portfolio Analysis</button>
+    </div>
+    <div id="aiPortfolioResult" style="margin-bottom:14px"></div>
+    <div id="chartsEmptyState" style="display:none">
+      <div style="text-align:center;padding:80px 40px;color:var(--muted)">
+        <div style="font-size:3rem;margin-bottom:16px">📊</div>
+        <div style="font-family:'Playfair Display',serif;font-size:1.4rem;font-weight:600;color:var(--ink);margin-bottom:8px">No data to show yet</div>
+        <div style="font-size:0.9rem;margin-bottom:28px">Add properties and record payments to see your analytics</div>
+        <button class="btn-primary" onclick="showPage('properties')">Add Your First Property</button>
+      </div>
+    </div>
+    <div class="chart-stats-row" id="chartStatsRow"></div>
+    <div class="charts-grid" id="chartsGrid">
+      <div class="chart-card wide reveal">
+        <div class="chart-card-title">Monthly Revenue vs Expenses</div>
+        <div class="chart-card-sub">12-month performance overview across all properties</div>
+        <div class="chart-wrap reveal"><canvas id="revenueChart"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <div class="chart-card-title">Occupancy Rate</div>
+        <div class="chart-card-sub">Monthly occupancy % this year</div>
+        <div class="chart-wrap reveal"><canvas id="occupancyChart"></canvas></div>
+      </div>
+      <div class="chart-card reveal">
+        <div class="chart-card-title">Expense Breakdown</div>
+        <div class="chart-card-sub">By category — current year</div>
+        <div class="chart-wrap reveal"><canvas id="expenseDonut"></canvas></div>
+      </div>
+      <div class="chart-card wide reveal">
+        <div class="chart-card-title">Net Cash Flow Trend</div>
+        <div class="chart-card-sub">Monthly net income after all expenses</div>
+        <div class="chart-wrap reveal"><canvas id="cashflowChart"></canvas></div>
+      </div>
+    </div>
+    </div>
+    <div id="chartsMaintPanel" style="display:none">
+      <div class="chart-card wide reveal" style="margin-bottom:20px">
+        <div class="chart-card-title">Total maintenance cost (this year)</div>
+        <div class="chart-card-sub">Completed jobs with actual cost recorded</div>
+        <div id="maintCostYearTotal" style="font-family:'Playfair Display',serif;font-size:2.2rem;font-weight:700;color:var(--gold);margin:12px 0">R0</div>
+      </div>
+      <div class="charts-grid">
+        <div class="chart-card wide reveal">
+          <div class="chart-card-title">Cost by property</div>
+          <div class="chart-card-sub">This calendar year</div>
+          <div class="chart-wrap reveal"><canvas id="maintCostByPropChart"></canvas></div>
+        </div>
+        <div class="chart-card reveal">
+          <div class="chart-card-title">Cost by category</div>
+          <div class="chart-card-sub">Issue category on each job</div>
+          <div class="chart-wrap reveal"><canvas id="maintCostByCatChart"></canvas></div>
+        </div>
+        <div class="chart-card wide reveal">
+          <div class="chart-card-title">Month by month</div>
+          <div class="chart-card-sub">Spend trend</div>
+          <div class="chart-wrap reveal"><canvas id="maintCostByMonthChart"></canvas></div>
+        </div>
+      </div>
+      <div class="chart-card wide reveal" style="margin-top:20px">
+        <div class="chart-card-title">Cost vs estimate accuracy</div>
+        <div class="chart-card-sub">Completed jobs with both estimate and actual</div>
+        <p id="maintCostAccuracy" style="font-size:0.9rem;color:var(--muted);margin:0">—</p>
+      </div>
+      <div class="chart-card wide reveal" style="margin-top:20px">
+        <div class="chart-card-title">Most expensive jobs</div>
+        <div class="chart-card-sub">Top 10 by actual cost this year</div>
+        <div style="overflow:auto;margin-top:10px">
+          <table class="rentroll-table" style="min-width:480px">
+            <thead><tr><th>Issue</th><th>Property</th><th>Actual</th><th>Completed</th></tr></thead>
+            <tbody id="maintCostTopJobsBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="chart-card wide reveal" style="margin-top:20px">
+        <div class="chart-card-title">Cost by vendor</div>
+        <div class="chart-card-sub">From linked vendor records</div>
+        <div style="overflow:auto;margin-top:10px">
+          <table class="rentroll-table" style="min-width:520px">
+            <thead><tr><th>Name</th><th>Jobs</th><th>Total billed</th><th>Avg cost</th><th>Rating</th></tr></thead>
+            <tbody id="maintCostVendorBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>

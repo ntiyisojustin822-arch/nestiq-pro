@@ -1,0 +1,50 @@
+<div class="page" id="page-calendar" style="padding-top:70px">
+  <section class="section reveal" style="padding-top:28px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <div>
+        <div class="eyebrow" style="justify-content:flex-start">Schedule</div>
+        <h2 class="section-title reveal" style="margin-bottom:4px">Rent Calendar</h2>
+        <p style="font-size:0.88rem;color:var(--muted)">Month, week and agenda views powered by FullCalendar.</p>
+      </div>
+      <button class="btn-primary btn-sm" onclick="openAddCustomCalendarEvent()">+ Add Event</button>
+    </div>
+    <div class="fc-layout">
+      <div class="fc-main-card">
+        <div id="nestiq-calendar"></div>
+      </div>
+      <aside class="fc-sidebar">
+        <div class="fc-side-card">
+          <div class="fc-side-title">This Month</div>
+          <div id="calendarMonthSummary"></div>
+        </div>
+        <div class="fc-side-card">
+          <div class="fc-side-title">Upcoming (7 days)</div>
+          <div id="calendarUpcoming"></div>
+        </div>
+        <div class="fc-side-card">
+          <button class="btn-primary btn-sm" style="width:100%;justify-content:center" onclick="openAddCustomCalendarEvent()">+ Add Custom Event</button>
+        </div>
+        <div class="fc-side-card">
+          <div class="fc-side-title">Quick Filters</div>
+          <div class="map-filter-row">
+            <button class="map-filter-chip cal-filter-chip active" data-filter="all" onclick="setCalendarFilter('all')">All</button>
+            <button class="map-filter-chip cal-filter-chip" data-filter="payments" onclick="setCalendarFilter('payments')">Payments</button>
+            <button class="map-filter-chip cal-filter-chip" data-filter="due" onclick="setCalendarFilter('due')">Due</button>
+            <button class="map-filter-chip cal-filter-chip" data-filter="maintenance" onclick="setCalendarFilter('maintenance')">Maintenance</button>
+            <button class="map-filter-chip cal-filter-chip" data-filter="leases" onclick="setCalendarFilter('leases')">Leases</button>
+            <button class="map-filter-chip cal-filter-chip" data-filter="custom" onclick="setCalendarFilter('custom')">Custom</button>
+          </div>
+        </div>
+        <div class="fc-side-card">
+          <div class="fc-side-title">Legend</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#5a7a60"></span>Paid</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#c9a84c"></span>Rent Due</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#c46a3a"></span>Overdue / Lease Ending</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#3a6b8a"></span>Lease Start</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#7c5cbf"></span>Maintenance</div>
+          <div class="fc-legend-item"><span class="fc-dot" style="background:#888"></span>Custom Event</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>

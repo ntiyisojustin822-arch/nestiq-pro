@@ -1,0 +1,30 @@
+<div class="page" id="page-inspections" style="padding-top:70px">
+  <div class="print-header" style="display:none">
+    <div class="print-logo">🏠 NestIQ Pro</div>
+    <div class="print-date" id="printDateLabel"></div>
+  </div>
+  <section class="section reveal" style="padding-top:28px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:18px">
+      <div>
+        <div class="eyebrow" style="justify-content:flex-start">Condition Audits</div>
+        <h2 class="section-title reveal" style="margin-bottom:4px">Inspections</h2>
+        <p style="font-size:.88rem;color:var(--muted)">Schedule, complete, and export detailed property inspection reports.</p>
+      </div>
+      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
+        <button class="btn-primary btn-sm" onclick="openNewInspectionModal()">+ New Inspection</button>
+      </div>
+    </div>
+
+    <div id="inspectionStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px"></div>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+      <button class="filter-chip active" id="inspTab_scheduled" onclick="setInspectionTab('scheduled',this)">Scheduled</button>
+      <button class="filter-chip" id="inspTab_completed" onclick="setInspectionTab('completed',this)">Completed</button>
+    </div>
+
+    <div id="inspectionsList"></div>
+
+    <div id="inspectionFormWrap" style="display:none"></div>
+  </section>
+</div>

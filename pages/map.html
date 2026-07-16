@@ -1,0 +1,42 @@
+<div class="page" id="page-map" style="padding-top:70px">
+  <nav id="mapTenantNav" style="display:none;position:sticky;top:0;z-index:250;background:var(--nav-bg);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 24px;align-items:center;justify-content:space-between;gap:12px;margin:-70px -0 0 0">
+    <a href="#tenant-dashboard" class="btn-outline btn-sm" onclick="showPage('tenant-dashboard');return false;" style="text-decoration:none">← My Portal</a>
+    <div style="font-family:'Playfair Display',serif;font-weight:700">Property Location</div>
+    <a href="#settings" class="btn-outline btn-sm" onclick="showPage('settings');return false;" style="text-decoration:none">⚙ Settings</a>
+  </nav>
+  <section class="section reveal" style="padding-top:28px">
+    <div id="mapPageHeader" style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:24px;flex-wrap:wrap;gap:14px">
+      <div>
+        <div class="eyebrow" id="mapPageEyebrow" style="justify-content:flex-start">Geographic View</div>
+        <h2 class="section-title reveal" id="mapPageTitle" style="margin-bottom:4px">Property Map</h2>
+        <p id="mapPageSub" style="color:var(--muted);font-size:0.88rem">Interactive OpenStreetMap view of your full portfolio.</p>
+      </div>
+    </div>
+    <div id="mapTenantShell" style="display:none">
+      <div class="map-canvas-wrap" style="min-height:420px">
+        <div id="tenantPropertyMapFull"></div>
+      </div>
+      <div id="mapTenantMeta" style="margin-top:16px;padding:16px;background:var(--card-bg);border:1px solid var(--border);border-radius:14px"></div>
+    </div>
+    <div id="mapLandlordShell" class="map-layout">
+      <div class="map-canvas-wrap">
+        <div id="propertyMap"></div>
+      </div>
+      <aside class="map-sidebar">
+        <div class="map-summary" id="mapSummary"></div>
+        <div class="map-filter-row">
+          <button class="map-filter-chip active" onclick="applyMapFilter('all',this)">All</button>
+          <button class="map-filter-chip" onclick="applyMapFilter('occupied',this)">Occupied</button>
+          <button class="map-filter-chip" onclick="applyMapFilter('vacant',this)">Vacant</button>
+          <button class="map-filter-chip" onclick="applyMapFilter('due',this)">Due</button>
+        </div>
+        <div class="map-list" id="mapPropertyList"></div>
+        <div class="map-legend">
+          <div class="map-legend-item"><span class="map-status-dot" style="background:#5a7a60"></span> Green dot = Occupied</div>
+          <div class="map-legend-item"><span class="map-status-dot" style="background:#c46a3a"></span> Red dot = Vacant</div>
+          <div class="map-legend-item"><span class="map-status-dot" style="background:#c9a84c"></span> Amber dot = Rent Due</div>
+        </div>
+      </aside>
+    </div>
+  </section>
+</div>

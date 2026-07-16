@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rental Application — NestIQ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            gold: '#C46A3A',
+            ink: '#0E1117',
+            cream: '#F5F0E8',
+            rust: '#A63D2F',
+            muted: '#6B7280',
+          },
+          fontFamily: {
+            display: ['Playfair Display', 'serif'],
+            body: ['DM Sans', 'sans-serif'],
+          },
+          borderRadius: {
+            xl: '12px',
+            '2xl': '16px',
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="nestiq-public-app-body">
+  <div id="nestiqPublicApplicationRoot"></div>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="./js/firebase-config.js"></script>
+  <script>
+    (function nestiqInitPublicFirebase(){
+      try{
+        const cfg=window.NESTIQ_FIREBASE_CONFIG;
+        if(cfg&&cfg.apiKey&&cfg.apiKey!=='YOUR_API_KEY'&&typeof firebase!=='undefined'){
+          if(!firebase.apps.length) firebase.initializeApp(cfg);
+          window.nestiqDb=firebase.firestore();
+          window.nestiqUseFirestore=true;
+        }
+      }catch(e){ console.warn('NestIQ public page Firebase', e); }
+    })();
+  </script>
+  <script src="./js/utils.js"></script>
+  <script src="./js/applications.js"></script>
+  <script>
+    (function nestiqBootPublicApplicationPage(){
+      function run(){
+        try{
+          if(typeof nestiqInitPublicApplicationPage==='function') nestiqInitPublicApplicationPage();
+        }catch(err){ console.error('NestIQ application page boot', err); }
+      }
+      if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', run, { once: true });
+      else run();
+    })();
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

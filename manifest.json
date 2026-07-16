@@ -1,0 +1,62 @@
+{
+  "name": "NestIQ Pro",
+  "short_name": "NestIQ",
+  "description": "Smart Rental Property Management for South African Landlords",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f7f4ef",
+  "theme_color": "#c9a84c",
+  "orientation": "portrait-primary",
+  "lang": "en-ZA",
+  "categories": ["business", "finance", "productivity"],
+  "icons": [
+    {
+      "src": "icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Properties",
+      "url": "./index.html?page=properties",
+      "description": "View all properties"
+    },
+    {
+      "name": "Tenants",
+      "url": "./index.html?page=tenants",
+      "description": "Manage tenants"
+    },
+    {
+      "name": "Record Payment",
+      "url": "./index.html?action=payment",
+      "description": "Record a rent payment"
+    }
+  ]
+}

@@ -1,0 +1,91 @@
+<div class="page" id="page-home">
+
+  <!-- Hero -->
+  <section class="hero">
+    <div class="hero-bg"></div><div class="hero-grid"></div>
+    <div class="hero-content">
+      <div class="hero-eyebrow">✦ Smart Property Intelligence</div>
+      <h1 class="hero-title">Manage Every<br><em>Rental Property</em><br>With Precision</h1>
+      <p class="hero-sub">NestIQ unifies tenant management, rent collection, maintenance tracking, financial reporting and ROI analysis in one beautifully designed platform.</p>
+      <div class="hero-actions">
+        <button class="btn-primary" onclick="openModal('getStarted')">Start Free Trial →</button>
+        <button class="btn-outline" onclick="showPage('properties')">View Properties</button>
+        <button type="button" class="btn-outline" data-portfolio-report style="display:none" onclick="openPortfolioReportOptionsModal()">Portfolio Report</button>
+      </div>
+      <div class="hero-stats">
+        <div><div class="stat-num count-up" data-count-to="2400">0</div><div class="stat-lbl">Properties Managed</div></div>
+        <div><div class="stat-num count-up" data-count-to="98" data-suffix="%">0</div><div class="stat-lbl">% Collection Rate</div></div>
+        <div><div class="stat-num count-up" data-count-to="12">0</div><div class="stat-lbl">Min Setup Time</div></div>
+      </div>
+    </div>
+    <div class="hero-visual">
+      <div class="dash-preview">
+        <div class="dash-header"><div class="dash-dots"><span></span><span></span><span></span></div><div class="dash-title-text">NestIQ Dashboard</div><div style="width:44px"></div></div>
+        <div class="dash-body">
+          <div class="dash-metrics">
+            <div class="dash-metric"><div class="dash-metric-val" id="statRevenue">R0</div><div class="dash-metric-lbl">Monthly Revenue</div><div class="dash-metric-chg">Live data</div></div>
+            <div class="dash-metric"><div class="dash-metric-val" id="statTenants">0</div><div class="dash-metric-lbl">Active Tenants</div><div class="dash-metric-chg">Live data</div></div>
+            <div class="dash-metric"><div class="dash-metric-val" id="statOccupancy">0%</div><div class="dash-metric-lbl">Occupancy</div><div class="dash-metric-chg">Live data</div></div>
+            <div class="dash-metric"><div class="dash-metric-val" id="homeFollowUpsStat">0</div><div class="dash-metric-lbl">Follow-ups due</div><div class="dash-metric-chg">Communications</div></div>
+          </div>
+          <div id="homeDashProps"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section reveal" style="max-width:960px;margin:0 auto;padding-top:0;padding-bottom:8px">
+    <div id="gettingStarted" style="display:none"></div>
+  </section>
+
+  <section class="section" id="homeFollowUpsSection" style="display:none;max-width:960px;margin:0 auto;padding-top:0;padding-bottom:24px">
+    <div id="homeFollowUpsWidget"></div>
+  </section>
+  <section class="section" id="homeLeaseRenewalsSection" style="display:none;padding-top:32px;padding-bottom:32px">
+    <div id="homeLeaseRenewalsWidget" class="renewal-home-wrap"></div>
+  </section>
+
+  <!-- Features -->
+  <section class="section reveal section-center" style="background:var(--cream)">
+    <div class="eyebrow">Everything You Need</div>
+    <h2 class="section-title reveal">Built for Modern Property Managers</h2>
+    <p class="section-sub reveal">From single units to large portfolios — NestIQ scales with you.</p>
+    <div class="features-grid">
+      <div class="feat-card reveal" style="transition-delay:.05s"><div class="feat-icon">🏘️</div><h3 class="feat-title">Portfolio Overview</h3><p class="feat-desc">Bird's-eye view of all properties. Track occupancy, rental income, and values in real-time.</p></div>
+      <div class="feat-card reveal" style="transition-delay:.1s"><div class="feat-icon">💳</div><h3 class="feat-title">Automated Rent Collection</h3><p class="feat-desc">Recurring payments, automated reminders, multiple payment methods — no more chasing tenants.</p></div>
+      <div class="feat-card reveal" style="transition-delay:.15s"><div class="feat-icon">📊</div><h3 class="feat-title">Interactive Analytics</h3><p class="feat-desc">Revenue trends, occupancy graphs, expense breakdowns — all powered by live Chart.js visuals.</p></div>
+      <div class="feat-card reveal" style="transition-delay:.2s"><div class="feat-icon">🧮</div><h3 class="feat-title">ROI Calculator</h3><p class="feat-desc">Instantly calculate gross yield, net yield, cash flow and return on investment for any property.</p></div>
+      <div class="feat-card reveal" style="transition-delay:.25s"><div class="feat-icon">💸</div><h3 class="feat-title">Expense Tracker</h3><p class="feat-desc">Log repairs, insurance, levies and rates. Categorise expenses and export for tax season.</p></div>
+      <div class="feat-card reveal" style="transition-delay:.3s"><div class="feat-icon">👤</div><h3 class="feat-title">Tenant Portal</h3><p class="feat-desc">Tenants view their lease, payment history, submit maintenance requests and download documents.</p></div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section style="background:linear-gradient(135deg,var(--ink) 0%,#1e2432 100%);padding:90px 80px;text-align:center;position:relative;overflow:hidden">
+    <div style="position:absolute;inset:0;background:radial-gradient(ellipse 60% 60% at 50% 50%,rgba(201,168,76,0.1),transparent)"></div>
+    <h2 class="section-title" style="color:var(--paper);position:relative;z-index:1;margin-bottom:14px">Ready to Transform<br>Your Rental Business?</h2>
+    <p style="color:rgba(247,244,239,0.55);font-size:1rem;max-width:460px;margin:0 auto 40px;line-height:1.75;position:relative;z-index:1">30 days free. No credit card required. Cancel anytime.</p>
+    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap;position:relative;z-index:1">
+      <button class="btn-gold" onclick="openModal('getStarted')">Start Free Trial →</button>
+      <button class="btn-outline" style="border-color:rgba(247,244,239,0.25);color:var(--paper)" onclick="showNotif('Scheduling your demo...','warning')">Book a Demo</button>
+    </div>
+  </section>
+
+  <div class="card reveal" style="margin:24px auto 40px;max-width:960px;padding:14px 18px;display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,var(--ink),#1a2130);color:white;border:none;flex-wrap:wrap">
+    <span style="font-size:1.4rem">⌨️</span>
+    <div>
+      <div style="font-weight:600;font-size:0.88rem;margin-bottom:2px">Keyboard shortcuts available</div>
+      <div style="font-size:0.8rem;opacity:0.7">
+        Press <kbd style="background:rgba(255,255,255,0.2);border-radius:4px;padding:1px 6px;font-size:0.75rem">?</kbd>
+        to see all shortcuts, or
+        <kbd style="background:rgba(255,255,255,0.2);border-radius:4px;padding:1px 6px;font-size:0.75rem">/</kbd>
+        to open the command palette.
+      </div>
+    </div>
+    <button type="button" onclick="nestiqShowShortcutsModal()" style="margin-left:auto;background:rgba(255,255,255,0.15);border:none;color:white;padding:6px 14px;border-radius:8px;font-size:0.82rem;cursor:pointer;white-space:nowrap;transition:background 0.2s"
+      onmouseover="this.style.background='rgba(255,255,255,0.25)'"
+      onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+      View All
+    </button>
+  </div>
+</div>

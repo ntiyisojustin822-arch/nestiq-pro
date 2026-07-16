@@ -1,0 +1,56 @@
+{
+  "functions": {
+    "source": "functions"
+  },
+  "firestore": {
+    "database": "(default)",
+    "location": "europe-west2",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ],
+    "headers": [
+      {
+        "source": "/admin.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/js/**",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+        ]
+      }
+    ],
+    "rewrites": [
+      { "source": "/admin.html", "destination": "/admin.html" },
+      { "source": "/billing.html", "destination": "/billing.html" },
+      { "source": "/onboarding.html", "destination": "/onboarding.html" },
+      { "source": "/support.html", "destination": "/support.html" },
+      { "source": "/changelog.html", "destination": "/changelog.html" },
+      { "source": "**", "destination": "/index.html" }
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

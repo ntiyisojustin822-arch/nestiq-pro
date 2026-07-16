@@ -1,0 +1,13 @@
+{
+  "name": "nestiq-pro",
+  "private": true,
+  "type": "module",
+  "description": "Admin scripts only; the app itself is static HTML/JS.",
+  "scripts": {
+    "migrate:landlord-id": "node scripts/migrate-landlord-id.mjs"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "pdfkit": "^0.18.0"
+  }
+}

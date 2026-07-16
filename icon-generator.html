@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NestIQ Icon Generator</title>
+  <link rel="stylesheet" href="./css/animations.css" />
+  <style>
+    body{font-family:Arial,sans-serif;background:#f7f4ef;color:#0e1117;max-width:760px;margin:30px auto;padding:0 16px}
+    h1{color:#c9a84c}
+    code{background:#fff;padding:2px 6px;border-radius:6px}
+    .card{background:#fff;border:1px solid #e3dac7;border-radius:12px;padding:16px}
+  </style>
+</head>
+<body>
+  <h1>NestIQ Pro Icon Generator</h1>
+  <div class="card">
+    <p>1. Open this file in your browser</p>
+    <p>2. Icons will download automatically</p>
+    <p>3. Place all downloaded files in the <code>icons/</code> folder</p>
+    <p>4. Delete this file when done</p>
+    <button onclick="run()" style="padding:10px 14px;border:none;border-radius:20px;background:#c9a84c;color:#0e1117;font-weight:700;cursor:pointer">Generate Again</button>
+  </div>
+
+  <script>
+    function generateIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = '#c9a84c';
+      ctx.fillRect(0, 0, size, size);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = `bold ${size * 0.5}px serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('N', size / 2, size / 2);
+      return canvas.toDataURL('image/png');
+    }
+    function downloadDataUrl(dataUrl, filename){
+      const a=document.createElement('a');
+      a.href=dataUrl;
+      a.download=filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    function run(){
+      [72,96,128,192,512].forEach((size, idx)=>{
+        setTimeout(()=>downloadDataUrl(generateIcon(size), `icon-${size}.png`), idx*250);
+      });
+    }
+    window.addEventListener('load', run);
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NestIQ Icon Generator</title>
+  <link rel="stylesheet" href="./css/animations.css" />
+  <style>
+    body{font-family:Arial,sans-serif;background:#f7f4ef;color:#0e1117;padding:24px}
+    button{background:#c9a84c;border:2px solid #c9a84c;color:#0e1117;padding:10px 16px;border-radius:999px;font-weight:700;cursor:pointer}
+    button:hover{filter:brightness(0.95)}
+    .hint{font-size:.92rem;color:#5b5549;margin-top:10px}
+  </style>
+</head>
+<body>
+  <h1>NestIQ PWA Icon Generator</h1>
+  <p>Generate and download <code>icon-192.png</code> and <code>icon-512.png</code>.</p>
+  <button id="genBtn">Generate Icons</button>
+  <p class="hint">Move downloaded files into the <code>icons/</code> folder.</p>
+
+  <script>
+    function drawIcon(size) {
+      const canvas=document.createElement('canvas');
+      canvas.width=size;
+      canvas.height=size;
+      const ctx=canvas.getContext('2d');
+
+      // Gold circle background
+      ctx.fillStyle='#c9a84c';
+      ctx.beginPath();
+      ctx.arc(size/2,size/2,size*0.46,0,Math.PI*2);
+      ctx.fill();
+
+      // White N letter (Playfair-like serif fallback stack)
+      ctx.fillStyle='#ffffff';
+      ctx.font=`bold ${Math.round(size*0.48)}px "Playfair Display", "Times New Roman", serif`;
+      ctx.textAlign='center';
+      ctx.textBaseline='middle';
+      ctx.fillText('N', size/2, size/2 + size*0.02);
+
+      return canvas;
+    }
+
+    function downloadCanvas(canvas, filename){
+      const a=document.createElement('a');
+      a.href=canvas.toDataURL('image/png');
+      a.download=filename;
+      a.click();
+    }
+
+    document.getElementById('genBtn').addEventListener('click', ()=>{
+      downloadCanvas(drawIcon(192), 'icon-192.png');
+      setTimeout(()=>downloadCanvas(drawIcon(512), 'icon-512.png'), 120);
+    });
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

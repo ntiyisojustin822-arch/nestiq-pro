@@ -1,0 +1,370 @@
+<div class="page" id="page-settings" style="padding-top:70px">
+  <section class="section settings-page-wrap">
+    <button type="button" id="settingsTenantBack" class="btn-outline btn-sm" style="display:none;margin-bottom:16px" onclick="showPage('tenant-dashboard')">← Back to portal</button>
+
+    <div style="margin-bottom:28px">
+      <div class="eyebrow" style="justify-content:flex-start">Configuration</div>
+      <h2 class="section-title" style="margin-bottom:4px">Settings</h2>
+      <p style="color:var(--muted);font-size:0.88rem;max-width:52ch">Manage your profile, tenant portal, notifications, integrations, appearance, and data.</p>
+    </div>
+
+    <div class="settings-card" data-settings-landlord-only id="nestiqAccountCardLandlord">
+      <h3 class="settings-card-title">Account</h3>
+      <p class="settings-card-sub">Security and profile for your NestIQ login.</p>
+      <div class="form-group"><label>Display name</label><input class="form-input" id="acct_ld_name" autocomplete="name"></div>
+      <div class="form-group"><label>Phone</label><input class="form-input" id="acct_ld_phone" autocomplete="tel"></div>
+      <div class="form-group"><label>Email</label><input class="form-input" id="acct_ld_email" type="email" readonly style="opacity:0.85"></div>
+      <p style="font-size:0.8rem;color:var(--muted);margin:-6px 0 12px">Sign-in email. If you use “verify before update”, confirm the link sent to the new address.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px">
+        <button type="button" class="btn-outline btn-sm" onclick="nestiqOpenChangeEmailModal()">Change email</button>
+        <button type="button" class="btn-outline btn-sm" onclick="nestiqOpenChangePasswordModal()">Change password</button>
+      </div>
+      <div class="settings-danger-zone">
+        <div class="settings-card-title" style="font-size:0.95rem;color:var(--rust)">Danger zone</div>
+        <p style="font-size:0.84rem;color:var(--muted)">Delete your Firebase account and sign out. Firestore data may remain until removed in Console.</p>
+        <button type="button" class="btn-outline btn-sm" style="border-color:var(--rust);color:var(--rust);margin-top:10px" onclick="nestiqOpenDeleteAccountModal()">Delete account</button>
+      </div>
+      <button type="button" class="btn-primary btn-sm" style="margin-top:14px" onclick="nestiqSaveAccountProfileLandlord()">Save account profile</button>
+    </div>
+
+    <div class="settings-card" id="nestiqAccountCardTenant" style="display:none">
+      <h3 class="settings-card-title">Account</h3>
+      <p class="settings-card-sub">Your portal profile.</p>
+      <div class="form-group"><label>Display name</label><input class="form-input" id="acct_tn_name"></div>
+      <div class="form-group"><label>Phone</label><input class="form-input" id="acct_tn_phone"></div>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqOpenChangePasswordModal()">Change password</button>
+      <button type="button" class="btn-primary btn-sm" style="margin-top:14px;display:block" onclick="nestiqSaveAccountProfileTenant()">Save</button>
+    </div>
+
+    <!-- SECTION 1 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Landlord Profile</h3>
+      <p class="settings-card-sub">Your details appear on receipts, emails, and tenant communications.</p>
+      <div class="form-group"><label>Full Name</label><input class="form-input" id="landlord_name_input" autocomplete="name"></div>
+      <div class="form-group"><label>Company Name</label><input class="form-input" id="landlord_company_input" autocomplete="organization"></div>
+      <div class="form-group"><label>Email Address</label><input class="form-input" id="landlord_email_input" type="email" autocomplete="email"></div>
+      <div class="form-group"><label>Phone Number</label><input class="form-input" id="landlord_phone_input" autocomplete="tel"></div>
+      <div class="form-group"><label>Emergency Phone</label><input class="form-input" id="landlord_emergency_input" autocomplete="tel"></div>
+      <div class="form-group"><label>Physical Address</label><textarea class="form-input" id="landlord_address_input" rows="3"></textarea></div>
+      <div class="form-group"><label>VAT Number <span style="color:var(--muted);font-weight:400">(optional)</span></label><input class="form-input" id="landlord_vat_input"></div>
+      <div class="form-group"><label>Logo Upload</label><input class="form-input" type="file" id="landlord_logo_input" accept="image/*"></div>
+      <div id="landlord_logo_preview_wrap" style="display:none;margin-bottom:12px">
+        <div style="font-size:0.82rem;color:var(--muted);margin-bottom:6px">Current logo</div>
+        <img id="landlord_logo_preview" alt="Logo" style="width:100px;height:100px;object-fit:contain;border-radius:10px;border:1px solid var(--border);background:var(--paper)">
+      </div>
+      <button type="button" class="btn-primary btn-sm" onclick="saveLandlordProfileSettings()">Save Profile</button>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+        <div class="settings-card-title" style="font-size:0.95rem">My WhatsApp QR Code</div>
+        <div id="landlordWhatsAppQr" style="margin-top:8px"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-start;margin-top:10px;flex-wrap:wrap">
+          <button type="button" class="btn-outline btn-sm" onclick="downloadQRCode('landlordWaQrBox','landlord-whatsapp.png')">Download</button>
+          <button type="button" class="btn-outline btn-sm" onclick="printQRCode('landlordWaQrBox','Landlord WhatsApp QR')">Print</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 2 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Tenant Portal Settings</h3>
+      <p class="settings-card-sub">Shown on the tenant dashboard, rent reminder WhatsApp messages, payment receipts, and the pay-rent flow.</p>
+      <div class="form-group"><label>Portal Welcome Message</label><textarea class="form-input" id="portal_welcome" rows="2" placeholder="Welcome to your tenant portal"></textarea></div>
+      <div class="form-group"><label>Landlord Bank Name</label><input class="form-input" id="portal_bank_name"></div>
+      <div class="form-group"><label>Landlord Account Number</label><input class="form-input" id="portal_account_number"></div>
+      <div class="form-group"><label>Landlord Branch Code</label><input class="form-input" id="portal_branch_code"></div>
+      <div class="form-group"><label>Landlord Account Type</label>
+        <select class="form-input" id="portal_account_type"><option value="Cheque">Cheque</option><option value="Savings">Savings</option></select>
+      </div>
+      <div class="form-group"><label>Payment Reference Format</label><input class="form-input" id="portal_ref_format" placeholder="[TenantName]-[Month]-[Year]"></div>
+      <p style="font-size:0.8rem;color:var(--muted);margin:-8px 0 14px;line-height:1.5">Used as payment reference on rent reminders and suggested in the tenant pay flow.</p>
+      <button type="button" class="btn-primary btn-sm" onclick="savePortalSettings()">Save Portal Settings</button>
+    </div>
+
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Market context (valuation page)</h3>
+      <p class="settings-card-sub">Manual reference for comparing your portfolio growth to a city average. Not live market data.</p>
+      <div class="form-group"><label>City / region label</label><input class="form-input" id="nestiq_market_city" placeholder="e.g. Cape Town"></div>
+      <div class="form-group"><label>Average property price growth (% per year)</label><input class="form-input" type="number" step="0.1" id="nestiq_market_growth" placeholder="e.g. 4.5"></div>
+      <div class="form-group"><label>Source</label><input class="form-input" id="nestiq_market_source" placeholder="e.g. Lightstone Q1 2026"></div>
+      <div class="form-group"><label>As of date</label><input class="form-input" type="date" id="nestiq_market_date"></div>
+      <button type="button" class="btn-primary btn-sm" onclick="saveMarketContextSettings()">Save market context</button>
+    </div>
+
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Late Fee Policy</h3>
+      <p class="settings-card-sub">Applies to all tenants. Late fees are calculated in real time; rent is not changed automatically — you record full payment or waive the fee when appropriate.</p>
+      <div class="form-group">
+        <label>Late fee type</label>
+        <div style="display:flex;gap:18px;flex-wrap:wrap;margin-top:8px">
+          <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer"><input type="radio" name="lf_pol_type" value="fixed" onchange="lateFeeToggleSettingsFields()"> Fixed amount</label>
+          <label style="display:flex;align-items:center;gap:8px;font-weight:500;cursor:pointer"><input type="radio" name="lf_pol_type" value="percentage" onchange="lateFeeToggleSettingsFields()"> Percentage of rent</label>
+        </div>
+      </div>
+      <div id="lf_fixed_wrap" class="form-group">
+        <label>Amount (R)</label>
+        <input class="form-input" type="number" id="lf_fixed_amt" min="0" step="1" value="250">
+      </div>
+      <div id="lf_pct_wrap" class="form-group" style="display:none">
+        <label>Percentage (%)</label>
+        <input class="form-input" type="number" id="lf_pct" min="0" step="0.1" value="10">
+      </div>
+      <div class="form-group">
+        <label>Grace period (days after due date before late fee applies)</label>
+        <input class="form-input" type="number" id="lf_grace" min="0" step="1" value="3">
+      </div>
+      <label class="settings-toggle-row"><span>Maximum late fee cap</span><input type="checkbox" id="lf_max_en" checked onchange="lateFeeToggleSettingsFields()"></label>
+      <div class="form-group">
+        <label>Maximum late fee (R)</label>
+        <input class="form-input" type="number" id="lf_max_amt" min="0" step="1" value="1000">
+      </div>
+      <label class="settings-toggle-row"><span>Compound late fees (add fee again every period if still unpaid)</span><input type="checkbox" id="lf_compound" onchange="lateFeeToggleSettingsFields()"></label>
+      <div class="form-group">
+        <label>Compound every (days)</label>
+        <input class="form-input" type="number" id="lf_compound_days" min="1" step="1" value="7">
+      </div>
+      <button type="button" class="btn-primary btn-sm" onclick="saveLateFeePolicyFromForm()">Save Late Fee Policy</button>
+    </div>
+
+    <!-- SECTION 3 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Notification Preferences</h3>
+      <p class="settings-card-sub">Browser notifications and in-app alert preferences for your portfolio.</p>
+      <label class="settings-toggle-row"><span>Overdue rent alerts</span><input type="checkbox" id="notif_overdue"></label>
+      <label class="settings-toggle-row"><span>Lease expiry warnings</span><input type="checkbox" id="notif_lease"></label>
+      <label class="settings-toggle-row"><span>New maintenance request alerts</span><input type="checkbox" id="notif_maintenance"></label>
+      <label class="settings-toggle-row"><span>Payment received alerts</span><input type="checkbox" id="notif_payment"></label>
+      <label class="settings-toggle-row"><span>Daily portfolio summary</span><input type="checkbox" id="notif_daily"></label>
+      <label class="settings-toggle-row"><span>Low occupancy warnings</span><input type="checkbox" id="notif_low_occ"></label>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px">
+        <div class="form-group" style="margin:0"><label>Lease expiry warning: days before</label><input class="form-input" type="number" id="notif_lease_days" min="1" max="365" value="90"></div>
+        <div class="form-group" style="margin:0"><label>Overdue alert after: days</label><input class="form-input" type="number" id="notif_overdue_days" min="1" max="90" value="1"></div>
+        <div class="form-group" style="margin:0;grid-column:1/-1"><label>Low occupancy threshold: %</label><input class="form-input" type="number" id="notif_occ_threshold" min="0" max="100" value="80"></div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button type="button" class="btn-primary btn-sm" onclick="saveNotificationSettingsExtended()">Save Notification Settings</button>
+        <button type="button" class="btn-outline btn-sm" onclick="sendTestBrowserNotification()">Test Notification</button>
+        <button type="button" class="btn-outline btn-sm" onclick="disableAllNotificationSettings()">Disable All</button>
+      </div>
+    </div>
+
+    <!-- SECTION 4 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:12px">
+        <div>
+          <h3 class="settings-card-title" style="margin:0">Email Integration (EmailJS)</h3>
+          <p class="settings-card-sub" style="margin-bottom:0;margin-top:6px">Automated rent reminders, receipts, and notices.</p>
+        </div>
+        <div id="emailStatusBadge" class="badge badge-amber" style="font-size:0.78rem">Not configured</div>
+      </div>
+      <div style="font-size:0.82rem;color:var(--muted);line-height:1.75;margin-bottom:14px">
+        <strong>Step 1:</strong> Create a free account at <a href="https://www.emailjs.com" target="_blank" rel="noopener">emailjs.com</a><br>
+        <strong>Step 2:</strong> Add an Email Service (Gmail recommended)<br>
+        <strong>Step 3:</strong> Create email templates matching your use case<br>
+        <strong>Step 4:</strong> Enter your credentials below
+      </div>
+      <div class="form-group"><label>Public Key</label><input class="form-input" id="email_publicKey" placeholder="EmailJS Public Key"></div>
+      <div class="form-group"><label>Service ID</label><input class="form-input" id="email_serviceId" placeholder="service_xxxxx"></div>
+      <div class="form-group"><label>Rent Reminder Template ID</label><input class="form-input" id="email_tpl_rentReminder"></div>
+      <div class="form-group"><label>Payment Receipt Template ID</label><input class="form-input" id="email_tpl_paymentReceipt"></div>
+      <div class="form-group"><label>Overdue Notice Template ID</label><input class="form-input" id="email_tpl_overdueNotice"></div>
+      <div class="form-group"><label>Lease Expiry Template ID</label><input class="form-input" id="email_tpl_leaseExpiry"></div>
+      <div class="form-group">
+        <label for="email_tpl_welcomeTenant">Welcome Tenant Template ID</label>
+        <input class="form-input" id="email_tpl_welcomeTenant" placeholder="template_xxxxx" autocomplete="off">
+        <p style="font-size:0.78rem;color:var(--muted);margin:6px 0 0;line-height:1.45">Used to automatically send portal invitation codes to new tenants.</p>
+      </div>
+      <div class="form-group"><label>Test Email Address</label><input class="form-input" id="email_test_address" type="email" placeholder="Where to send the test"></div>
+      <input type="hidden" id="email_tpl_maintenanceUpdate">
+      <input type="hidden" id="email_tpl_customMessage">
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button type="button" class="btn-outline btn-sm" onclick="sendEmailSettingsTest()">Test Connection</button>
+        <button type="button" class="btn-primary btn-sm" onclick="saveEmailSettings()">Save EmailJS Settings</button>
+      </div>
+      <div style="margin-top:22px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+          <div class="settings-card-title" style="font-size:0.98rem;margin:0">Email Log</div>
+          <button type="button" class="btn-outline btn-sm" onclick="clearEmailLog()">Clear Email Log</button>
+        </div>
+        <div style="overflow:auto;max-height:280px">
+          <table class="settings-email-table" id="emailLogTable">
+            <thead><tr><th>Date</th><th>Recipient</th><th>Type</th><th>Status</th></tr></thead>
+            <tbody id="emailLogTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="margin-top:18px;padding-top:16px;border-top:1px solid var(--border)">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="settings-card-title" style="font-size:0.98rem;margin:0">WhatsApp Message Log (last 50)</div>
+          <button type="button" class="btn-outline btn-sm" onclick="clearWhatsAppLog()">Clear Log</button>
+        </div>
+        <div id="whatsAppLogList" style="max-height:220px;overflow:auto;font-size:0.82rem;color:var(--muted)"></div>
+      </div>
+    </div>
+
+    <!-- SECTION 5 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <h3 class="settings-card-title" style="margin:0">AI Integration (Google Gemini)</h3>
+        <div id="aiStatusBadge" class="badge badge-amber" style="font-size:0.78rem">Not configured</div>
+      </div>
+      <p class="settings-card-sub">Get your free API key at <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a>. Free tier: 15 requests per minute, 1 million tokens per day.</p>
+      <div class="form-group"><label>Gemini API Key</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="form-input" id="gemini_api_key" type="password" placeholder="AIza..." style="flex:1">
+          <button type="button" class="btn-outline btn-sm" id="gemini_key_toggle" onclick="toggleGeminiKeyVisibility()">Show</button>
+        </div>
+      </div>
+      <div id="aiTestResult" style="font-size:0.82rem;color:var(--muted);margin-top:8px;min-height:1.2em;white-space:pre-wrap"></div>
+      <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <button type="button" class="btn-outline btn-sm" onclick="testGeminiSettings()">Test AI Connection</button>
+      </div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="font-weight:600;font-size:0.88rem;margin-bottom:10px">AI feature toggles</div>
+        <label class="settings-toggle-row"><span>Rent price suggester</span><input type="checkbox" id="ai_feat_rent"></label>
+        <label class="settings-toggle-row"><span>Maintenance diagnosis</span><input type="checkbox" id="ai_feat_maint"></label>
+        <label class="settings-toggle-row"><span>Tenant screening</span><input type="checkbox" id="ai_feat_screen"></label>
+        <label class="settings-toggle-row"><span>Portfolio advisor</span><input type="checkbox" id="ai_feat_portfolio"></label>
+        <label class="settings-toggle-row"><span>Lease clause generator</span><input type="checkbox" id="ai_feat_lease"></label>
+      </div>
+      <button type="button" class="btn-primary btn-sm" style="margin-top:14px" onclick="saveAiSettingsFull()">Save AI Settings</button>
+    </div>
+
+    <!-- SECTION 6 -->
+    <div class="settings-card">
+      <h3 class="settings-card-title">Appearance</h3>
+      <p class="settings-card-sub">Theme, light/dark mode, and language (tenant preferences sync when logged in as tenant).</p>
+      <div style="font-weight:600;font-size:0.88rem;margin-bottom:10px">Theme</div>
+      <div class="theme-cards-grid" id="themeCardsGrid"></div>
+      <div style="margin-top:20px">
+        <div style="font-weight:600;font-size:0.88rem;margin-bottom:10px">Dark mode</div>
+        <div class="settings-dark-row">
+          <span id="settings_mode_light" style="font-size:0.88rem">Light Mode</span>
+          <button type="button" class="dark-toggle" id="settingsDarkToggle" onclick="settingsToggleDarkFromPage()" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
+          <span id="settings_mode_dark" style="font-size:0.88rem;color:var(--muted)">Dark Mode</span>
+        </div>
+      </div>
+      <div style="margin-top:20px">
+        <div style="font-weight:600;font-size:0.88rem;margin-bottom:10px">Language</div>
+        <label style="display:block;padding:6px 0"><input type="radio" name="app_lang" value="en" onchange="changeAppLanguage(this.value)"> English</label>
+        <label style="display:block;padding:6px 0"><input type="radio" name="app_lang" value="af" onchange="changeAppLanguage(this.value)"> Afrikaans</label>
+        <label style="display:block;padding:6px 0"><input type="radio" name="app_lang" value="zu" onchange="changeAppLanguage(this.value)"> isiZulu</label>
+        <label style="display:block;padding:6px 0"><input type="radio" name="app_lang" value="xh" onchange="changeAppLanguage(this.value)"> isiXhosa</label>
+        <label style="display:block;padding:6px 0"><input type="radio" name="app_lang" value="st" onchange="changeAppLanguage(this.value)"> Sesotho</label>
+      </div>
+    </div>
+
+    <!-- SECTION 7 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">Data Management</h3>
+      <p class="settings-card-sub">Storage, backups, exports, and destructive actions.</p>
+      <div style="font-size:0.88rem;margin-bottom:6px">localStorage usage: <strong id="settings_storage_label">—</strong> of 5 MB</div>
+      <div class="settings-progress"><span id="settings_storage_bar" style="width:0%"></span></div>
+      <div id="settings_storage_breakdown" style="font-size:0.8rem;color:var(--muted);margin-top:10px;line-height:1.6"></div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:18px">
+        <button type="button" class="btn-outline btn-sm" style="align-self:flex-start" onclick="settingsDownloadFullBackup()">Download Backup (JSON)</button>
+        <button type="button" class="btn-outline btn-sm" style="align-self:flex-start" onclick="settingsPickRestoreBackup()">Restore from Backup</button>
+        <input type="file" id="settings_restore_input" accept=".json,application/json" style="display:none">
+        <button type="button" class="btn-outline btn-sm" style="align-self:flex-start" onclick="exportNestiqAllDataZip()">Export All Data (CSV ZIP)</button>
+      </div>
+    </div>
+
+    <div class="settings-card" id="nestiqDeveloperSection" data-settings-landlord-only style="display:none">
+      <h3 class="settings-card-title">Developer</h3>
+      <p class="settings-card-sub">Local-only tools. Hidden in production.</p>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqMigrateToScopedCollections()">Run Migration</button>
+    </div>
+
+    <div class="settings-danger-zone" data-settings-landlord-only>
+      <h3 class="settings-card-title" style="color:var(--rust)">Danger zone</h3>
+      <p class="settings-card-sub">Permanently delete all locally stored NestIQ data in this browser.</p>
+      <button type="button" class="btn-outline btn-sm" style="border-color:var(--rust);color:var(--rust)" onclick="openSettingsResetModal()">Reset All Data</button>
+    </div>
+
+    <!-- SECTION 8 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <h3 class="settings-card-title">App Installation</h3>
+      <p class="settings-card-sub">Progressive Web App status and cache controls.</p>
+      <div style="font-size:0.88rem;margin-bottom:6px">Current status: <span id="pwaAppStatus">—</span></div>
+      <div style="font-size:0.88rem;margin-bottom:12px">Offline cache: <span id="pwaCacheStatus">—</span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+        <button type="button" class="btn-gold btn-sm" id="pwaInstallBtn" style="display:none" onclick="pwaInstallFromSettings()">Install NestIQ Pro</button>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn-outline btn-sm" onclick="updatePwaApp()">Update App</button>
+        <button type="button" class="btn-outline btn-sm" onclick="clearPwaCache()">Clear Cache</button>
+      </div>
+    </div>
+
+    <div class="card reveal" style="margin-top:24px" data-settings-landlord-only>
+      <h3 class="card-title">About NestIQ Pro</h3>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">Version</div>
+            <div style="font-size:0.82rem;color:var(--muted)">NestIQ Pro v1.3.0 — The SaaS Launch Update</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">📋 Changelog &amp; Roadmap</div>
+            <div style="font-size:0.82rem;color:var(--muted)">See what's new and what's coming next</div>
+          </div>
+          <a href="changelog.html" target="_blank" class="btn-outline btn-sm">View →</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">🎧 Help &amp; Support</div>
+            <div style="font-size:0.82rem;color:var(--muted)">Browse help articles or submit a support ticket</div>
+          </div>
+          <a href="support.html" target="_blank" class="btn-outline btn-sm">Open →</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">🌐 Landing Page</div>
+            <div style="font-size:0.82rem;color:var(--muted)">View the public NestIQ marketing page</div>
+          </div>
+          <a href="landing.html" target="_blank" class="btn-outline btn-sm">View →</a>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
+          <div>
+            <div style="font-weight:600;font-size:0.9rem">⌨️ Keyboard Shortcuts</div>
+            <div style="font-size:0.82rem;color:var(--muted)">Quick navigation throughout the app</div>
+          </div>
+          <button type="button" onclick="nestiqShowShortcutsModal()" class="btn-outline btn-sm">View →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION 9 -->
+    <div class="settings-card" data-settings-landlord-only>
+      <div style="text-align:center">
+        <div style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;margin-bottom:6px"><span class="logo-dot" style="vertical-align:middle"></span> NestIQ Pro</div>
+        <div style="font-size:0.88rem;color:var(--muted)">Version 1.3.0</div>
+        <p style="margin:12px 0;font-size:0.92rem">Smart Rental Property Management<br><span style="color:var(--muted);font-size:0.86rem">Built for South African landlords</span></p>
+      </div>
+      <div style="background:var(--cream);border-radius:12px;padding:14px;margin-top:14px;font-size:0.82rem;line-height:1.65">
+        <div style="font-weight:700;margin-bottom:8px">Keyboard shortcuts</div>
+        <div><kbd style="font-size:0.75rem;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--paper)">⌘/Ctrl K</kbd> Command palette</div>
+        <div><kbd style="font-size:0.75rem;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--paper)">?</kbd> Shortcuts</div>
+        <div><kbd style="font-size:0.75rem;padding:2px 6px;border:1px solid var(--border);border-radius:4px;background:var(--paper)">H P M A E</kbd> Quick navigation</div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:16px;flex-wrap:wrap;margin-top:16px;font-size:0.86rem">
+        <a href="changelog.html" target="_blank">Changelog</a>
+        <a href="support.html" target="_blank">Support</a>
+        <a href="landing.html" target="_blank">About</a>
+      </div>
+      <button type="button" class="btn-primary" style="width:100%;margin-top:22px;justify-content:center" onclick="handleLogout()">Sign Out</button>
+    </div>
+  </section>
+
+  <div id="settingsResetOverlay" aria-hidden="true">
+    <div class="settings-reset-box">
+      <h3 class="settings-card-title">Reset all data?</h3>
+      <p class="settings-card-sub">This clears all NestIQ data in this browser. Type <strong>RESET</strong> to confirm.</p>
+      <input class="form-input" id="settingsResetConfirmInput" placeholder="RESET" autocomplete="off">
+      <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
+        <button type="button" class="btn-primary" style="background:var(--rust);border-color:var(--rust)" onclick="confirmSettingsFullReset()">Erase everything</button>
+        <button type="button" class="btn-outline btn-sm" onclick="closeSettingsResetModal()">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>

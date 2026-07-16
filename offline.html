@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NestIQ Pro — Offline</title>
+  <link rel="stylesheet" href="./css/animations.css" />
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#f7f4ef;color:#0e1117;font-family:Arial,sans-serif;padding:20px}
+    .card{max-width:620px;background:#fff;border:1px solid #e5ddcb;border-radius:18px;padding:26px;box-shadow:0 12px 36px rgba(14,17,23,0.1);text-align:center}
+    .logo{font-size:2rem;font-weight:700;color:#c9a84c;margin-bottom:8px}
+    .icon{width:76px;height:76px;margin:10px auto 14px}
+    h1{margin:6px 0 8px;font-size:1.7rem}
+    p{color:#6f685c;line-height:1.7;margin:8px 0}
+    .note{background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.3);padding:10px;border-radius:10px}
+    .btn{margin-top:14px;background:#0e1117;color:#f7f4ef;border:none;border-radius:999px;padding:11px 18px;font-weight:700;cursor:pointer}
+    .btn:hover{background:#c9a84c;color:#0e1117}
+    .small{margin-top:12px;font-size:.82rem;color:#8a8478}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">NestIQ Pro</div>
+    <svg class="icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 24C8 13.5 16.5 5 27 5C35.4 5 42.6 10.4 45 18.1" stroke="#c9a84c" stroke-width="4" stroke-linecap="round"/>
+      <path d="M50 28C53.3 30.5 55.5 34.4 55.5 38.8C55.5 46.4 49.3 52.5 41.8 52.5H21.2C13.7 52.5 7.5 46.4 7.5 38.8C7.5 33.2 10.9 28.4 15.8 26.2" stroke="#0e1117" stroke-width="4" stroke-linecap="round"/>
+      <path d="M12 12L52 52" stroke="#c46a3a" stroke-width="4" stroke-linecap="round"/>
+    </svg>
+    <h1>You are offline</h1>
+    <p>Your data is saved locally and will be available when you reconnect.</p>
+    <p class="note">Your localStorage data is always accessible offline.</p>
+    <button class="btn" onclick="window.location.reload()">Retry</button>
+    <div class="small">NestIQ Pro works offline — your data is always safe</div>
+  </div>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

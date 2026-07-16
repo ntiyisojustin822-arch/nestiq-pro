@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Changelog &amp; Roadmap — NestIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: { gold: '#C46A3A', ink: '#0E1117', cream: '#F5F0E8', rust: '#A63D2F' },
+          fontFamily: { display: ['"Playfair Display"', 'serif'], sans: ['"DM Sans"', 'system-ui', 'sans-serif'] }
+        }
+      }
+    };
+  </script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <style>
+    :root {
+      --gold: #C46A3A;
+      --ink: #0E1117;
+      --cream: #F5F0E8;
+      --rust: #A63D2F;
+      --paper: #FFFFFF;
+      --muted: rgba(14,17,23,.55);
+      --border: rgba(14,17,23,.12);
+    }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; font-family: 'DM Sans', system-ui, sans-serif; color: var(--ink); background: var(--paper); }
+    .font-display { font-family: 'Playfair Display', serif; }
+
+    /* Navbar */
+    #siteNav { position: sticky; top: 0; z-index: 50; background: rgba(255,255,255,.94); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
+    .nav-link { position: relative; transition: color .2s; text-decoration: none; }
+    .nav-link:hover { color: var(--gold); }
+    .nav-link.active { color: var(--gold); font-weight: 700; }
+    .nav-link.active::after { content: ''; position: absolute; bottom: -4px; left: 0; right: 0; height: 2px; background: var(--gold); border-radius: 1px; }
+    .btn-gold { background: var(--gold); color: #fff; border-radius: 999px; padding: .65rem 1.1rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: .5rem; text-decoration: none; font-size: .9rem; }
+    .btn-outline { border: 1px solid rgba(14,17,23,.18); border-radius: 999px; padding: .62rem 1rem; font-weight: 700; color: var(--ink); background: transparent; text-decoration: none; font-size: .9rem; cursor: pointer; }
+    .btn-outline:hover { border-color: var(--gold); color: var(--gold); }
+
+    /* Layout */
+    .page-wrap { max-width: 1160px; margin: 0 auto; padding: 28px 16px 60px; }
+    .two-col { display: grid; grid-template-columns: 27% 1fr; gap: 20px; align-items: start; }
+    @media(max-width: 900px) { .two-col { grid-template-columns: 1fr; } .sidebar { display: none !important; } }
+
+    .sidebar {
+      position: sticky;
+      top: 80px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: #fff;
+      padding: 14px 12px;
+    }
+    .content-panel { border: 1px solid var(--border); border-radius: 16px; background: #fff; padding: 22px; }
+
+    /* Tabs */
+    .tab-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+    .tab-btn { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 10px 18px; font-weight: 700; font-size: .9rem; cursor: pointer; transition: all .18s; }
+    .tab-btn.active { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(196,106,58,.12); color: var(--gold); }
+
+    /* Subscribe button */
+    .icon-btn { width: 40px; height: 40px; border-radius: 999px; border: 1px solid var(--border); background: #fff; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; position: relative; transition: border-color .2s; }
+    .icon-btn:hover { border-color: var(--gold); }
+    .icon-btn .tooltip { position: absolute; top: 44px; right: 0; background: var(--ink); color: #fff; font-size: .76rem; padding: 7px 10px; border-radius: 10px; white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity .18s; }
+    .icon-btn:hover .tooltip { opacity: .96; }
+
+    /* Sidebar version nav */
+    .ver-link { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); text-decoration: none; border: 1px solid transparent; transition: background .15s, border-color .15s; margin-bottom: 4px; }
+    .ver-link:hover { background: rgba(196,106,58,.06); }
+    .ver-link.active { border-color: rgba(196,106,58,.35); background: rgba(196,106,58,.08); }
+    .ver-sub { color: var(--muted); font-size: .82rem; }
+
+    /* Timeline */
+    .timeline { position: relative; padding-left: 22px; }
+    .timeline::before { content: ''; position: absolute; left: 7px; top: 10px; bottom: 10px; width: 2px; background: rgba(14,17,23,.10); border-radius: 1px; }
+    .release { padding: 20px 18px 22px 0; margin-bottom: 16px; border-bottom: 1px solid rgba(14,17,23,.06); position: relative; }
+    .release:last-child { border-bottom: none; }
+    .tl-dot { position: absolute; left: -21px; top: 26px; width: 14px; height: 14px; border-radius: 999px; background: var(--gold); box-shadow: 0 0 0 4px rgba(196,106,58,.14); }
+    .rel-ver { font-size: 1.5rem; font-weight: 900; color: var(--gold); }
+    .rel-meta { color: var(--muted); font-size: .9rem; margin-top: 3px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .76rem; font-weight: 800; border: 1px solid var(--border); }
+    .badge.major { background: rgba(25,135,84,.12); border-color: rgba(25,135,84,.18); color: #155724; }
+    .badge.minor { background: rgba(13,110,253,.10); border-color: rgba(13,110,253,.18); color: #084298; }
+    .badge.patch { background: rgba(255,193,7,.14); border-color: rgba(255,193,7,.22); color: #664d03; }
+
+    .chg-group { margin-top: 16px; }
+    .chg-kind { font-weight: 900; font-size: .9rem; margin: 14px 0 8px; display: flex; align-items: center; gap: 8px; }
+    .pill { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+    .pill.new     { background: rgba(25,135,84,.12); color: #155724; }
+    .pill.improved{ background: rgba(13,110,253,.10); color: #084298; }
+    .pill.fixed   { background: rgba(220,53,69,.10); color: #721c24; }
+    .pill.breaking{ background: rgba(255,193,7,.14); color: #664d03; }
+    .chg-item { display: flex; gap: 10px; align-items: flex-start; margin: 9px 0; }
+    .chg-desc { color: rgba(14,17,23,.84); line-height: 1.55; font-size: .92rem; }
+
+    /* Roadmap */
+    .rm-intro { color: var(--muted); margin: 0 0 18px; }
+    .rm-cols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    @media(max-width: 900px) { .rm-cols { grid-template-columns: 1fr; } }
+    .rm-col { border: 1px solid rgba(14,17,23,.08); border-radius: 16px; padding: 14px; background: linear-gradient(180deg, #fff, rgba(245,240,232,.22)); }
+    .rm-col-title { font-weight: 900; font-size: 1rem; margin: 2px 0 14px; }
+    .rm-card { border: 1px solid var(--border); border-radius: 14px; padding: 14px; background: #fff; margin-bottom: 10px; }
+    .rm-card:last-child { margin-bottom: 0; }
+    .rm-title { font-weight: 900; font-size: .95rem; }
+    .rm-desc { color: var(--muted); font-size: .86rem; margin-top: 6px; line-height: 1.5; }
+    .vote-row { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; }
+    .vote-btn { border: 1px solid rgba(14,17,23,.14); border-radius: 999px; padding: 7px 12px; font-weight: 900; cursor: pointer; background: #fff; display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; transition: border-color .18s, color .18s; }
+    .vote-btn:hover:not(:disabled) { border-color: var(--gold); color: var(--gold); }
+    .vote-btn:disabled { opacity: .5; cursor: not-allowed; }
+    .status-pill { font-size: .72rem; font-weight: 900; padding: 4px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--cream); }
+
+    /* Modal */
+    .modal-bg { position: fixed; inset: 0; background: rgba(14,17,23,.5); display: none; align-items: center; justify-content: center; padding: 16px; z-index: 200; }
+    .modal-bg.open { display: flex; }
+    .modal-box { background: #fff; width: 100%; max-width: 480px; border-radius: 18px; padding: 22px; border: 1px solid var(--border); box-shadow: 0 24px 70px rgba(0,0,0,.22); }
+    .modal-box h3 { margin: 0 0 6px; font-size: 1.2rem; font-weight: 900; }
+    .modal-box p { color: var(--muted); margin: 0 0 14px; line-height: 1.55; font-size: .92rem; }
+    .field { width: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid var(--border); font-size: .95rem; font-family: inherit; }
+    .field:focus { outline: 2px solid var(--gold); border-color: var(--gold); }
+    .sub-ok { background: #d4edda; color: #155724; padding: 11px 14px; border-radius: 12px; margin-top: 12px; display: none; font-size: .9rem; }
+
+    /* Footer */
+    footer { background: var(--ink); color: #fff; margin-top: 40px; padding: 52px 16px 28px; }
+    .foot-inner { max-width: 1160px; margin: 0 auto; }
+    .foot-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 22px; }
+    @media(max-width: 900px) { .foot-grid { grid-template-columns: 1fr 1fr; } }
+    @media(max-width: 520px) { .foot-grid { grid-template-columns: 1fr; } }
+    .foot-head { font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.42); margin-bottom: 12px; }
+    footer a { color: rgba(255,255,255,.75); text-decoration: none; display: block; margin-bottom: 7px; font-size: .9rem; }
+    footer a:hover { color: var(--gold); }
+    .foot-divider { margin-top: 28px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.10); text-align: center; color: rgba(255,255,255,.5); font-size: .88rem; }
+  </style>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+</head>
+<body>
+  <!-- Nav -->
+  <header id="siteNav">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
+      <a href="landing.html" class="flex items-center gap-2 no-underline">
+        <span class="w-9 h-9 rounded-full bg-cream flex items-center justify-center text-base" aria-hidden="true">🏠</span>
+        <span class="font-display text-xl font-bold" style="color:var(--gold)">NestIQ</span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="landing.html#features" class="nav-link text-sm font-semibold text-ink/80">Features</a>
+        <a href="landing.html#pricing"  class="nav-link text-sm font-semibold text-ink/80">Pricing</a>
+        <a href="landing.html#faq"      class="nav-link text-sm font-semibold text-ink/80">FAQ</a>
+        <a href="changelog.html"        class="nav-link active text-sm font-semibold">Changelog</a>
+      </nav>
+      <div class="flex items-center gap-2">
+        <a href="index.html#auth-signin" class="btn-outline">Sign In</a>
+        <a href="index.html#auth-signup" class="btn-gold">Start Free Trial</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero row -->
+  <div class="page-wrap">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:20px">
+      <div>
+        <h1 class="font-display" style="font-size:2.2rem;font-weight:900;margin:0">What's New in NestIQ</h1>
+        <p style="margin:10px 0 0;color:var(--muted);max-width:60ch;line-height:1.6">We ship improvements every week. Here's everything we've built, fixed, and launched.</p>
+        <div class="tab-row" role="tablist">
+          <button type="button" id="tabChangelog" class="tab-btn active" aria-selected="true">Changelog</button>
+          <button type="button" id="tabRoadmap"   class="tab-btn" aria-selected="false">Roadmap</button>
+        </div>
+      </div>
+      <button type="button" class="icon-btn" id="btnSubscribe" aria-label="Subscribe to updates">
+        🔔<span class="tooltip">Subscribe to updates</span>
+      </button>
+    </div>
+
+    <div class="two-col">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div style="font-weight:900;font-size:.9rem;margin-bottom:10px;color:var(--muted)">VERSIONS</div>
+        <div id="versionNav"></div>
+      </aside>
+
+      <!-- Main content -->
+      <section class="content-panel">
+        <!-- Changelog panel -->
+        <div id="panelChangelog">
+          <div class="timeline" id="timeline">
+            <p style="color:var(--muted);padding:16px 0">Loading releases…</p>
+          </div>
+        </div>
+
+        <!-- Roadmap panel -->
+        <div id="panelRoadmap" style="display:none">
+          <p class="rm-intro">Vote for the features you want most. We prioritise based on community demand.</p>
+          <div class="rm-cols" id="roadmapCols"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div class="foot-inner">
+      <div class="foot-grid">
+        <div>
+          <p class="font-display" style="font-size:1.55rem;font-weight:900;color:var(--gold);margin:0 0 8px">🏠 NestIQ</p>
+          <p style="color:rgba(255,255,255,.62);font-size:.9rem;margin:0 0 14px">Property management, simplified.</p>
+          <div style="display:flex;gap:10px">
+            <a href="#" title="Facebook" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">f</a>
+            <a href="#" title="Instagram" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">ig</a>
+            <a href="#" title="LinkedIn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">in</a>
+          </div>
+        </div>
+        <div>
+          <div class="foot-head">Product</div>
+          <a href="landing.html#features">Features</a>
+          <a href="landing.html#pricing">Pricing</a>
+          <a href="changelog.html">Changelog</a>
+          <a href="changelog.html#roadmap">Roadmap</a>
+        </div>
+        <div>
+          <div class="foot-head">Company</div>
+          <a href="#">About</a>
+          <a href="#">Blog</a>
+          <a href="#">Careers</a>
+          <a href="#">Press</a>
+        </div>
+        <div>
+          <div class="foot-head">Support</div>
+          <a href="support.html">Help Centre</a>
+          <a href="mailto:hello@nestiq.co.za">Contact Us</a>
+          <a href="#">Privacy Policy</a>
+          <a href="#">Terms of Service</a>
+        </div>
+      </div>
+      <div class="foot-divider">© 2026 NestIQ. Built with ❤️ for South African landlords.</div>
+    </div>
+  </footer>
+
+  <!-- Subscribe modal -->
+  <div class="modal-bg" id="subModal" role="dialog" aria-modal="true" aria-labelledby="subTitle">
+    <div class="modal-box">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <h3 id="subTitle">Stay up to date with NestIQ</h3>
+        <button type="button" class="btn-outline" id="subClose" style="padding:6px 10px">✕</button>
+      </div>
+      <p>Get notified when we ship new features. No spam, ever.</p>
+      <input class="field" id="subEmail" type="email" placeholder="you@example.com" autocomplete="email" />
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button type="button" class="btn-gold" id="subSubmit">Subscribe</button>
+      </div>
+      <div class="sub-ok" id="subOk">✅ You're subscribed! We'll notify you when we ship something new.</div>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+
+    /* ── Firebase config ── */
+    const FIREBASE_CONFIG = {
+      apiKey: 'AIzaSyDoUFyF7N4Dambzrzp2STB6GZYxX5fgI7E',
+      authDomain: 'nestiq-pro.firebaseapp.com',
+      projectId: 'nestiq-pro',
+      storageBucket: 'nestiq-pro.firebasestorage.app',
+      messagingSenderId: '375703486251',
+      appId: '1:375703486251:web:75c6bb4a11b82bb2f70f6e'
+    };
+
+    /* ── Hardcoded releases (fallback when Firestore is empty) ── */
+    const HARD_RELEASES = [
+      {
+        version: 'v1.3.0',
+        date: '2026-05-15',
+        name: 'The SaaS Launch Update',
+        type: 'Major',
+        changes: [
+          { kind: 'New',      text: 'Multi-landlord platform with full data isolation per landlord' },
+          { kind: 'New',      text: 'Admin dashboard for platform management' },
+          { kind: 'New',      text: 'PayFast billing integration with Pro and Enterprise plans' },
+          { kind: 'New',      text: 'Landlord onboarding wizard' },
+          { kind: 'New',      text: 'In-app support ticket system with admin reply' },
+          { kind: 'New',      text: 'Automated email sequences (trial expiry, payment confirmation, rent overdue)' },
+          { kind: 'Improved', text: 'Application form reduced from 7 steps to 3 steps' },
+          { kind: 'Improved', text: 'Tenant portal now syncs in real time via Firestore' },
+          { kind: 'Fixed',    text: 'Applications submitted from other devices now appear in landlord dashboard' },
+          { kind: 'Fixed',    text: 'Invitation codes now work across all devices' }
+        ]
+      },
+      {
+        version: 'v1.2.0',
+        date: '2026-04-10',
+        name: 'The AI Update',
+        type: 'Major',
+        changes: [
+          { kind: 'New',      text: 'AI rent price suggestions powered by Gemini' },
+          { kind: 'New',      text: 'AI tenant screening with risk score' },
+          { kind: 'New',      text: 'AI lease clause generator' },
+          { kind: 'New',      text: 'AI maintenance request diagnosis' },
+          { kind: 'New',      text: 'AI portfolio advisor' },
+          { kind: 'Improved', text: 'Property cards now show AI-suggested rent vs current rent' },
+          { kind: 'Fixed',    text: 'Gemini API error handling improved' }
+        ]
+      },
+      {
+        version: 'v1.1.0',
+        date: '2026-03-12',
+        name: 'The Tenant Portal Update',
+        type: 'Minor',
+        changes: [
+          { kind: 'New',      text: 'Tenant self-service portal with invitation code system' },
+          { kind: 'New',      text: 'Tenants can submit maintenance requests from their portal' },
+          { kind: 'New',      text: 'Tenant portal available in 5 South African languages' },
+          { kind: 'New',      text: 'Rent payment history downloadable as PDF' },
+          { kind: 'Improved', text: 'WhatsApp rent reminders now use pre-built message templates' },
+          { kind: 'Fixed',    text: 'Lease progress bar calculation corrected for short-term leases' }
+        ]
+      },
+      {
+        version: 'v1.0.0',
+        date: '2026-02-05',
+        name: 'Initial Launch',
+        type: 'Major',
+        changes: [
+          { kind: 'New', text: 'Property management with photo upload' },
+          { kind: 'New', text: 'Tenant profiles and lease tracking' },
+          { kind: 'New', text: 'Rent tracking and overdue detection' },
+          { kind: 'New', text: 'Public rental application form with shareable link and QR code' },
+          { kind: 'New', text: 'Browse available listings page' },
+          { kind: 'New', text: 'Financial reports and expense tracking' },
+          { kind: 'New', text: 'EmailJS notification integration' }
+        ]
+      }
+    ];
+
+    /* ── Roadmap data ── */
+    const ROADMAP_COLS = [
+      {
+        key: 'comingSoon',
+        title: '🔜 Coming Soon',
+        subtitle: 'next 30 days',
+        status: 'In Development',
+        items: [
+          { id: 'native-app',   icon: '📱', title: 'Native mobile app (iOS & Android)',       desc: 'A faster on-the-go experience for landlords and tenants.' },
+          { id: 'messaging',    icon: '💬', title: 'In-app landlord-tenant messaging',         desc: 'Keep conversations and maintenance updates in one place.' },
+          { id: 'bank-import',  icon: '🏦', title: 'Bank statement import',                    desc: 'Automatic payment matching from your statement exports.' }
+        ]
+      },
+      {
+        key: 'planned',
+        title: '📅 Planned',
+        subtitle: 'next 90 days',
+        status: 'Planned',
+        items: [
+          { id: 'property24',    icon: '🔗', title: 'Property24 listing integration',          desc: 'Publish vacancies to Property24 with one click.' },
+          { id: 'lease-sign',    icon: '📄', title: 'Digital lease signing',                   desc: 'Send leases for secure e-signatures and tracking.' },
+          { id: 'adv-analytics', icon: '📊', title: 'Advanced analytics dashboard',            desc: 'Deeper portfolio insights, trends, and forecasts.' },
+          { id: 'auto-invoices', icon: '🧾', title: 'Automated invoice generation',            desc: 'Generate monthly invoices and receipts automatically.' },
+          { id: 'multi-currency',icon: '🌍', title: 'Multi-currency support',                  desc: 'Support landlords managing cross-border portfolios.' }
+        ]
+      },
+      {
+        key: 'considering',
+        title: '💡 Under Consideration',
+        subtitle: 'community requested',
+        status: 'Considering',
+        items: [
+          { id: 'bulk-actions',      icon: '🏢', title: 'Multi-property bulk actions',         desc: 'Update, export, and notify across many properties at once.' },
+          { id: 'inspection-photos', icon: '📸', title: 'Inspection photo reports',            desc: 'Generate inspection PDFs with annotated photos.' },
+          { id: 'team-accounts',     icon: '🤝', title: 'Agent / team member accounts',        desc: 'Invite assistants with role-based access controls.' },
+          { id: 'pwa-push',          icon: '🔔', title: 'Push notifications (PWA)',            desc: 'Get alerts even when your browser is closed.' },
+          { id: 'payprop',           icon: '🇿🇦', title: 'PayProp integration',               desc: 'Sync rent and statements from PayProp.' }
+        ]
+      }
+    ];
+
+    /* ── Helpers ── */
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    function prettyDate(iso){
+      if(!iso) return '';
+      const d = new Date(iso);
+      if(Number.isNaN(d.getTime())) return String(iso);
+      return d.toLocaleDateString('en-ZA', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function monthLabel(iso){
+      if(!iso) return '';
+      const d = new Date(iso);
+      if(Number.isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-ZA', { month: 'long', year: 'numeric' });
+    }
+
+    function typeBadge(type){
+      const t = String(type||'patch').toLowerCase();
+      const map = { major: ['🟢','major'], minor: ['🔵','minor'], patch: ['🟡','patch'] };
+      const [icon, cls] = map[t] || ['🟡','patch'];
+      return `<span class="badge ${cls}">${icon} ${t.charAt(0).toUpperCase()+t.slice(1)}</span>`;
+    }
+
+    function pillCls(kind){
+      const k = String(kind||'').toLowerCase();
+      if(k==='new')      return 'new';
+      if(k==='improved') return 'improved';
+      if(k==='fixed')    return 'fixed';
+      return 'breaking';
+    }
+
+    function kindLabel(kind){
+      const k = String(kind||'').toLowerCase();
+      if(k==='new')      return '🟢 New';
+      if(k==='improved') return '🔵 Improved';
+      if(k==='fixed')    return '🔴 Fixed';
+      return '⚠️ Breaking';
+    }
+
+    /* ── Render changelog ── */
+    function renderReleases(releases){
+      const tl  = document.getElementById('timeline');
+      const nav = document.getElementById('versionNav');
+      tl.innerHTML = '';
+      nav.innerHTML = '';
+
+      releases.forEach(r => {
+        /* group changes by kind */
+        const groups = { New:[], Improved:[], Fixed:[], Breaking:[] };
+        (r.changes||[]).forEach(c => {
+          const k = c.kind || c.type || 'Improved';
+          (groups[k] = groups[k]||[]).push(c);
+        });
+
+        const groupHtml = Object.entries(groups).filter(([,v]) => v.length).map(([kind, list]) => `
+          <div class="chg-kind">${kindLabel(kind)}</div>
+          ${list.map(c => `
+            <div class="chg-item">
+              <span class="pill ${pillCls(kind)}">${kind}</span>
+              <span class="chg-desc">${esc(c.text||c.description||'')}</span>
+            </div>`).join('')}
+        `).join('');
+
+        const sec = document.createElement('section');
+        sec.className = 'release';
+        sec.id = r.version;
+        sec.setAttribute('data-version', r.version);
+        sec.innerHTML = `
+          <div class="tl-dot" aria-hidden="true"></div>
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+            <div>
+              <div class="rel-ver">${esc(r.version)}</div>
+              <div class="rel-meta">${prettyDate(r.date)} · <strong style="color:var(--ink)">${esc(r.name)}</strong></div>
+            </div>
+            ${typeBadge(r.type)}
+          </div>
+          <div class="chg-group">${groupHtml}</div>`;
+        tl.appendChild(sec);
+
+        /* sidebar link */
+        const a = document.createElement('a');
+        a.href = '#' + r.version;
+        a.className = 'ver-link';
+        a.setAttribute('data-target', r.version);
+        a.innerHTML = `<div><div style="font-weight:900;font-size:.92rem">${esc(r.version)}</div><div class="ver-sub">${esc(monthLabel(r.date))}</div></div><span style="color:var(--muted)">→</span>`;
+        nav.appendChild(a);
+      });
+
+      wireIntersection();
+    }
+
+    function wireIntersection(){
+      const links    = [...document.querySelectorAll('.ver-link')];
+      const sections = [...document.querySelectorAll('[data-version]')];
+      if(!sections.length) return;
+
+      function setActive(ver){
+        links.forEach(l => l.classList.toggle('active', l.getAttribute('data-target')===ver));
+      }
+
+      /* set first active immediately */
+      setActive(sections[0].getAttribute('data-version'));
+
+      const io = new IntersectionObserver((entries)=>{
+        const visible = entries.filter(e=>e.isIntersecting);
+        if(!visible.length) return;
+        visible.sort((a,b) => b.intersectionRatio - a.intersectionRatio);
+        setActive(visible[0].target.getAttribute('data-version'));
+      }, { root: null, threshold: [0.1, 0.3, 0.5] });
+
+      sections.forEach(s => io.observe(s));
+    }
+
+    async function loadReleases(){
+      try{
+        const snap = await db.collection('changelog').get();
+        if(!snap.empty){
+          const docs = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+          const normalised = docs.map(d => ({
+            version:   d.version || d.id,
+            date:      d.date || d.releaseDate || d.release_date || '',
+            name:      d.name || d.releaseName || d.release_name || 'Release',
+            type:      d.type || d.releaseType || 'Patch',
+            changes:   Array.isArray(d.changes) ? d.changes : []
+          })).filter(r => r.version);
+          normalised.sort((a,b)=> new Date(b.date).getTime() - new Date(a.date).getTime());
+          if(normalised.length){ renderReleases(normalised); return; }
+        }
+      }catch(_e){}
+      renderReleases(HARD_RELEASES);
+    }
+
+    /* ── Render roadmap ── */
+    function renderRoadmap(){
+      const cols = document.getElementById('roadmapCols');
+      if(cols.children.length) return; /* already rendered */
+      cols.innerHTML = '';
+
+      ROADMAP_COLS.forEach(col => {
+        const div = document.createElement('div');
+        div.className = 'rm-col';
+        div.innerHTML = `<div class="rm-col-title">${col.title}<br><span style="font-size:.8rem;font-weight:500;color:var(--muted)">${col.subtitle}</span></div>`;
+
+        col.items.forEach(it => {
+          const card = document.createElement('div');
+          card.className = 'rm-card';
+          const voted = localStorage.getItem('nestiq-voted-'+it.id) === '1';
+          card.innerHTML = `
+            <div class="rm-title">${it.icon} ${esc(it.title)}</div>
+            <div class="rm-desc">${esc(it.desc)}</div>
+            <div class="vote-row">
+              <button type="button" class="vote-btn" data-id="${it.id}" ${voted?'disabled':''}>
+                👍 Upvote <span id="vc-${it.id}">0</span>
+              </button>
+              <span class="status-pill">${esc(col.status)}</span>
+            </div>`;
+          div.appendChild(card);
+        });
+        cols.appendChild(div);
+      });
+
+      /* vote click */
+      cols.querySelectorAll('.vote-btn').forEach(btn => {
+        btn.addEventListener('click', async ()=>{
+          const id = btn.getAttribute('data-id');
+          if(localStorage.getItem('nestiq-voted-'+id)==='1') return;
+          btn.disabled = true;
+          try{
+            const ref = db.collection('roadmapVotes').doc(id);
+            await db.runTransaction(async tx => {
+              const snap = await tx.get(ref);
+              const cur = snap.exists ? (Number(snap.data().count)||0) : 0;
+              tx.set(ref, { featureId:id, count:cur+1, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+            });
+            localStorage.setItem('nestiq-voted-'+id,'1');
+          }catch(_e){ btn.disabled = false; }
+        });
+      });
+
+      /* real-time vote counts */
+      db.collection('roadmapVotes').onSnapshot(snap=>{
+        snap.docs.forEach(d=>{
+          const el = document.getElementById('vc-'+d.id);
+          if(el) el.textContent = String(d.data().count||0);
+        });
+      }, ()=>{});
+    }
+
+    /* ── Subscribe ── */
+    async function doSubscribe(){
+      const email = String(document.getElementById('subEmail').value||'').trim().toLowerCase();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return;
+      try{
+        await db.collection('changelogSubscribers').doc(email).set({
+          email,
+          subscribedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          source: 'changelog'
+        }, { merge:true });
+      }catch(_e){}
+      document.getElementById('subOk').style.display = 'block';
+    }
+
+    /* ── Tabs ── */
+    function showTab(tab){
+      const isRoadmap = tab === 'roadmap';
+      document.getElementById('panelRoadmap').style.display   = isRoadmap ? '' : 'none';
+      document.getElementById('panelChangelog').style.display = isRoadmap ? 'none' : '';
+      document.getElementById('tabRoadmap').classList.toggle('active', isRoadmap);
+      document.getElementById('tabChangelog').classList.toggle('active', !isRoadmap);
+      if(isRoadmap) renderRoadmap();
+    }
+
+    function applyHash(){
+      if(String(location.hash).toLowerCase().includes('roadmap')) showTab('roadmap');
+      else showTab('changelog');
+    }
+
+    /* ── Init ── */
+    if(!firebase.apps.length) firebase.initializeApp(FIREBASE_CONFIG);
+    const db = firebase.firestore();
+
+    applyHash();
+    loadReleases();
+
+    document.getElementById('tabChangelog').addEventListener('click', ()=>{ history.replaceState({},'','changelog.html'); showTab('changelog'); });
+    document.getElementById('tabRoadmap').addEventListener('click',   ()=>{ history.replaceState({},'','changelog.html#roadmap'); showTab('roadmap'); });
+    window.addEventListener('hashchange', applyHash);
+
+    document.getElementById('btnSubscribe').addEventListener('click', ()=>{
+      document.getElementById('subOk').style.display = 'none';
+      document.getElementById('subModal').classList.add('open');
+      document.getElementById('subEmail').focus();
+    });
+    document.getElementById('subClose').addEventListener('click', ()=> document.getElementById('subModal').classList.remove('open'));
+    document.getElementById('subModal').addEventListener('click', e=>{ if(e.target.id==='subModal') document.getElementById('subModal').classList.remove('open'); });
+    document.getElementById('subSubmit').addEventListener('click', ()=> doSubscribe().catch(()=>{}) );
+  })();
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

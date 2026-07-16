@@ -1,0 +1,64 @@
+<div class="page tenant-portal-page" id="page-tenant-dashboard" style="padding-top:0">
+  <div class="tenant-portal-wrap">
+    <!-- Sidebar first so desktop flex puts it on the left -->
+    <nav class="tenant-tab-bar" id="tenantTabBar" aria-label="Tenant portal">
+      <button class="tab-btn active" data-tab="home"        onclick="nestiqSwitchTenantTab('home')">
+        <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
+      </button>
+      <button class="tab-btn" data-tab="payments"    onclick="nestiqSwitchTenantTab('payments')">
+        <span class="tab-icon">💳</span><span class="tab-label">Payments</span>
+        <span class="tab-badge" id="tabBadge-payments" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="maintenance" onclick="nestiqSwitchTenantTab('maintenance')">
+        <span class="tab-icon">🔧</span><span class="tab-label">Maintenance</span>
+        <span class="tab-badge" id="tabBadge-maintenance" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="documents"   onclick="nestiqSwitchTenantTab('documents')">
+        <span class="tab-icon">📄</span><span class="tab-label">Documents</span>
+        <span class="tab-badge" id="tabBadge-documents" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="messages"    onclick="nestiqSwitchTenantTab('messages')">
+        <span class="tab-icon">💬</span><span class="tab-label">Messages</span>
+        <span class="tab-badge" id="tabBadge-messages" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="profile"     onclick="nestiqSwitchTenantTab('profile')">
+        <span class="tab-icon">👤</span><span class="tab-label">Profile</span>
+      </button>
+      <button type="button" class="tab-btn tenant-tab-logout" onclick="nestiqTenantLogout()">
+        <span class="tab-icon">↪</span><span class="tab-label">Sign Out</span>
+      </button>
+    </nav>
+
+    <div class="tenant-portal-main">
+      <div class="tenant-portal-topbar">
+        <div class="tenant-portal-greeting" id="tenantGreeting">Good morning</div>
+        <button class="tenant-portal-logout" onclick="nestiqTenantLogout()">Sign Out</button>
+      </div>
+
+      <div id="tenantWelcomeBanner" class="tenant-portal-banner"></div>
+
+      <div class="tenant-tab-content-wrap" id="tenantTabContent">
+        <div id="tTab-home"        class="tenant-tab-page active">
+          <div style="display:none">
+            <div id="tenantDashTitle"></div>
+            <div id="tenantDashSub"></div>
+            <div id="tenantNavAvatar"></div>
+            <div id="tenantNavName"></div>
+            <div id="portalTenantName"></div>
+            <div id="portalPropertyInfo"></div>
+            <div id="portalAvatar"></div>
+            <div id="portalSidebarName"></div>
+            <div id="portalSidebarUnit"></div>
+            <div id="portalSidebarRent"></div>
+            <div id="portalSidebarStatus"></div>
+          </div>
+        </div>
+        <div id="tTab-payments"    class="tenant-tab-page"></div>
+        <div id="tTab-maintenance" class="tenant-tab-page"></div>
+        <div id="tTab-documents"   class="tenant-tab-page"></div>
+        <div id="tTab-messages"    class="tenant-tab-page"></div>
+        <div id="tTab-profile"     class="tenant-tab-page"></div>
+      </div>
+    </div>
+  </div>
+</div>

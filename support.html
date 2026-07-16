@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Help &amp; Support — NestIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { theme: { extend: { colors: { gold: '#C46A3A', ink: '#0E1117', cream: '#F5F0E8', rust: '#A63D2F' }, fontFamily: { display: ['"Playfair Display"', 'serif'], sans: ['"DM Sans"', 'system-ui', 'sans-serif'] } } } };
+  </script>
+  <style>
+    :root { --gold:#C46A3A; --ink:#0E1117; --cream:#F5F0E8; --muted:rgba(14,17,23,.55); --border:rgba(14,17,23,.1); }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; color:var(--ink); background:var(--cream); min-height:100vh; }
+    .font-display { font-family:'Playfair Display',serif; }
+    .sup-wrap { max-width:960px; margin:0 auto; padding:24px 16px 48px; }
+    .sup-tabs { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; border-bottom:1px solid var(--border); padding-bottom:4px; }
+    .sup-tab { padding:10px 18px; border:none; background:transparent; font-weight:600; font-size:.9rem; cursor:pointer; color:var(--muted); border-radius:8px 8px 0 0; }
+    .sup-tab.active { color:var(--gold); background:#fff; box-shadow:0 -2px 0 var(--gold) inset; }
+    .sup-panel { display:none; background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; animation:supIn .3s ease; }
+    .sup-panel.active { display:block; }
+    @keyframes supIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+    .sup-label { display:block; font-size:.78rem; font-weight:600; margin-bottom:6px; }
+    .sup-input,.sup-select,.sup-textarea { width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; font-family:inherit; font-size:.92rem; margin-bottom:14px; }
+    .sup-input:focus,.sup-select:focus,.sup-textarea:focus { outline:2px solid var(--gold); outline-offset:0; }
+    .sup-btn-gold { background:var(--gold); color:#fff; border:none; padding:12px 24px; border-radius:10px; font-weight:600; cursor:pointer; }
+    .sup-btn-outline { background:transparent; border:1px solid var(--border); padding:10px 18px; border-radius:10px; cursor:pointer; font-weight:600; }
+    .sup-radio { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+    .sup-badge { display:inline-block; padding:3px 8px; border-radius:6px; font-size:.7rem; font-weight:600; margin-right:4px; }
+    .sup-badge-red { background:#f8d7da; color:#721c24; }
+    .sup-badge-amber { background:#fff3cd; color:#856404; }
+    .sup-badge-green { background:#d4edda; color:#155724; }
+    .sup-badge-blue { background:#cce5ff; color:#004085; }
+    .sup-badge-gray { background:#e9ecef; color:#495057; }
+    .sup-badge-outline { background:var(--cream); color:var(--ink); border:1px solid var(--border); }
+    .sup-ticket-card { border:1px solid var(--border); border-radius:12px; padding:16px; margin-bottom:12px; position:relative; }
+    .sup-ticket-card.unread::before { content:''; width:10px; height:10px; background:#28a745; border-radius:50%; position:absolute; top:16px; right:16px; animation:supPulse 1.5s infinite; }
+    @keyframes supPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    .sup-drawer-overlay { position:fixed; inset:0; background:rgba(14,17,23,.4); z-index:200; display:none; }
+    .sup-drawer-overlay.open { display:flex; justify-content:flex-end; }
+    .sup-drawer { width:100%; max-width:480px; background:#fff; height:100%; display:flex; flex-direction:column; box-shadow:-8px 0 32px rgba(0,0,0,.12); }
+    .sup-drawer-head { padding:16px 20px; border-bottom:1px solid var(--border); }
+    .sup-thread { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:10px; }
+    .sup-bubble { max-width:85%; padding:10px 14px; border-radius:14px; font-size:.88rem; line-height:1.45; }
+    .sup-bubble.landlord { align-self:flex-end; background:var(--gold); color:#fff; border-bottom-right-radius:4px; }
+    .sup-bubble.admin { align-self:flex-start; background:#eee; color:var(--ink); border-bottom-left-radius:4px; }
+    .sup-bubble time { display:block; font-size:.68rem; opacity:.75; margin-top:6px; }
+    .sup-reply { padding:12px 16px; border-top:1px solid var(--border); }
+    .sup-cat-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-top:16px; }
+    @media(max-width:768px){ .sup-cat-grid { grid-template-columns:1fr; } }
+    .sup-cat-card { border:1px solid var(--border); border-radius:12px; padding:16px; cursor:pointer; text-align:center; transition:border-color .2s; }
+    .sup-cat-card:hover { border-color:var(--gold); }
+    .sup-accordion { margin-top:8px; display:none; }
+    .sup-accordion.open { display:block; }
+    .sup-article-link { display:block; padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer; font-size:.88rem; }
+    .sup-article-link:hover { background:var(--cream); }
+    .sup-modal { position:fixed; inset:0; background:rgba(14,17,23,.5); z-index:300; display:none; align-items:center; justify-content:center; padding:16px; }
+    .sup-modal.open { display:flex; }
+    .sup-modal-box { background:#fff; border-radius:16px; max-width:560px; width:100%; max-height:85vh; overflow-y:auto; padding:24px; }
+    .sup-success { background:#d4edda; color:#155724; padding:14px; border-radius:10px; margin-top:16px; }
+    .sup-empty { text-align:center; padding:40px 20px; color:var(--muted); }
+  </style>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+  <link rel="stylesheet" href="./css/styles.css" />
+  <link rel="stylesheet" href="./css/animations.css" />
+</head>
+<body>
+  <div id="supGate" class="sup-wrap" style="text-align:center;padding:80px 20px"><p>Loading support…</p></div>
+  <div id="supApp" style="display:none">
+    <div class="sup-wrap">
+      <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px">
+        <div>
+          <a href="index.html" style="color:var(--gold);font-weight:600;text-decoration:none;font-size:.88rem">← Back to NestIQ</a>
+          <h1 class="font-display text-2xl font-bold" style="margin:8px 0 0">🎧 Help &amp; Support</h1>
+        </div>
+      </div>
+      <div class="sup-tabs" role="tablist">
+        <button type="button" class="sup-tab active" data-tab="submit">Submit a Ticket</button>
+        <button type="button" class="sup-tab" data-tab="tickets">My Tickets</button>
+        <button type="button" class="sup-tab" data-tab="help">Help Centre</button>
+      </div>
+
+      <section id="panel-submit" class="sup-panel active">
+        <h2 class="font-display text-xl font-bold">How can we help you?</h2>
+        <form id="supTicketForm" style="margin-top:20px">
+          <label class="sup-label">Subject *</label>
+          <input class="sup-input" id="sup_subject" required maxlength="200" />
+          <label class="sup-label">Category *</label>
+          <select class="sup-select" id="sup_category" required>
+            <option value="">Select…</option>
+            <option>Billing &amp; Payments</option>
+            <option>Technical Issue</option>
+            <option>Account &amp; Profile</option>
+            <option>Tenant Portal</option>
+            <option>Feature Request</option>
+            <option>Other</option>
+          </select>
+          <label class="sup-label">Priority</label>
+          <div class="sup-radio">
+            <label><input type="radio" name="sup_priority" value="low" /> Low</label>
+            <label><input type="radio" name="sup_priority" value="medium" checked /> Medium</label>
+            <label><input type="radio" name="sup_priority" value="urgent" /> Urgent</label>
+          </div>
+          <label class="sup-label">Description * (min 20 characters)</label>
+          <textarea class="sup-textarea" id="sup_desc" rows="5" required minlength="20"></textarea>
+          <label class="sup-label">Attachment (optional, max 5MB — images or PDF)</label>
+          <input type="file" id="sup_file" accept="image/*,.pdf" />
+          <button type="submit" class="sup-btn-gold" id="sup_submit_btn">Submit Ticket</button>
+        </form>
+        <div id="sup_form_success"></div>
+      </section>
+
+      <section id="panel-tickets" class="sup-panel">
+        <div id="sup_tickets_list"></div>
+      </section>
+
+      <section id="panel-help" class="sup-panel">
+        <input type="search" class="sup-input" id="sup_help_search" placeholder="Search help articles…" style="margin-bottom:8px" />
+        <div class="sup-cat-grid" id="sup_help_cats"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="sup-drawer-overlay" id="supDrawerOverlay">
+    <div class="sup-drawer">
+      <div class="sup-drawer-head">
+        <button type="button" class="sup-btn-outline" id="sup_drawer_close" style="float:right;padding:6px 10px">✕</button>
+        <div id="sup_drawer_meta"></div>
+      </div>
+      <div class="sup-thread" id="sup_drawer_thread"></div>
+      <div class="sup-reply" id="sup_drawer_reply"></div>
+    </div>
+  </div>
+
+  <div class="sup-modal" id="supArticleModal">
+    <div class="sup-modal-box">
+      <button type="button" class="sup-btn-outline" id="sup_article_close" style="float:right">Close</button>
+      <div id="sup_article_body"></div>
+    </div>
+  </div>
+
+  <script src="./js/firebase-config.js"></script>
+  <script src="./js/support-articles.js"></script>
+  <script src="./js/support.js"></script>
+  <script>
+  (function(){
+    const S = window.nestiqSupport;
+    let uid, email, name, ticketsUnsub, activeTicketId, activeTicketData;
+
+    function fv(){ return firebase.firestore.FieldValue; }
+
+    window.switchTab = function switchTab(tab){
+      document.querySelectorAll('.sup-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
+      document.querySelectorAll('.sup-panel').forEach(p => p.classList.remove('active'));
+      const map = { submit:'panel-submit', tickets:'panel-tickets', help:'panel-help' };
+      document.getElementById(map[tab])?.classList.add('active');
+      if(tab === 'tickets') listenTickets();
+      if(tab === 'help') renderHelpCats();
+    }
+
+    function fileToB64(file){
+      return new Promise((res, rej) => {
+        if(!file){ res(null); return; }
+        if(file.size > 5 * 1024 * 1024){ rej(new Error('File must be under 5MB')); return; }
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('supTicketForm').onsubmit = async e => {
+      e.preventDefault();
+      const btn = document.getElementById('sup_submit_btn');
+      btn.disabled = true;
+      btn.textContent = 'Submitting…';
+      try{
+        const subject = document.getElementById('sup_subject').value.trim();
+        const category = document.getElementById('sup_category').value;
+        const desc = document.getElementById('sup_desc').value.trim();
+        const priority = document.querySelector('input[name="sup_priority"]:checked')?.value || 'medium';
+        if(desc.length < 20) throw new Error('Description must be at least 20 characters.');
+        let attachment = null;
+        const f = document.getElementById('sup_file').files[0];
+        if(f) attachment = await fileToB64(f);
+        const ticketId = await window.nestiqGenerateTicketId();
+        const now = fv().serverTimestamp();
+        const doc = {
+          ticketId, landlordId: uid, landlordEmail: email, landlordName: name,
+          subject, category, priority, description: desc, attachment,
+          status: 'open', messages: [], createdAt: now, lastUpdated: now
+        };
+        await S.ticketsCol().doc(ticketId).set(doc);
+        await window.nestiqSupportSendEmail({
+          to: email,
+          subject: `NestIQ — Ticket ${ticketId}`,
+          message: `We received your support request ${ticketId}. Our team will respond within 24 hours.\n\nSubject: ${subject}`
+        });
+        document.getElementById('sup_form_success').innerHTML =
+          `<div class="sup-success">✅ Ticket submitted! Reference: <strong>${ticketId}</strong>. We'll email you when we respond.</div>`;
+        document.getElementById('supTicketForm').reset();
+        document.querySelector('input[name="sup_priority"][value="medium"]').checked = true;
+      }catch(err){
+        alert(err.message || 'Failed to submit ticket.');
+      }finally{
+        btn.disabled = false;
+        btn.textContent = 'Submit Ticket';
+      }
+    };
+
+    function renderTicketCard(id, t){
+      const unread = S.hasUnreadAdminReply(t);
+      return `<div class="sup-ticket-card${unread ? ' unread' : ''}" data-id="${id}">
+        <div style="margin-bottom:8px"><span class="sup-badge sup-badge-outline">${t.ticketId}</span> ${S.statusBadge(t.status)} ${S.priorityBadge(t.priority)}</div>
+        <h3 style="margin:0 0 6px;font-size:1rem">${esc(t.subject)}</h3>
+        <div style="font-size:.82rem;color:var(--muted)">${S.categoryBadge(t.category)} · Created ${S.formatDt(t.createdAt)} · Updated ${S.formatDt(t.lastUpdated)}</div>
+        <button type="button" class="sup-btn-gold" style="margin-top:12px;width:auto;padding:8px 16px;font-size:.85rem" onclick="openTicketDrawer('${id}')">View &amp; Reply</button>
+      </div>`;
+    }
+
+    function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'); }
+
+    function listenTickets(){
+      if(ticketsUnsub) ticketsUnsub();
+      const list = document.getElementById('sup_tickets_list');
+      list.innerHTML = '<p style="color:var(--muted)">Loading tickets…</p>';
+      ticketsUnsub = S.ticketsCol().where('landlordId','==',uid).onSnapshot(snap => {
+        if(snap.empty){
+          list.innerHTML = '<div class="sup-empty"><p>No support tickets yet.</p><p>Submit a ticket above if you need help.</p></div>';
+          return;
+        }
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        docs.sort((a,b) => {
+          const ta = S.tsToDate(a.lastUpdated || a.createdAt)?.getTime() || 0;
+          const tb = S.tsToDate(b.lastUpdated || b.createdAt)?.getTime() || 0;
+          return tb - ta;
+        });
+        list.innerHTML = docs.map(d => renderTicketCard(d.id, d)).join('');
+        if(activeTicketId){
+          const cur = docs.find(d => d.id === activeTicketId);
+          if(cur) renderDrawer(cur.id, cur);
+        }
+        window.nestiqRefreshSupportBadge?.();
+      }, err => {
+        list.innerHTML = '<p class="sup-empty">Could not load tickets. Check your connection.</p>';
+        console.error(err);
+      });
+    }
+
+    window.openTicketDrawer = function(id){
+      activeTicketId = id;
+      S.ticketsCol().doc(id).get().then(s => {
+        if(s.exists) renderDrawer(id, s.data());
+      });
+    };
+
+    async function renderDrawer(id, t){
+      activeTicketData = t;
+      document.getElementById('sup_drawer_meta').innerHTML = `
+        <p class="sup-badge sup-badge-outline">${esc(t.ticketId)}</p>
+        <h3 style="margin:8px 0">${esc(t.subject)}</h3>
+        <p style="font-size:.85rem;color:var(--muted)">${esc(t.category)} · ${S.priorityBadge(t.priority)} · ${S.statusBadge(t.status)}</p>
+        <p style="font-size:.88rem;margin-top:12px;white-space:pre-wrap">${esc(t.description)}</p>`;
+      const thread = document.getElementById('sup_drawer_thread');
+      const msgs = t.messages || [];
+      thread.innerHTML = msgs.map(m => `
+        <div class="sup-bubble ${m.sender === 'admin' ? 'admin' : 'landlord'}">
+          <strong>${esc(m.senderName || m.sender)}</strong><br>${esc(m.message)}
+          <time>${S.formatDt(m.timestamp)}</time>
+        </div>`).join('') || '<p style="color:var(--muted);font-size:.85rem">No replies yet.</p>';
+      thread.scrollTop = thread.scrollHeight;
+      const reply = document.getElementById('sup_drawer_reply');
+      const closed = ['resolved','closed'].includes(String(t.status).toLowerCase());
+      if(closed){
+        reply.innerHTML = '<p style="font-size:.85rem;color:var(--muted)">This ticket has been closed. Submit a new ticket if you need further help.</p>';
+      }else{
+        reply.innerHTML = `
+          <textarea class="sup-textarea" id="sup_reply_text" rows="3" placeholder="Type your reply…" style="margin-bottom:8px"></textarea>
+          <button type="button" class="sup-btn-gold" id="sup_reply_send">Send Reply</button>`;
+        document.getElementById('sup_reply_send').onclick = () => sendLandlordReply(id);
+      }
+      document.getElementById('supDrawerOverlay').classList.add('open');
+      const updated = msgs.map(m => m.sender === 'admin' ? { ...m, readByLandlord: true } : m);
+      if(msgs.some(m => m.sender === 'admin' && !m.readByLandlord)){
+        await S.ticketsCol().doc(id).update({ messages: updated, lastUpdated: fv().serverTimestamp() });
+      }
+    }
+
+    async function sendLandlordReply(id){
+      const text = document.getElementById('sup_reply_text')?.value?.trim();
+      if(!text) return;
+      const snap = await S.ticketsCol().doc(id).get();
+      if(!snap.exists) return;
+      const t = snap.data();
+      const msg = { sender:'landlord', senderName: name, message: text, timestamp: new Date().toISOString(), readByAdmin: false };
+      const messages = [...(t.messages || []), msg];
+      await S.ticketsCol().doc(id).update({ messages, lastUpdated: fv().serverTimestamp(), status: t.status === 'closed' ? 'open' : t.status });
+      await window.nestiqSupportSendEmail({
+        to: S.ADMIN_EMAIL,
+        subject: `Support ticket ${t.ticketId} — landlord reply`,
+        message: `${name} (${email}) replied:\n\n${text}`,
+        landlordId: uid
+      });
+      document.getElementById('sup_reply_text').value = '';
+    }
+
+    document.getElementById('sup_drawer_close').onclick = () => {
+      document.getElementById('supDrawerOverlay').classList.remove('open');
+      activeTicketId = null;
+    };
+
+    function renderHelpCats(filter){
+      const q = (filter || '').toLowerCase();
+      const arts = (window.NESTIQ_HELP_ARTICLES || []).filter(a =>
+        !q || a.title.toLowerCase().includes(q) || a.content.toLowerCase().includes(q));
+      const grid = document.getElementById('sup_help_cats');
+      grid.innerHTML = (window.NESTIQ_HELP_CATEGORIES || []).map(cat => {
+        const catArts = arts.filter(a => a.category === cat.id);
+        const accId = 'acc-' + cat.id;
+        return `<div class="sup-cat-card" data-acc="${accId}">
+          <div style="font-size:1.8rem">${cat.icon}</div>
+          <div style="font-weight:700;margin-top:8px">${esc(cat.title)}</div>
+          <div style="font-size:.78rem;color:var(--muted)">${catArts.length} article${catArts.length===1?'':'s'}</div>
+          <div class="sup-accordion" id="${accId}">
+            ${catArts.map(a => `<div class="sup-article-link" data-aid="${a.id}">${esc(a.title)}</div>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
+      grid.querySelectorAll('.sup-cat-card').forEach(card => {
+        card.onclick = e => {
+          if(e.target.classList.contains('sup-article-link')) return;
+          const acc = document.getElementById(card.dataset.acc);
+          acc.classList.toggle('open');
+        };
+      });
+      grid.querySelectorAll('.sup-article-link').forEach(link => {
+        link.onclick = e => {
+          e.stopPropagation();
+          const a = window.NESTIQ_HELP_ARTICLES.find(x => x.id === link.dataset.aid);
+          if(a) openArticle(a);
+        };
+      });
+    }
+
+    function openArticle(a){
+      document.getElementById('sup_article_body').innerHTML = `
+        <h2 class="font-display text-xl font-bold">${esc(a.title)}</h2>
+        <p style="font-size:.78rem;color:var(--muted)">Updated ${esc(a.updated)}</p>
+        <div style="margin:16px 0;line-height:1.65;white-space:pre-wrap;font-size:.92rem">${esc(a.content)}</div>
+        <p style="font-size:.85rem">Was this helpful? 👍 👎</p>
+        <a href="#" onclick="switchTab('submit');document.getElementById('supArticleModal').classList.remove('open');return false" style="color:var(--gold);font-weight:600">Still need help? Submit a ticket</a>`;
+      document.getElementById('supArticleModal').classList.add('open');
+    }
+
+    document.getElementById('sup_article_close').onclick = () => document.getElementById('supArticleModal').classList.remove('open');
+    document.getElementById('sup_help_search').oninput = e => renderHelpCats(e.target.value);
+
+    document.querySelectorAll('.sup-tab').forEach(t => {
+      t.onclick = () => switchTab(t.dataset.tab);
+    });
+
+    function applyHash(){
+      const h = (location.hash || '').replace('#','');
+      if(h === 'help-centre' || h === 'help') switchTab('help');
+      else if(h === 'my-tickets' || h === 'tickets') switchTab('tickets');
+      else if(h === 'submit') switchTab('submit');
+    }
+
+    async function boot(){
+      const gate = document.getElementById('supGate');
+      const failGate = msg => {
+        if(!gate) return;
+        gate.innerHTML = '<p>'+msg+' <a href="index.html">Return to app</a></p>';
+      };
+      const fsGet = (ref, ms) => Promise.race([
+        ref.get(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('Firestore read timed out')), ms || 8000))
+      ]);
+      if(!firebase.apps.length) firebase.initializeApp(window.NESTIQ_FIREBASE_CONFIG);
+      window.nestiqDb = firebase.firestore();
+      firebase.auth().onAuthStateChanged(async user => {
+        if(!user){ location.replace('index.html'); return; }
+        try{
+          const udoc = await fsGet(window.nestiqDb.collection('users').doc(user.uid));
+          if(!udoc.exists || udoc.data().role !== 'landlord'){ location.replace('index.html'); return; }
+          uid = user.uid;
+          email = user.email;
+          const ss = await fsGet(window.nestiqDb.collection('landlords').doc(uid).collection('profile').doc('settings'));
+          name = ss.exists ? (ss.data().name || user.displayName || 'Landlord') : (user.displayName || 'Landlord');
+          window.landlordSettings = window.landlordSettings || { email, name, emailjs: ss.data()?.landlordSettings?.emailjs };
+          window.nestiqCurrentLandlordUid = () => uid;
+          document.getElementById('supGate').style.display = 'none';
+          document.getElementById('supApp').style.display = 'block';
+          applyHash();
+          listenTickets();
+          renderHelpCats();
+        }catch(err){
+          console.error('NestIQ support boot', err);
+          failGate('Could not load support ('+(err?.message||'error')+'). Check your connection and try again.');
+        }
+      });
+    }
+    boot();
+  })();
+  </script>
+  <script src="./js/animations.js"></script>
+</body>
+</html>

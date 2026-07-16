@@ -1,0 +1,32 @@
+<div class="page page-renewals" id="page-renewals" style="padding-top:70px">
+  <section class="section renewal-page-section reveal">
+    <div class="renewal-page-head">
+      <div>
+        <div class="eyebrow" style="justify-content:flex-start">Portfolio</div>
+        <h2 class="section-title reveal" style="margin-bottom:4px">Lease Renewals</h2>
+        <p class="renewal-page-sub">Manage expiring and expired leases</p>
+      </div>
+    </div>
+    <div class="renewal-stats-row" id="renewalsStats">
+      <div class="renewal-stat renewal-stat--red">
+        <div class="renewal-stat-lbl">Expired</div>
+        <div class="renewal-stat-val" id="renewStatExpired">0</div>
+      </div>
+      <div class="renewal-stat renewal-stat--red">
+        <div class="renewal-stat-lbl">Critical (&lt;30d)</div>
+        <div class="renewal-stat-val" id="renewStatCritical">0</div>
+      </div>
+      <div class="renewal-stat renewal-stat--amber">
+        <div class="renewal-stat-lbl">Warning (31–60d)</div>
+        <div class="renewal-stat-val" id="renewStatWarning">0</div>
+      </div>
+      <div class="renewal-stat renewal-stat--gold">
+        <div class="renewal-stat-lbl">Notice (61–90d)</div>
+        <div class="renewal-stat-val" id="renewStatNotice">0</div>
+      </div>
+    </div>
+    <div id="renewalsUpcoming" style="display:none"></div>
+    <div class="renewal-kanban" id="renewalsKanban"></div>
+    <div id="renewalsVacating" style="display:none"></div>
+  </section>
+</div>

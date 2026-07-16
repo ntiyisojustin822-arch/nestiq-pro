@@ -1,0 +1,51 @@
+<div class="page" id="page-maintenance" style="padding-top:70px">
+  <section class="section reveal">
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:12px;flex-wrap:wrap;gap:14px">
+      <div style="display:flex;align-items:flex-end;gap:16px;flex-wrap:wrap">
+        <div>
+          <div class="eyebrow" style="justify-content:flex-start">Operations</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;align-items:center">
+            <button type="button" id="maintTabTracker" class="btn-primary btn-sm nestiq-maint-subtab" data-maint-tab="tracker" onclick="nestiqSwitchMaintSubtab('tracker')">Maintenance Tracker</button>
+            <button type="button" id="maintTabVendors" class="btn-outline btn-sm nestiq-maint-subtab" data-maint-tab="vendors" onclick="nestiqSwitchMaintSubtab('vendors')">Vendors</button>
+          </div>
+        </div>
+      </div>
+      <div id="maintTrackerActions" style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn-outline btn-sm" onclick="generateMaintenancePDF(null,{})">⬇ Export Report</button>
+        <button class="btn-primary btn-sm" onclick="openAddMaintModal()">+ New Request</button>
+      </div>
+      <div id="maintVendorsActions" style="display:none;gap:10px;flex-wrap:wrap">
+        <button type="button" class="btn-outline btn-sm" onclick="nestiqVendorReportPrint()">Vendor Report</button>
+        <button type="button" class="btn-primary btn-sm" onclick="nestiqOpenAddVendorModal()">Add Vendor</button>
+      </div>
+    </div>
+
+    <div id="maintKanbanPanel">
+      <div style="font-size:0.85rem;color:var(--muted);margin-bottom:24px">Drag or click cards to update status</div>
+      <div class="kanban-board" id="kanbanBoard"></div>
+    </div>
+
+    <div id="maintVendorsPanel" style="display:none">
+      <div id="nestiqVendorListView">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:20px">
+          <div>
+            <h2 class="section-title reveal" style="margin:0;font-family:'Playfair Display',serif">Vendors</h2>
+            <p id="nestiqVendorCountLine" style="color:var(--muted);font-size:0.88rem;margin:6px 0 0">0 contractors in your network</p>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;max-width:100%">
+            <input type="search" class="form-input" id="nestiqVendorSearch" placeholder="Search name or trade…" style="min-width:220px;max-width:100%" oninput="nestiqRenderVendorList()">
+            <div id="nestiqVendorFilterChips" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end"></div>
+          </div>
+        </div>
+        <div id="nestiqVendorGrid" class="nestiq-vendor-grid"></div>
+        <div id="nestiqVendorEmpty" style="display:none;text-align:center;padding:48px 20px;border:1px dashed var(--border);border-radius:16px;background:var(--paper)">
+          <div style="font-size:3rem;margin-bottom:12px">🧰</div>
+          <h3 style="font-family:'Playfair Display',serif;margin:0 0 8px">No vendors yet</h3>
+          <p style="color:var(--muted);max-width:40ch;margin:0 auto 20px;font-size:0.9rem">Add your trusted contractors to quickly assign them to maintenance requests.</p>
+          <button type="button" class="btn-primary btn-sm" onclick="nestiqOpenAddVendorModal()">Add First Vendor</button>
+        </div>
+      </div>
+      <div id="nestiqVendorDetailView" style="display:none"></div>
+    </div>
+  </section>
+</div>

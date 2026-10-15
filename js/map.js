@@ -13,6 +13,7 @@ function statusColor(status){
 function statusLabel(status){
   if(status==='occupied') return 'Occupied';
   if(status==='vacant') return 'Vacant';
+  if(status==='reserved') return 'Reserved';
   return 'Rent Due';
 }
 
@@ -120,7 +121,7 @@ function renderMapSidebar(){
   list.innerHTML=scoped.map(p=>{
     const hasLocation=hasCoords(p);
     return `
-      <button class="map-list-item" onclick="${hasLocation?`flyToPropertyPin(${p.id})`:'showNotif(\'No location set for this property\',\'warning\')'}">
+      <button class="map-list-item" onclick="${hasLocation?`flyToPropertyPin(${p.id})`:'nestiqShowNotif(\'No location set for this property\',\'warning\')'}">
         <div class="map-list-top">
           <span class="map-status-dot" style="background:${statusColor(p.status)}"></span>
           <div class="map-list-title">${p.name}</div>
@@ -391,10 +392,12 @@ async function nestiqReverseFillAddressFromPin(latInputId){
     const street=parsed.line1||parsed.fallbackLine||'';
     const city=parsed.city||'';
     if(latInputId==='new_prop_lat'){
-      const a=document.getElementById('new_prop_addr');
+      const a=document.getElementById('new_prop_street')||document.getElementById('new_prop_addr');
       const c=document.getElementById('new_prop_city');
+      const sub=document.getElementById('new_prop_suburb');
       if(a&&street) a.value=street;
       if(c&&city) c.value=city;
+      if(sub&&parsed.suburb) sub.value=parsed.suburb;
     }else{
       const a=document.getElementById('edit_p_addr');
       const c=document.getElementById('edit_p_city');
@@ -476,7 +479,7 @@ function nestiqApplyPinToPropertyMap(lat, lng, mapContainerId, latInputId, lngIn
   const la=Number(lat);
   const lo=Number(lng);
   if(!Number.isFinite(la)||!Number.isFinite(lo)){
-    showNotif('Invalid coordinates','warning');
+    nestiqShowNotif('Invalid coordinates','warning');
     return;
   }
   const latEl=document.getElementById(latInputId);
@@ -488,10 +491,10 @@ function nestiqApplyPinToPropertyMap(lat, lng, mapContainerId, latInputId, lngIn
 
 function nestiqRunGeolocationForPin(mapContainerId, latInputId, lngInputId){
   if(!navigator.geolocation){
-    showNotif('Geolocation is not supported in this browser','warning');
+    nestiqShowNotif('Geolocation is not supported in this browser','warning');
     return;
   }
-  showNotif('Getting your location…','info');
+  nestiqShowNotif('Getting your location…','info');
   navigator.geolocation.getCurrentPosition(
     pos=>{
       nestiqApplyPinToPropertyMap(
@@ -501,7 +504,7 @@ function nestiqRunGeolocationForPin(mapContainerId, latInputId, lngInputId){
         latInputId,
         lngInputId
       );
-      showNotif('Pin set to current location','success');
+      nestiqShowNotif('Pin set to current location','success');
     },
     err=>{
       console.warn('Geolocation', err);
@@ -509,7 +512,7 @@ function nestiqRunGeolocationForPin(mapContainerId, latInputId, lngInputId){
       if(err.code===1) msg='Location permission denied';
       else if(err.code===2) msg='Location unavailable';
       else if(err.code===3) msg='Location request timed out';
-      showNotif(msg,'warning');
+      nestiqShowNotif(msg,'warning');
     },
     {enableHighAccuracy:true, timeout:15000, maximumAge:60000}
   );
@@ -529,7 +532,7 @@ function nestiqClearNewPropertyPin(){
   if(la) la.value='';
   if(lo) lo.value='';
   nestiqInitPropertyPinMap('new_prop_pin_map','new_prop_lat','new_prop_lng',{});
-  showNotif('Location pin cleared','info');
+  nestiqShowNotif('Location pin cleared','info');
 }
 
 function nestiqClearEditPropertyPin(){
@@ -538,7 +541,7 @@ function nestiqClearEditPropertyPin(){
   if(la) la.value='';
   if(lo) lo.value='';
   nestiqInitPropertyPinMap('edit_prop_pin_map','edit_p_lat','edit_p_lng',{});
-  showNotif('Location pin cleared','info');
+  nestiqShowNotif('Location pin cleared','info');
 }
 
 window.nestiqDestroyPropertyPinMap=nestiqDestroyPropertyPinMap;

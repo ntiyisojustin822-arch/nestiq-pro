@@ -26,7 +26,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 window.addEventListener('appinstalled', () => {
   deferredInstallPrompt = null;
   hideInstallBanner();
-  showNotif('NestIQ installed successfully!', 'success');
+  nestiqShowNotif('NestIQ installed successfully!', 'success');
 });
 
 document.addEventListener('click', async (event) => {
@@ -41,7 +41,7 @@ document.addEventListener('click', async (event) => {
 
   if (!installBtn) return;
   if (!deferredInstallPrompt) {
-    showNotif('Install is not available on this device yet.', 'warning');
+    nestiqShowNotif('Install is not available on this device yet.', 'warning');
     hideInstallBanner();
     return;
   }

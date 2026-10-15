@@ -24,7 +24,7 @@ function qrCanvasOrImage(elementId){
 
 function downloadQRCode(elementId, filename='qrcode.png'){
   const node=qrCanvasOrImage(elementId);
-  if(!node){ showNotif('QR code not ready','warning'); return; }
+  if(!node){ nestiqShowNotif('QR code not ready','warning'); return; }
   const url=node.tagName.toLowerCase()==='canvas' ? node.toDataURL('image/png') : node.src;
   const a=document.createElement('a');
   a.href=url;
@@ -34,7 +34,7 @@ function downloadQRCode(elementId, filename='qrcode.png'){
 
 function printQRCode(elementId, title='NestIQ QR'){
   const node=qrCanvasOrImage(elementId);
-  if(!node){ showNotif('QR code not ready','warning'); return; }
+  if(!node){ nestiqShowNotif('QR code not ready','warning'); return; }
   const url=node.tagName.toLowerCase()==='canvas' ? node.toDataURL('image/png') : node.src;
   const w=window.open('','_blank');
   if(!w) return;
@@ -76,11 +76,11 @@ function openTenantQrModal(tenantId){
     <div style="text-align:center;font-size:0.84rem;margin-top:8px">${t.name} — ${t.property} — ${t.unit}</div>
     <div style="text-align:center;font-size:0.74rem;color:var(--muted);margin-top:4px">Scan to identify tenant</div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-      <button class="btn-outline btn-sm" onclick="downloadQRCode('tenantQrBox','tenant-${t.id}.png')">Download QR Code</button>
+      <button class="btn-outline btn-sm" onclick="downloadQRCode('tenantQrBox','tenant-${t.id}.png')" title="Download QR code" data-nq-tip="Download QR code">Download QR Code</button>
       <button class="btn-outline btn-sm" onclick="printQRCode('tenantQrBox','${t.name.replace(/'/g,'&#39;')}')">Print QR Code</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   generateQRCode('tenantQrBox',`NESTIQ:tenant:${t.id}:${t.name}`,220);
 }
 
@@ -93,11 +93,11 @@ function openPropertyQrModal(propertyId){
     <div style="text-align:center;font-size:0.84rem;margin-top:8px">${p.name}</div>
     <div style="text-align:center;font-size:0.74rem;color:var(--muted);margin-top:4px">${p.addr}</div>
     <div style="display:flex;gap:8px;justify-content:center;margin-top:12px">
-      <button class="btn-outline btn-sm" onclick="downloadQRCode('propertyQrBox','property-${p.id}.png')">Download QR Code</button>
+      <button class="btn-outline btn-sm" onclick="downloadQRCode('propertyQrBox','property-${p.id}.png')" title="Download QR code" data-nq-tip="Download QR code">Download QR Code</button>
       <button class="btn-outline btn-sm" onclick="printQRCode('propertyQrBox','${p.name.replace(/'/g,'&#39;')}')">Print QR Code</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   generateQRCode('propertyQrBox',`NESTIQ:property:${p.id}:${p.name}:${p.addr}`,220);
 }
 

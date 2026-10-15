@@ -55,17 +55,35 @@ service firebase.storage {
       allow write: if isSignedIn();
     }
 
-    // Tenant profile photos: landlords/{landlordId}/tenants/{tenantId}/...
+    // Applicant / tenant avatars before a landlord link exists.
+    // Public read so <img> tags on applications work (they do not send Auth headers).
+    match /avatars/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn()
+        && request.auth.uid == userId
+        && request.resource.size < 3 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*');
+    }
+
+    // Tenant profile photos: tenants/{landlordId}/{tenantId}/...
+    // Public read so landlord/tenant <img> tags work (they do not send Auth headers).
     match /tenants/{landlordId}/{tenantId}/{allPaths=**} {
-      allow read: if isSignedIn();
+      allow read: if true;
       allow write: if isSignedIn() && (
         request.auth.uid == landlordId
         || (
           firestore.exists(/databases/(default)/documents/tenantAccounts/$(request.auth.uid))
           && firestore.get(/databases/(default)/documents/tenantAccounts/$(request.auth.uid)).data.landlordId == landlordId
-          && firestore.get(/databases/(default)/documents/tenantAccounts/$(request.auth.uid)).data.tenantId == tenantId
+          && string(firestore.get(/databases/(default)/documents/tenantAccounts/$(request.auth.uid)).data.tenantId) == tenantId
         )
       );
+    }
+
+    // Extra documents when a landlord asks an applicant for more information
+    match /applications/{appId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn()
+        && request.resource.size < 8 * 1024 * 1024;
     }
 
     // Optional path for future document uploads

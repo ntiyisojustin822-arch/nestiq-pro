@@ -158,9 +158,9 @@ function addRecurringExpenseFromForm(){
   const freq=document.getElementById('exp_rec_freq')?.value||'monthly';
   const dom=parseInt(document.getElementById('exp_rec_dom')?.value||'1',10);
   const endRaw=document.getElementById('exp_rec_end')?.value||'';
-  if(!desc){ showNotif('Please enter a description','error'); return; }
-  if(!amount||amount<=0){ showNotif('Please enter a valid amount','error'); return; }
-  if(!prop){ showNotif('Please select a property','error'); return; }
+  if(!desc){ nestiqShowNotif('Please enter a description','error'); return; }
+  if(!amount||amount<=0){ nestiqShowNotif('Please enter a valid amount','error'); return; }
+  if(!prop){ nestiqShowNotif('Please select a property','error'); return; }
   const p=(propertiesData||[]).find(x=>x.name===prop);
   const rid=recurringExpenseNextId++;
   try{ window.recurringExpenseNextId=recurringExpenseNextId; }catch(_e){}
@@ -181,7 +181,7 @@ function addRecurringExpenseFromForm(){
   });
   saveData();
   renderExpenses();
-  showNotif('Recurring expense saved — it will auto-log each period','success');
+  nestiqShowNotif('Recurring expense saved — it will auto-log each period','success');
 }
 
 function checkRecurringExpenses(){
@@ -279,7 +279,7 @@ function deleteRecurringExpense(id){
   if(ix>=0) recurringExpenses.splice(ix,1);
   saveData();
   renderExpenses();
-  showNotif('Recurring expense removed','warning');
+  nestiqShowNotif('Recurring expense removed','warning');
 }
 
 function openEditRecurringModal(id){
@@ -316,9 +316,9 @@ function openEditRecurringModal(id){
     <label class="recurring-toggle-row"><input type="checkbox" id="edit_rec_active" ${r.active?'checked':''}> Active</label>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="saveEditedRecurring(${r.id})">Save</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function saveEditedRecurring(id){
@@ -326,8 +326,8 @@ function saveEditedRecurring(id){
   if(!r) return;
   const desc=document.getElementById('edit_rec_desc')?.value?.trim()||'';
   const amt=parseFloat(document.getElementById('edit_rec_amt')?.value);
-  if(!desc){ showNotif('Description required','error'); return; }
-  if(!amt||amt<=0){ showNotif('Valid amount required','error'); return; }
+  if(!desc){ nestiqShowNotif('Description required','error'); return; }
+  if(!amt||amt<=0){ nestiqShowNotif('Valid amount required','error'); return; }
   const prop=document.getElementById('edit_rec_prop')?.value||r.prop;
   const p=(propertiesData||[]).find(x=>x.name===prop);
   r.cat=document.getElementById('edit_rec_cat')?.value||r.cat;
@@ -342,9 +342,9 @@ function saveEditedRecurring(id){
   r.endDate=en&&/^\d{4}-\d{2}-\d{2}$/.test(en)?en:null;
   r.active=Boolean(document.getElementById('edit_rec_active')?.checked);
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   renderExpenses();
-  showNotif('Recurring expense updated','success');
+  nestiqShowNotif('Recurring expense updated','success');
 }
 
 function renderUpcomingRecurringCard(){
@@ -383,34 +383,12 @@ function renderExpenses(){
   const rows=document.getElementById('expenseRows');
   if(!rows) return;
   if(window.nestiqExpensesLoading){
-    rows.innerHTML=`<div class="nestiq-skel-card" style="height:120px;margin-bottom:10px;animation:nestiqShimmer 1.5s infinite;border-radius:var(--radius);border:1px solid var(--border)"></div>`.repeat(3);
+    nestiqShowSkeleton?.(rows, 'row', 4);
     return;
   }
   const expList=expenses.filter(e=>!e.isIncome);
   if(!expList.length){
-    rows.innerHTML=`
-  <div style="
-    text-align: center;
-    padding: 60px 40px;
-    color: var(--muted);
-  ">
-    <div style="font-size: 2.5rem; margin-bottom: 14px">
-      💸
-    </div>
-    <div style="
-      font-family: 'Playfair Display', serif;
-      font-size: 1.1rem;
-      font-weight: 600;
-      color: var(--ink);
-      margin-bottom: 8px;
-    ">
-      No expenses recorded
-    </div>
-    <div style="font-size: 0.88rem; line-height: 1.6">
-      Log your property expenses to track
-      spending and generate tax reports
-    </div>
-  </div>`;
+    nestiqShowEmptyState?.(rows, { icon:'💸', title:'No expenses logged', message:'Track your property expenses to generate accurate financial reports.', action:{ label:'+ Add Expense', fn:'nestiqOpenAddExpenseModal' } });
     renderExpSummary();
     renderRecurringExpensesList();
     renderUpcomingRecurringCard();
@@ -431,11 +409,12 @@ function renderExpenses(){
       <div class="exp-prop">${nestiqExpEscapeAttr(e.prop)}</div>
       <div class="exp-date">${nestiqExpEscapeAttr(e.date)}</div>
       <div class="exp-actions">
-        <button type="button" class="exp-edit" title="Edit expense" onclick="openEditExpenseModal(${nestiqHtmlJsArg(e.id)})">✏</button>
-        <button type="button" class="exp-del" onclick="deleteExpense(${nestiqHtmlJsArg(e.id)})">🗑</button>
+        <button type="button" class="exp-edit" title="Edit" data-nq-tip="Edit" onclick="openEditExpenseModal(${nestiqHtmlJsArg(e.id)})">✏</button>
+        <button type="button" class="exp-del" title="Delete" data-nq-tip="Delete" onclick="deleteExpense(${nestiqHtmlJsArg(e.id)})">🗑</button>
       </div>
     </div>`;
   }).join('');
+  if(typeof nestiqStaggerChildren==='function') nestiqStaggerChildren(rows, 40);
   renderExpSummary();
   renderRecurringExpensesList();
   renderUpcomingRecurringCard();
@@ -458,8 +437,8 @@ async function addExpense(){
   const amount=parseFloat(document.getElementById('exp_amount').value);
   const prop=document.getElementById('exp_prop').value;
   const date=document.getElementById('exp_date').value;
-  if(!desc){showNotif('Enter a description','error');return;}
-  if(!amount||amount<=0){showNotif('Enter a valid amount','error');return;}
+  if(!desc){nestiqShowNotif('Enter a description','error');return;}
+  if(!amount||amount<=0){nestiqShowNotif('Enter a valid amount','error');return;}
   const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
   const fv=typeof firebase!=='undefined'&&firebase.firestore&&firebase.firestore.FieldValue;
   const dateVal=date||new Date().toISOString().split('T')[0];
@@ -479,12 +458,12 @@ async function addExpense(){
       await window.nestiqFs.expenses(window.nestiqDb, lid).add({ ...row, landlordId: lid });
       document.getElementById('exp_desc').value='';
       document.getElementById('exp_amount').value='';
-      showNotif('💸 Expense logged!','success');
+      nestiqShowNotif('💸 Expense logged!','success');
       addBellNotif('💸','Expense: '+desc);
       return;
     }catch(err){
       console.error('Add expense',err);
-      showNotif('Failed to log expense','error');
+      nestiqShowNotif('Failed to log expense','error');
       return;
     }
   }
@@ -495,7 +474,7 @@ async function addExpense(){
   saveData();
   renderExpenses();
   addBellNotif('💸','Expense logged: '+desc+' R'+amount.toLocaleString());
-  showNotif(`💸 R${amount.toLocaleString()} expense logged!`,'success');
+  nestiqShowNotif(`💸 R${amount.toLocaleString()} expense logged!`,'success');
 }
 
 async function deleteExpense(id){
@@ -503,17 +482,17 @@ async function deleteExpense(id){
     try{
       const lid=window.nestiqCurrentLandlordUid?.();
       await window.nestiqFs.expenses(window.nestiqDb, lid).doc(String(id)).delete();
-      showNotif('Expense removed','warning');
+      nestiqShowNotif('Expense removed','warning');
       return;
     }catch(err){
-      showNotif('Failed to delete expense','error');
+      nestiqShowNotif('Failed to delete expense','error');
       return;
     }
   }
   expenses=expenses.filter(e=>String(e.id)!==String(id));
   saveData();
   renderExpenses();
-  showNotif('Expense removed','warning');
+  nestiqShowNotif('Expense removed','warning');
 }
 
 function renderExpSummary(){
@@ -540,7 +519,7 @@ function exportExpensesCSV(){
   const hdr='Category,Description,Amount,Property,Date';
   const rows=expenses.map(e=>`"${e.cat}","${e.desc}",${e.amount},"${e.prop}","${e.date}"`);
   downloadCSV([hdr,...rows].join('\n'),'nestiq-expenses.csv');
-  showNotif('📥 Expenses exported!','success');
+  nestiqShowNotif('📥 Expenses exported!','success');
 }
 
 window.checkRecurringExpenses=checkRecurringExpenses;

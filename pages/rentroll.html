@@ -7,7 +7,7 @@
     <div class="rentroll-header">
       <div>
         <div class="eyebrow" style="justify-content:flex-start">Financials</div>
-        <h2 class="section-title rentroll-title reveal" style="margin-bottom:4px">Rent Roll</h2>
+        <h2 class="section-title rentroll-title reveal nq-reveal" style="margin-bottom:4px">Rent Roll</h2>
         <p class="rentroll-sub">Monthly snapshot of all properties and payment status</p>
         <div class="rentroll-month-controls">
           <button type="button" class="btn-outline btn-sm" id="rentrollPrev" aria-label="Previous month">←</button>
@@ -21,8 +21,7 @@
       </div>
       <div class="rentroll-actions no-print">
         <button type="button" class="btn-outline btn-sm" onclick="exportRentRollPDF()">Export PDF</button>
-        <button type="button" class="btn-outline btn-sm" onclick="exportRentRollCSV()">Export CSV</button>
-        <button type="button" class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
+        <button type="button" class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px" title="Print this page" data-nq-tip="Print this page">🖨️ Print</button>
       </div>
     </div>
 
@@ -36,6 +35,6 @@
       <button type="button" class="btn-outline btn-sm rentroll-toggle" id="rentrollToggleGroup" data-mode="group">Group by Status</button>
     </div>
 
-    <div class="rentroll-table-wrap table-wrap reveal" id="rentrollTableWrap"></div>
+    <div class="rentroll-table-wrap table-wrap reveal nq-reveal" id="rentrollTableWrap"></div>
   </section>
 </div>

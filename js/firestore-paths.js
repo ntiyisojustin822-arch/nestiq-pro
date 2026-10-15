@@ -52,7 +52,10 @@
       return db && lid ? db.collection('settings').doc('landlord-' + lid) : null;
     },
     properties(db, lid){ return col(db, 'properties', lid); },
+    /** Landlord-scoped units collection: landlords/{lid}/units/{unitId} */
+    units(db, lid){ return col(db, 'units', lid); },
     tenants(db, lid){ return col(db, 'tenants', lid); },
+    leases(db, lid){ return col(db, 'leases', lid); },
     applications(db, lid){ return col(db, 'applications', lid); },
     maintenance(db, lid){ return col(db, 'maintenance', lid); },
     expenses(db, lid){ return col(db, 'expenses', lid); },
@@ -60,6 +63,7 @@
     invitations(db, lid){ return col(db, 'invitations', lid); },
     documents(db, lid){ return col(db, 'documents', lid); },
     payments(db, lid){ return col(db, 'payments', lid); },
+    pendingPayments(db, lid){ return col(db, 'pendingPayments', lid); },
     messages(db, lid){ return col(db, 'messages', lid); },
     recurringExpenses(db, lid){ return col(db, 'recurringExpenses', lid); },
     communications(db, lid){ return col(db, 'communications', lid); },
@@ -70,9 +74,34 @@
     invitationLookup(db, code){
       return db && code ? db.collection('invitationLookup').doc(String(code).toUpperCase().trim()) : null;
     },
+    tenantPortalLink(db, email){
+      const key=String(email||'').trim().toLowerCase();
+      return db && key ? db.collection('tenantPortalLinks').doc(key) : null;
+    },
     tenantAccount(db, tenantUid){
       return db && tenantUid ? db.collection('tenantAccounts').doc(String(tenantUid)) : null;
-    }
+    },
+    staff(db, lid){ return col(db, 'staff', lid); },
+    staffInvitations(db, lid){ return col(db, 'staffInvitations', lid); },
+    staffInvitationLookup(db, code){
+      return db && code ? db.collection('staffInvitationLookup').doc(String(code).toUpperCase().trim()) : null;
+    },
+    staffAccount(db, staffUid){
+      return db && staffUid ? db.collection('staffAccounts').doc(String(staffUid)) : null;
+    },
+    caretakerProperties(db, lid){ return col(db, 'caretakerProperties', lid); },
+    caretakerUnits(db, lid){ return col(db, 'caretakerUnits', lid); },
+    caretakerTenants(db, lid){ return col(db, 'caretakerTenants', lid); },
+    inspections(db, lid){ return col(db, 'inspections', lid); },
+    contractorInvitations(db, lid){ return col(db, 'contractorInvitations', lid); },
+    contractorInvitationLookup(db, code){
+      return db && code ? db.collection('contractorInvitationLookup').doc(String(code).toUpperCase().trim()) : null;
+    },
+    contractorAccount(db, contractorUid){
+      return db && contractorUid ? db.collection('contractorAccounts').doc(String(contractorUid)) : null;
+    },
+    vendors(db, lid){ return col(db, 'vendors', lid); },
+    productReviews(db){ return db ? db.collection('productReviews') : null; }
   };
 
   window.nestiqGetLandlordUid = resolveLandlordId;

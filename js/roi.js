@@ -243,7 +243,7 @@ function useBondInROI(){
   if(mortgage){
     mortgage.value=Math.round(payment);
     calcROI();
-    showNotif?.('Bond payment copied to ROI mortgage field','success');
+    nestiqShowNotif?.('Bond payment copied to ROI mortgage field','success');
   }
 }
 
@@ -352,7 +352,7 @@ function calcCpiRentIncrease(){
 function applyCpiIncreaseToTenant(){
   const tenantId=Number(document.getElementById('cpi_tenant_id')?.value||0);
   const tenant=tenantsData.find(t=>t.id===tenantId);
-  if(!tenant){ showNotif('Select a tenant first','warning'); return; }
+  if(!tenant){ nestiqShowNotif('Select a tenant first','warning'); return; }
   if(!window.__lastCpiCalc){ calcCpiRentIncrease(); }
   const c=window.__lastCpiCalc||{};
   const oldRent=Math.round(Number(tenant.rent||0));
@@ -374,7 +374,7 @@ function applyCpiIncreaseToTenant(){
   rentIncreases=rentIncreases.slice(0,200);
   saveData();
   renderTenants?.();
-  showNotif(`Rent updated for ${tenant.name}`,'success');
+  nestiqShowNotif(`Rent updated for ${tenant.name}`,'success');
   addBellNotif?.('📈',`Rent increased: ${tenant.name} (${cpiFmt(oldRent)} -> ${cpiFmt(tenant.rent)})`);
   if(document.getElementById('modalOverlay')?.classList.contains('open')) viewTenant?.(tenant.id);
 
@@ -393,26 +393,32 @@ function openCpiForTenant(tenantId){
 
 async function runCpiAiSuggestRent(){
   if(!isGeminiConfigured()){ aiConfigError(); return; }
+  const aiBtn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="runCpiAiSuggestRent"]');
+  nestiqSetBtnLoading?.(aiBtn,true,'Suggesting...');
   const out=document.getElementById('cpiAiResult');
   if(out) out.innerHTML=aiLoadingHtml();
-  const tenantId=Number(document.getElementById('cpi_tenant_id')?.value||0);
-  const tenant=tenantsData.find(t=>t.id===tenantId);
-  const prop=propertiesData.find(p=>p.id===tenant?.propertyId)||propertiesData.find(p=>p.name===tenant?.property)||{};
-  const city=(String(prop.addr||'').split(',').pop()||'').trim()||'South Africa';
-  const parsed=await suggestRentPriceAI({
-    bedrooms:Number(prop.bedrooms||1),
-    type:prop.type||'apartment',
-    address:prop.addr||tenant?.property||'Address not provided',
-    city,
-    amenities:((tenant?.amenities||[]).join(', ')||'standard')
-  });
-  if(!out) return;
-  renderRentSuggestionCard('cpiAiResult', parsed, (val)=>{
-    const el=document.getElementById('cpi_current_rent');
-    if(el) el.value=Math.round(Number(val||0));
-    calcCpiRentIncrease();
-    showNotif('AI rent applied to CPI calculator','success');
-  });
+  try{
+    const tenantId=Number(document.getElementById('cpi_tenant_id')?.value||0);
+    const tenant=tenantsData.find(t=>t.id===tenantId);
+    const prop=propertiesData.find(p=>p.id===tenant?.propertyId)||propertiesData.find(p=>p.name===tenant?.property)||{};
+    const city=(String(prop.addr||'').split(',').pop()||'').trim()||'South Africa';
+    const parsed=await suggestRentPriceAI({
+      bedrooms:Number(prop.bedrooms||1),
+      type:prop.type||'apartment',
+      address:prop.addr||tenant?.property||'Address not provided',
+      city,
+      amenities:((tenant?.amenities||[]).join(', ')||'standard')
+    });
+    if(!out) return;
+    renderRentSuggestionCard('cpiAiResult', parsed, (val)=>{
+      const el=document.getElementById('cpi_current_rent');
+      if(el) el.value=Math.round(Number(val||0));
+      calcCpiRentIncrease();
+      nestiqShowNotif('AI rent applied to CPI calculator','success');
+    });
+  }finally{
+    nestiqSetBtnLoading?.(aiBtn,false);
+  }
 }
 
 async function askAiRentIncreaseAdvisor(){

@@ -42,9 +42,19 @@ function rentRollDefaultPaymentDate(y,m){
 }
 
 function getActiveTenantForProperty(p){
-  return (tenantsData||[]).find(t=>
-    t&&t.status!=='vacant'&&(Number(t.propertyId)===Number(p.id)||t.property===p.name)
-  )||null;
+  return (tenantsData||[]).find(t=>{
+    if(!t) return false;
+    const occupies=typeof window.nestiqTenantHasActiveOccupancy==='function'
+      ? window.nestiqTenantHasActiveOccupancy(t)
+      : t.status!=='vacant';
+    if(!occupies) return false;
+    return String(t.propertyId)===String(p.id) || t.property===p.name;
+  })||null;
+}
+
+function getTenantForUnit(unit){
+  if(!unit||unit.tenantId==null||unit.tenantId==='') return null;
+  return (tenantsData||[]).find(t=>String(t.id)===String(unit.tenantId))||null;
 }
 
 function getPaymentForTenantMonth(tenant,y,m){
@@ -59,13 +69,15 @@ function getPaymentForTenantMonth(tenant,y,m){
 function rentRollRowStatus(tenant,y,m,payment){
   if(!tenant||tenant.status==='vacant') return 'VACANT';
   if(payment) return 'PAID';
-  const dueDay=Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1)));
-  const due=new Date(y,m-1,dueDay);
+  const ls=String(tenant.leaseStatus||'').toLowerCase();
+  if(ls && ls!=='active' && ls!=='expired') return 'DUE';
+  const lease=typeof window.nestiqLeaseLikeFromTenant==='function'?window.nestiqLeaseLikeFromTenant(tenant):null;
+  const due=lease && typeof window.nestiqLeasePeriodDueDate==='function'
+    ? window.nestiqLeasePeriodDueDate(lease, y, m-1)
+    : new Date(y,m-1,Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1))));
   const now=new Date();
   const today=new Date(now.getFullYear(),now.getMonth(),now.getDate());
   const monthEnd=new Date(y,m,0,23,59,59);
-  const monthStart=new Date(y,m-1,1);
-  if(monthEnd<monthStart) return 'DUE';
   if(monthEnd<today){
     return 'OVERDUE';
   }
@@ -75,28 +87,35 @@ function rentRollRowStatus(tenant,y,m,payment){
   return 'OVERDUE';
 }
 
-function rentRollExpectedRent(p,tenant){
+function rentRollExpectedRent(p,tenant,unit,y,m){
   if(!tenant||tenant.status==='vacant') return 0;
-  return Number(tenant.rent||p.rent||0);
+  if(y && m && typeof window.nestiqLeasePeriodAmount==='function'){
+    const lease=typeof window.nestiqLeaseLikeFromTenant==='function'?window.nestiqLeaseLikeFromTenant(tenant):null;
+    if(lease && (String(lease.storedStatus||lease.status||tenant.leaseStatus||'')==='' || window.nestiqLeaseIsActiveForRent?.(lease, tenant))){
+      const amt=window.nestiqLeasePeriodAmount(lease, y, m-1);
+      if(Number(amt)>=0) return Number(amt)||0;
+    }
+  }
+  return Number(unit?.rent||tenant.rent||p.rent||0);
 }
 
-function rentRollOutstandingAmount(tenant,p,payment,status){
+function rentRollOutstandingAmount(tenant,p,payment,status,unit,y,m){
   if(status==='VACANT'||status==='PAID') return 0;
-  const exp=rentRollExpectedRent(p,tenant);
+  const exp=rentRollExpectedRent(p,tenant,unit,y,m);
   const paid=payment?Number(payment.amount||0):0;
   return Math.max(0,exp-paid);
 }
 
-function vacantInfoForProperty(p,y,m){
-  const rent=Number(p.rent||0);
+function vacantInfoForRent(baseRent,vacantSince,y,m){
+  const rent=Number(baseRent||0);
   const start=new Date(y,m-1,1);
   const end=new Date(y,m,0);
   const today=new Date();
   const today0=new Date(today.getFullYear(),today.getMonth(),today.getDate());
   const endClamp=new Date(Math.min(end,today0));
   let from=start;
-  if(p.vacantSince){
-    const vs=new Date(p.vacantSince);
+  if(vacantSince){
+    const vs=new Date(vacantSince);
     if(String(vs)!=='Invalid Date'&&vs>from) from=vs;
   }
   if(from>endClamp) return {days:0,lost:0};
@@ -105,32 +124,80 @@ function vacantInfoForProperty(p,y,m){
   return {days,lost};
 }
 
+function vacantInfoForProperty(p,y,m){
+  return vacantInfoForRent(p.rent,p.vacantSince,y,m);
+}
+
+function rentRollBuildRow(p,tenant,unit,y,m){
+  const payment=tenant?getPaymentForTenantMonth(tenant,y,m):null;
+  const status=rentRollRowStatus(tenant,y,m,payment);
+  const expected=rentRollExpectedRent(p,tenant,unit,y,m);
+  const lease=tenant && typeof window.nestiqLeaseLikeFromTenant==='function'?window.nestiqLeaseLikeFromTenant(tenant):null;
+  const dueObj=lease && typeof window.nestiqLeasePeriodDueDate==='function'
+    ? window.nestiqLeasePeriodDueDate(lease, y, m-1)
+    : null;
+  const dueDay=dueObj?dueObj.getDate():Math.max(1,Math.min(28,Number(tenant?.monthlyDueDate||1)));
+  const dueDateStr=`${dueDay} ${new Date(y,m-1,1).toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}`;
+  const out=rentRollOutstandingAmount(tenant,p,payment,status,unit,y,m);
+  let vac={days:0,lost:0};
+  if(status==='VACANT'){
+    vac=vacantInfoForRent(unit?.rent!=null?unit.rent:p.rent, unit?.vacantSince||p.vacantSince, y, m);
+  }
+  const unitLabel=unit
+    ? String(unit.label||unit.unitNumber||'')
+    : String(tenant?.unit||'');
+  return {
+    property:p,
+    tenant,
+    unit:unit||null,
+    unitLabel,
+    payment,
+    status,
+    expected,
+    dueDateStr,
+    outstanding:out,
+    vacDays:vac.days,
+    vacLost:vac.lost
+  };
+}
+
 function buildRentRollRows(y,m){
   const rows=[];
   (propertiesData||[]).forEach(p=>{
     if(!p||p.id==null) return;
-    const tenant=getActiveTenantForProperty(p);
-    const payment=tenant?getPaymentForTenantMonth(tenant,y,m):null;
-    const status=rentRollRowStatus(tenant,y,m,payment);
-    const expected=rentRollExpectedRent(p,tenant);
-    const dueDay=Math.max(1,Math.min(28,Number(tenant?.monthlyDueDate||1)));
-    const dueDateStr=`${dueDay} ${new Date(y,m-1,1).toLocaleDateString('en-ZA',{month:'long',year:'numeric'})}`;
-    const out=rentRollOutstandingAmount(tenant,p,payment,status);
-    let vac={days:0,lost:0};
-    if(status==='VACANT') vac=vacantInfoForProperty(p,y,m);
-    rows.push({
-      property:p,
-      tenant,
-      payment,
-      status,
-      expected,
-      dueDateStr,
-      outstanding:out,
-      vacDays:vac.days,
-      vacLost:vac.lost
+    const units=(typeof nestiqUnitsForProperty==='function'?nestiqUnitsForProperty(p.id):[])
+      .slice()
+      .sort((a,b)=>
+        (Number(a.order)||0)-(Number(b.order)||0)
+        || String(a.label||a.unitNumber||'').localeCompare(String(b.label||b.unitNumber||''),undefined,{numeric:true,sensitivity:'base'})
+      );
+
+    // No units in cache yet → legacy one-row-per-property (identical for single-unit landlords)
+    if(!units.length){
+      const tenant=getActiveTenantForProperty(p);
+      rows.push(rentRollBuildRow(p,tenant,null,y,m));
+      return;
+    }
+
+    units.forEach(unit=>{
+      let tenant=getTenantForUnit(unit);
+      // Single-unit legacy parity: tenant may still be property-linked without unit.tenantId
+      if(!tenant && units.length===1){
+        tenant=getActiveTenantForProperty(p);
+      }
+      // Multi-unit: unit marked vacant with no link → vacant row (do not clear single-unit fallback)
+      if(units.length>1 && String(unit.status||'').toLowerCase()==='vacant' && !unit.tenantId){
+        tenant=null;
+      }
+      rows.push(rentRollBuildRow(p,tenant,unit,y,m));
     });
   });
-  rows.sort((a,b)=>String(a.property.name||'').localeCompare(String(b.property.name||'')));
+  rows.sort((a,b)=>{
+    const pn=String(a.property.name||'').localeCompare(String(b.property.name||''));
+    if(pn) return pn;
+    return (Number(a.unit?.order)||0)-(Number(b.unit?.order)||0)
+      || String(a.unitLabel||'').localeCompare(String(b.unitLabel||''),undefined,{numeric:true,sensitivity:'base'});
+  });
   return rows;
 }
 
@@ -218,7 +285,9 @@ function rentRollRowHtml(r,no,y,m){
        <div class="rentroll-muted-sm">Lost income: R${r.vacLost.toLocaleString('en-ZA')}</div>
        <button type="button" class="btn-outline btn-sm" style="margin-top:6px;padding:4px 10px;font-size:0.72rem" onclick="rentRollFindTenant(${p.id})">Find Tenant</button>`
     : escapeCell(t.name);
-  const unit=r.status==='VACANT'?'—':escapeCell(t.unit||'—');
+  const unit=r.status==='VACANT'
+    ? '—'
+    : escapeCell(r.unitLabel||t?.unit||'—');
   const rentGold=`<span class="rentroll-money">R${r.expected.toLocaleString('en-ZA')}</span>`;
   const paidDate=pay&&pay.date?escapeCell(String(pay.date).slice(0,10)):'—';
   const method=pay?escapeCell(pay.method||'—'):'—';
@@ -323,7 +392,7 @@ function renderRentRollVacantFooter(rows){
   if(total<=0){ el.style.display='none'; el.innerHTML=''; return; }
   el.style.display='block';
   el.innerHTML=`<div class="rentroll-vacant-banner">
-    <strong>Total lost income from vacant properties:</strong> R${total.toLocaleString('en-ZA')} this month
+    <strong>Total lost income from vacant units:</strong> R${total.toLocaleString('en-ZA')} this month
   </div>`;
 }
 
@@ -345,12 +414,24 @@ function syncRentRollUi(){
   if(next) next.disabled=rentRollIsFuture(n.y,n.m);
 }
 
-function renderRentRoll(){
+async function renderRentRoll(){
   if(!document.getElementById('page-rentroll')) return;
   const y=nestiqRentRollYear;
   const m=nestiqRentRollMonth;
   if(rentRollIsFuture(y,m)) rentRollInitMonth();
   syncRentRollUi();
+
+  // Prefetch units (ensure default unit per property, then load) so rows iterate units not properties
+  try{
+    const props=(propertiesData||[]).filter(p=>p&&p.id!=null);
+    await Promise.all(props.map(async p=>{
+      try{
+        if(typeof nestiqEnsureUnitsForProperty==='function') await nestiqEnsureUnitsForProperty(p);
+        if(typeof getPropertyUnits==='function') await getPropertyUnits(p.id);
+      }catch(_e){}
+    }));
+  }catch(_e){}
+
   const rows=buildRentRollRows(nestiqRentRollYear,nestiqRentRollMonth);
   const stats=rentRollStats(rows,nestiqRentRollYear,nestiqRentRollMonth);
   renderRentRollStats(stats);
@@ -382,7 +463,7 @@ function rentRollOnMonthInput(){
   if(!inp||!inp.value) return;
   const [ys,ms]=inp.value.split('-').map(Number);
   if(rentRollIsFuture(ys,ms)){
-    showNotif('Cannot select a future month','warning');
+    nestiqShowNotif('Cannot select a future month','warning');
     syncRentRollUi();
     return;
   }
@@ -408,16 +489,8 @@ function rentRollRecordPayment(tenantId){
 }
 
 function rentRollFindTenant(propertyId){
-  openModal('addTenant');
-  setTimeout(()=>{
-    const p=propertiesData.find(x=>Number(x.id)===Number(propertyId));
-    const sel=document.getElementById('nt_prop');
-    if(sel&&p){
-      sel.value=p.name;
-      const rent=document.getElementById('nt_rent');
-      if(rent) rent.value=Number(p.rent||0);
-    }
-  },0);
+  if(typeof nestiqShowTenantsApplyOnly==='function') nestiqShowTenantsApplyOnly();
+  else showPage?.('listings');
 }
 
 function exportRentRollCSV(){
@@ -432,7 +505,7 @@ function exportRentRollCSV(){
     const lf=typeof lateFeeRentRollAmount==='function'?lateFeeRentRollAmount(r,y,m):0;
     const cells=[
       p.name,p.addr||'',r.status==='VACANT'?'Vacant':(t?.name||''),
-      r.status==='VACANT'?'':(t?.unit||''),
+      r.status==='VACANT'?'':(r.unitLabel||t?.unit||''),
       r.expected,r.dueDateStr,r.status,
       pay?String(pay.date).slice(0,10):'',
       pay?(pay.method||''):'',
@@ -443,12 +516,12 @@ function exportRentRollCSV(){
     return cells.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',');
   });
   downloadCSV([hdr,...lines].join('\n'),`nestiq-rentroll-${m}-${y}.csv`);
-  showNotif('Rent roll CSV downloaded','success');
+  nestiqShowNotif('Rent roll CSV downloaded','success');
 }
 
 function exportRentRollPDF(){
   const { jsPDF }=window.jspdf;
-  if(!jsPDF){ showNotif('PDF library not loaded','error'); return; }
+  if(!jsPDF){ nestiqShowNotif('PDF library not loaded','error'); return; }
   const y=nestiqRentRollYear;
   const m=nestiqRentRollMonth;
   const rows=buildRentRollRows(y,m);
@@ -552,7 +625,7 @@ function exportRentRollPDF(){
       String(no),
       String(r.property.name||'').slice(0,22),
       r.status==='VACANT'?'Vacant':String(r.tenant?.name||'').slice(0,18),
-      r.status==='VACANT'?'—':String(r.tenant?.unit||'').slice(0,8),
+      r.status==='VACANT'?'—':String(r.unitLabel||r.tenant?.unit||'').slice(0,8),
       `R${r.expected.toLocaleString('en-ZA')}`,
       String(r.dueDateStr).slice(0,18),
       r.status,
@@ -613,7 +686,7 @@ function exportRentRollPDF(){
   }
 
   doc.save(`nestiq-rentroll-${m}-${y}.pdf`);
-  showNotif('PDF exported','success');
+  nestiqShowNotif('PDF exported','success');
 }
 
 function initRentRollPage(){

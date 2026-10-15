@@ -1,8 +1,9 @@
-const CACHE_NAME = 'nestiq-pro-v13-admin-login';
+const CACHE_NAME = 'nestiq-pro-v54-auth-polish';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './landing.html',
+  './legal.html',
   './billing.html',
   './admin.html',
   './onboarding.html',
@@ -13,6 +14,7 @@ const ASSETS_TO_CACHE = [
   './manifest.json',
   './css/styles.css',
   './css/animations.css',
+  './js/icons.js',
   './pages/home.html',
   './pages/properties.html',
   './pages/map.html',
@@ -36,6 +38,8 @@ const ASSETS_TO_CACHE = [
   './pages/portal.html',
   './pages/settings.html',
   './pages/tenant-dashboard.html',
+  './pages/caretaker-dashboard.html',
+  './pages/contractor-dashboard.html',
   './icons/icon-192.png',
   './icons/icon-512.png'
 ];

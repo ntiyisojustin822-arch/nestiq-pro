@@ -43,14 +43,22 @@
     .bill-usage-item { margin-bottom:14px; }
     .bill-usage-head { display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:6px; }
     .bill-bar-track { height:8px; background:#eee; border-radius:4px; overflow:hidden; }
-    .bill-bar-fill { height:100%; border-radius:4px; transition:width .3s; }
+    .bill-bar-fill { height:100%; border-radius:4px; width:0; }
+    .bill-plan-card { cursor:pointer; transition:transform .3s ease, box-shadow .25s ease, border-color .25s ease; }
+    .bill-plan-card.nq-plan-pick { animation: nq-plan-pick .3s ease; }
+    @keyframes nq-plan-pick { 0%{transform:scale(1)} 50%{transform:scale(1.03)} 100%{transform:scale(1)} }
     .bill-usage-disabled { opacity:.5; }
     .bill-upgrade-link { color:var(--gold); font-weight:600; font-size:.75rem; }
     .bill-plan-grid { display:grid; grid-template-columns:1fr; gap:16px; }
     @media(min-width:768px){ .bill-plan-grid { grid-template-columns:repeat(3,1fr); } }
     .bill-plan-card { background:#fff; border:1px solid var(--border); border-radius:16px; padding:24px; position:relative; }
     .bill-plan-popular { border-color:var(--gold); box-shadow:0 8px 32px rgba(196,106,58,.15); }
-    .bill-popular-tag { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--gold); color:#fff; font-size:.7rem; padding:4px 12px; border-radius:999px; font-weight:600; }
+    .bill-popular-tag { position:absolute; top:-10px; left:50%; transform:translateX(-50%); background:var(--gold); color:#fff; font-size:.7rem; padding:4px 12px; border-radius:999px; font-weight:600; animation: nq-popular-pop .5s cubic-bezier(.34,1.56,.64,1) .5s both; }
+    @keyframes nq-popular-pop {
+      0% { transform: translateX(-50%) scale(0.55); opacity: 0; }
+      60% { transform: translateX(-50%) scale(1.12); opacity: 1; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+    }
     .bill-price { font-size:1.75rem; font-weight:700; margin:8px 0 16px; }
     .bill-price-sub { font-size:.9rem; font-weight:400; color:var(--muted); }
     .bill-features { list-style:none; padding:0; margin:0 0 8px; font-size:.85rem; line-height:1.7; color:var(--muted); }
@@ -85,7 +93,7 @@
       </div>
       <div id="billReturnBanner" class="bill-banner"></div>
 
-      <section class="bill-card">
+      <section class="bill-card nq-reveal">
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-start;gap:12px">
           <div>
             <p style="font-size:.78rem;color:var(--muted);margin:0 0 4px">Current plan</p>
@@ -96,18 +104,18 @@
         <div id="billCurrentMeta" style="margin-top:16px;font-size:.9rem;line-height:1.8"></div>
         <div class="bill-actions">
           <button type="button" class="bill-btn bill-btn-gold" onclick="nestiqScrollToPlans()">Upgrade Plan</button>
-          <button type="button" class="bill-btn bill-btn-outline" onclick="nestiqRefreshPaidPlanStatus()">I've already paid — refresh plan</button>
+          <button type="button" class="bill-btn bill-btn-outline" id="billRefreshPaidBtn" onclick="nestiqRefreshPaidPlanStatus()">I've already paid — refresh plan</button>
           <button type="button" class="bill-btn bill-btn-outline bill-btn-red" id="billCancelBtn" style="display:none" onclick="nestiqCancelSubscription()">Cancel Subscription</button>
           <button type="button" class="bill-btn bill-btn-outline" id="billDownloadInvoiceBtn" style="display:none" onclick="nestiqDownloadReceiptById(window.__nestiqPaymentRows?.[0]?.id)">Download Invoice</button>
         </div>
       </section>
 
-      <section class="bill-card">
+      <section class="bill-card nq-reveal">
         <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Usage summary</h3>
         <div id="billUsageBars"></div>
       </section>
 
-      <section class="bill-card" id="billPlanSection">
+      <section class="bill-card nq-reveal" id="billPlanSection">
         <h3 class="font-display text-xl font-bold" style="margin:0">Choose the Right Plan for Your Portfolio</h3>
         <p style="font-size:.85rem;color:var(--muted);margin:8px 0 0">Annual billing saves 20%</p>
         <div class="bill-cycle-toggle">
@@ -120,7 +128,7 @@
         </p>
       </section>
 
-      <section class="bill-card">
+      <section class="bill-card nq-reveal">
         <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Payment history</h3>
         <div class="bill-table-wrap">
           <table class="bill-table">
@@ -130,7 +138,7 @@
         </div>
       </section>
 
-      <section class="bill-card">
+      <section class="bill-card nq-reveal">
         <h3 class="font-display text-lg font-bold" style="margin:0 0 16px">Billing details</h3>
         <label style="font-size:.82rem">Email for invoices</label>
         <input type="email" id="billInvoiceEmail" class="bill-form-input" placeholder="you@example.com" />
@@ -152,12 +160,22 @@
     </div>
   </div>
 
+  <div id="modalOverlay" class="modal-overlay" onclick="if(event.target===this&&typeof nestiqCloseModalAnimated==='function')nestiqCloseModalAnimated()">
+    <div class="modal rounded-2xl shadow-2xl p-6 max-w-lg w-full mx-4 animate-fade-in" role="dialog" aria-modal="true">
+      <button type="button" class="modal-close" onclick="typeof nestiqCloseModalAnimated==='function'&&nestiqCloseModalAnimated()">✕</button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
   <script src="./js/utils.js"></script>
   <script src="./js/data.js"></script>
   <script src="./js/firebase-config.js"></script>
   <script src="./js/firestore-paths.js"></script>
   <script src="./js/firebase-db.js"></script>
-  <script src="./js/billing.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="./js/animations.js"></script>
+  <script src="./js/payment-modal.js?v=receipt1"></script>
+  <script src="./js/billing.js?v=inapppay1"></script>
   <script>
     (async function bootBillingPage(){
       const gate = document.getElementById('billGate');
@@ -203,6 +221,5 @@
       });
     })();
   </script>
-  <script src="./js/animations.js"></script>
 </body>
 </html>

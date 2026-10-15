@@ -21,10 +21,10 @@
         </div>
       </div>
       <div class="portal-nav">
-        <div class="portal-nav-item active" onclick="switchPortalTab('payments',this)"><span class="nav-icon">💳</span>Payment History</div>
-        <div class="portal-nav-item" onclick="switchPortalTab('lease',this)"><span class="nav-icon">📄</span>Lease Details</div>
-        <div class="portal-nav-item" onclick="switchPortalTab('maintenance',this)"><span class="nav-icon">🔧</span>Maintenance Request</div>
-        <div class="portal-nav-item" onclick="switchPortalTab('documents',this)"><span class="nav-icon">📁</span>Documents</div>
+        <div class="portal-nav-item active" onclick="switchPortalTab('payments',this)"><span class="nav-icon" data-nq-icon="credit-card" data-nq-size="18"></span>Payment History</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('lease',this)"><span class="nav-icon" data-nq-icon="file-text" data-nq-size="18"></span>Lease Details</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('maintenance',this)"><span class="nav-icon" data-nq-icon="wrench" data-nq-size="18"></span>Maintenance Request</div>
+        <div class="portal-nav-item" onclick="switchPortalTab('documents',this)"><span class="nav-icon" data-nq-icon="folder" data-nq-size="18"></span>Documents</div>
       </div>
     </div>
     <div class="portal-main">
@@ -61,21 +61,15 @@
         <div class="portal-card">
           <div class="portal-card-title">Submit Maintenance Request</div>
           <div class="maint-form">
-            <div class="form-row">
-              <div class="form-group"><label>Issue Type</label>
-                <select class="form-input" id="pm_issue"><option>Plumbing</option><option>Electrical</option><option>Structural</option><option>Appliance</option><option>Pest Control</option><option>Other</option></select>
-              </div>
-              <div class="form-group"><label>Urgency</label>
-                <select class="form-input" id="pm_urgency"><option>Low — Not urgent</option><option>Medium — Needs attention</option><option>High — Urgent</option></select>
-              </div>
-            </div>
+          <div class="form-group"><label>Issue Type</label>
+            <select class="form-input" id="pm_issue"><option>Plumbing</option><option>Electrical</option><option>Structural</option><option>Appliance</option><option>Pest Control</option><option>Other</option></select>
+          </div>
             <div class="form-group"><label>Description</label><textarea class="form-input form-textarea" id="pm_desc" placeholder="Describe the issue in detail..."></textarea></div>
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
               <button class="btn-outline btn-sm" onclick="runPortalMaintAiAssess()">AI Assess</button>
               <span id="pmAiLoading" style="font-size:0.8rem;color:var(--muted);display:none">Thinking...</span>
             </div>
             <div id="pmAiResult" style="margin-top:8px"></div>
-            <div class="form-group"><label>Preferred Time for Inspection</label><input class="form-input" id="pm_time" type="datetime-local"></div>
             <div class="form-group"><label>Attach Photo (optional)</label><div id="portalMaintUploadWrap"></div></div>
             <button class="btn-primary" onclick="submitPortalMaintRequest()">Submit Request →</button>
           </div>

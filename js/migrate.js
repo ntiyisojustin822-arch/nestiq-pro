@@ -4,14 +4,14 @@ async function nestiqMigrateToScopedCollections(){
   const db = window.nestiqDb;
   const Fs = window.nestiqFs;
   if(!db || !Fs){
-    window.showNotif?.('Firebase is not initialized.', 'error');
+    window.nestiqShowNotif?.('Firebase is not initialized.', 'error');
     return;
   }
   const uid = typeof window.nestiqCurrentLandlordUid === 'function'
     ? window.nestiqCurrentLandlordUid()
     : (window.nestiqGetLandlordUid?.() || null);
   if(!uid){
-    window.showNotif?.('Sign in as a landlord before running migration.', 'error');
+    window.nestiqShowNotif?.('Sign in as a landlord before running migration.', 'error');
     return;
   }
   if(!confirm('Migrate all flat Firestore data into landlord-scoped collections? This deletes originals after each successful copy. Continue?')){
@@ -108,7 +108,7 @@ async function nestiqMigrateToScopedCollections(){
     console.warn('NestIQ migrate invitation lookup', e);
   }
 
-  window.showNotif?.('Migration complete. All data has been moved to secure landlord-scoped collections.', 'success');
+  window.nestiqShowNotif?.('Migration complete. All data has been moved to secure landlord-scoped collections.', 'success');
 }
 
 function nestiqInitDeveloperMigrationSection(){

@@ -1,16 +1,58 @@
-<div class="page" id="page-listings">
-  <section class="section reveal">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:14px;margin-bottom:18px">
-      <div>
+<div class="page listings-page" id="page-listings">
+  <section class="listings-page-section">
+    <header class="listings-head">
+      <div class="listings-head-copy">
         <p class="eyebrow">Rentals</p>
-        <h1 class="section-title reveal" style="margin-bottom:4px">Available listings</h1>
+        <h1 class="listings-title">Available listings</h1>
+        <p class="listings-sub">Find a vacant unit, apply with your NestIQ account, and track the decision in My Applications.</p>
       </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap" id="nestiqListingsGuestBar">
+      <div class="listings-guest-bar" id="nestiqListingsGuestBar">
         <button type="button" class="btn-outline btn-sm" onclick="showLandingPage();location.hash='';">Home</button>
-        <button type="button" class="btn-gold btn-sm" onclick="nestiqShowTenantEntry()">Tenant sign up / sign in</button>
+        <button type="button" class="btn-gold btn-sm" onclick="nestiqShowTenantEntry()">Create a free account</button>
+      </div>
+    </header>
+
+    <p id="nestiqListingsErr" class="nestiq-auth-err listings-err"></p>
+
+    <div id="nestiqListingsToolbar" class="listings-toolbar" style="display:none">
+      <div class="listings-toolbar-row">
+        <label class="listings-search-wrap">
+          <span class="listings-search-ico" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.2-3.2"/></svg>
+          </span>
+          <input type="search" id="nestiqListingsSearch" class="form-input listings-search"
+            placeholder="Search suburb or city" autocomplete="off" aria-label="Search listings">
+        </label>
+        <select id="nestiqListingsSort" class="form-input listings-sort" aria-label="Sort listings">
+          <option value="newest">Newest</option>
+          <option value="price-asc">Price: low to high</option>
+          <option value="price-desc">Price: high to low</option>
+        </select>
+        <button type="button" class="listings-fav-toggle" id="nestiqListingsFavToggle" hidden aria-pressed="false" title="My Favourites">
+          <span class="listings-fav-toggle-heart" aria-hidden="true">♥</span>
+          <span class="listings-fav-toggle-label">My Favourites</span>
+          <span class="listings-fav-count" id="nestiqListingsFavCount" hidden>0</span>
+        </button>
+      </div>
+      <div class="filter-chips listings-filter-chips" id="nestiqListingsTypeChips" role="group" aria-label="Property type">
+        <button type="button" class="filter-chip active" data-listings-type="all">All</button>
+        <button type="button" class="filter-chip" data-listings-type="apartment">Apartment</button>
+        <button type="button" class="filter-chip" data-listings-type="house">House</button>
+        <button type="button" class="filter-chip" data-listings-type="townhouse">Townhouse</button>
+        <button type="button" class="filter-chip" data-listings-type="commercial">Commercial</button>
+        <button type="button" class="filter-chip" id="nestiqListingsBedsChip" data-listings-beds="0">Beds: Any</button>
       </div>
     </div>
-    <p id="nestiqListingsErr" class="nestiq-auth-err" style="margin-bottom:10px"></p>
-    <div id="nestiqListingsGrid" class="properties-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px"></div>
+
+    <div id="nestiqListingsLayout" class="listings-layout">
+      <div class="listings-list-col">
+        <div id="nestiqListingsCount" class="listings-count" style="display:none"></div>
+        <div id="nestiqListingsGrid" class="listings-list"></div>
+      </div>
+      <div class="listings-map-col" id="nestiqListingsMapCol">
+        <div id="nestiqListingsMap" class="listings-map-canvas" role="img" aria-label="Map of available listings"></div>
+        <p class="listings-map-hint">Hover a listing to highlight it on the map</p>
+      </div>
+    </div>
   </section>
 </div>

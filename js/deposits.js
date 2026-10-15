@@ -363,6 +363,7 @@ function nestiqRenderDepositsPage(){
         </tbody>
       </table>
     </div>`;
+  if(typeof nestiqStaggerChildren==='function') nestiqStaggerChildren(tblEl, 40);
 }
 
 function nestiqOnDepositsSearchInput(){
@@ -391,14 +392,14 @@ function nestiqOpenDepositCollectionModal(tenantId){
     <div class="form-group"><label>Interest Rate (% p.a.)</label><input class="form-input" id="ndc_rate" type="number" step="0.01" min="0" value="3.5"></div>
     <div class="form-group"><label>Upload investment proof (optional)</label><input class="form-input" type="file" id="ndc_file" accept="image/*,.pdf"></div>
     <div style="display:flex;gap:8px;margin-top:14px;flex-wrap:wrap">
-      <button type="button" class="btn-primary btn-sm" onclick="nestiqSubmitDepositCollection(${t.id})">Record Collection</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-primary btn-sm" onclick='nestiqSubmitDepositCollection(${JSON.stringify(String(t.id))})'>Record Collection</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqSubmitDepositCollection(tenantId){
-  const t = (tenantsData || []).find(x => Number(x.id) === Number(tenantId));
+  const t = (tenantsData || []).find(x => String(x.id) === String(tenantId));
   if (!t) return;
   nestiqEnsureTenantDeposit(t);
   const amt = Number(document.getElementById('ndc_amt')?.value);
@@ -409,11 +410,11 @@ function nestiqSubmitDepositCollection(tenantId){
   const acc = document.getElementById('ndc_acc')?.value?.trim() || '';
   const rate = Number(document.getElementById('ndc_rate')?.value) || 3.5;
   if (!Number.isFinite(amt) || amt <= 0){
-    showNotif('Enter a valid amount received', 'error');
+    nestiqShowNotif('Enter a valid amount received', 'error');
     return;
   }
   if (!bank || !acc){
-    showNotif('Bank name and account number are required', 'error');
+    nestiqShowNotif('Bank name and account number are required', 'error');
     return;
   }
   const fileEl = document.getElementById('ndc_file');
@@ -432,14 +433,36 @@ function nestiqSubmitDepositCollection(tenantId){
     if (proof) d.investmentProof = proof;
     saveData?.();
     normalizeDataModel?.();
-    closeModal();
-    showNotif(`Deposit collection recorded for ${t.name}`, 'success');
+    nestiqCloseModalAnimated();
+    nestiqShowNotif(`Deposit collection recorded for ${t.name}`, 'success');
     nestiqPrintDepositReceipt(t, { reference: ref });
     d.receiptIssued = true;
     d.receiptDate = new Date().toISOString().slice(0, 10);
-    saveData?.();
-    nestiqRenderDepositsPage?.();
-    renderTenants?.();
+    t.depositCollected = true;
+    const after = async () => {
+      try{
+        if(window.nestiqUseFirestore && typeof window.nestiqPersistSingleTenantToFirestore==='function'){
+          await window.nestiqPersistSingleTenantToFirestore(t);
+        }else{
+          saveData?.();
+        }
+      }catch(_e){
+        saveData?.();
+      }
+      try{
+        const lease=typeof window.nestiqPrimaryLeaseForTenant==='function'
+          ? window.nestiqPrimaryLeaseForTenant(t.id)
+          : null;
+        if(lease && typeof window.nestiqTryActivateLeaseAfterMoney==='function'){
+          await window.nestiqTryActivateLeaseAfterMoney(lease);
+        }
+      }catch(err){
+        console.warn('NestIQ: activate after deposit collection', err);
+      }
+      nestiqRenderDepositsPage?.();
+      renderTenants?.();
+    };
+    void after();
   };
   if (fileEl && fileEl.files && fileEl.files[0]){
     const r = new FileReader();
@@ -605,14 +628,14 @@ function nestiqOpenDepositDetailModal(tenantId){
         <textarea class="form-input" id="nd_notes" rows="2" placeholder="Internal notes">${nestiqDepEsc(d.notes || '')}</textarea>
         <button type="button" class="btn-outline btn-sm" style="margin-top:8px" onclick="nestiqSaveDepositNotes(${t.id})">Save notes</button>
         <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:14px">
-          ${canRefund ? `<button type="button" class="btn-primary btn-sm" onclick="closeModal();nestiqOpenDepositRefundModal(${t.id})">Process Refund</button>` : ''}
-          ${d.status === 'held' ? `<button type="button" class="btn-outline btn-sm" onclick="closeModal();nestiqOpenDepositClaimModal(${t.id})">Record Claim</button>` : ''}
+          ${canRefund ? `<button type="button" class="btn-primary btn-sm" onclick="nestiqCloseModalAnimated();nestiqOpenDepositRefundModal(${t.id})">Process Refund</button>` : ''}
+          ${d.status === 'held' ? `<button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated();nestiqOpenDepositClaimModal(${t.id})">Record Claim</button>` : ''}
           <button type="button" class="btn-outline btn-sm" onclick="nestiqOpenDepositDispute(${t.id})">Open Dispute</button>
         </div>
       </div>
     </div>
-    <div style="margin-top:12px"><button type="button" class="btn-outline btn-sm" onclick="closeModal()">Close</button></div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+    <div style="margin-top:12px"><button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button></div>`;
+  nestiqOpenModalAnimated();
 }
 
 function nestiqViewDeductionReceipt(tenantId, dedId){
@@ -641,7 +664,7 @@ function nestiqSaveDepositNotes(tenantId){
   nestiqEnsureTenantDeposit(t);
   t.deposit.notes = document.getElementById('nd_notes')?.value || '';
   saveData?.();
-  showNotif('Notes saved', 'success');
+  nestiqShowNotif('Notes saved', 'success');
 }
 
 function nestiqAddDeduction(tenantId){
@@ -650,7 +673,7 @@ function nestiqAddDeduction(tenantId){
   nestiqEnsureTenantDeposit(t);
   const desc = document.getElementById('ndd_desc')?.value?.trim() || '';
   if (!desc){
-    showNotif('Description is required', 'error');
+    nestiqShowNotif('Description is required', 'error');
     return;
   }
   const amt = Number(document.getElementById('ndd_amt')?.value) || 0;
@@ -695,7 +718,7 @@ function nestiqOpenDepositRefundModal(tenantId){
   nestiqEnsureTenantDeposit(t);
   const d = t.deposit;
   if (d.status !== 'held'){
-    showNotif('Refund is only available while deposit is held', 'warning');
+    nestiqShowNotif('Refund is only available while deposit is held', 'warning');
     return;
   }
   const suggested = nestiqTenantDisplayRefund(t);
@@ -725,9 +748,9 @@ function nestiqOpenDepositRefundModal(tenantId){
     <div class="form-group"><label>Notes</label><textarea class="form-input" id="ndr_notes" rows="2">${nestiqDepEsc(d.refundNotes || '')}</textarea></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSubmitDepositRefund(${t.id})">Process Refund</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   nestiqToggleRefundBankFields();
 }
 
@@ -747,12 +770,12 @@ function nestiqSubmitDepositRefund(tenantId){
   const d = t.deposit;
   let amt = Number(document.getElementById('ndr_amt')?.value);
   if (!Number.isFinite(amt) || amt < 0){
-    showNotif('Refund must be zero or greater', 'error');
+    nestiqShowNotif('Refund must be zero or greater', 'error');
     return;
   }
   const maxRef = nestiqTenantDisplayRefund(t);
   if (amt > maxRef + 0.0001){
-    showNotif(`Refund cannot exceed available R${maxRef.toLocaleString('en-ZA')}`, 'error');
+    nestiqShowNotif(`Refund cannot exceed available R${maxRef.toLocaleString('en-ZA')}`, 'error');
     return;
   }
   const suggested = maxRef;
@@ -768,8 +791,8 @@ function nestiqSubmitDepositRefund(tenantId){
   else d.status = 'refunded';
   saveData?.();
   normalizeDataModel?.();
-  closeModal();
-  showNotif('Refund recorded', 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Refund recorded', 'success');
   nestiqPrintRefundReceipt(t);
   const wa = nestiqDepWaDigits(t.phone);
   if (wa && confirm('Send WhatsApp message to tenant with refund details?')){
@@ -834,9 +857,9 @@ function nestiqOpenDepositClaimModal(tenantId){
     <div class="form-group"><label>Notes</label><textarea class="form-input" id="ndc_claim_notes" rows="2"></textarea></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSubmitDepositClaim(${t.id})">Record Claim</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqSubmitDepositClaim(tenantId){
@@ -849,7 +872,7 @@ function nestiqSubmitDepositClaim(tenantId){
   const claimAmt = Number(document.getElementById('ndc_claim_amt')?.value) || 0;
   const total = nestiqTenantDepositTotalValue(t);
   if (claimAmt > total + 0.01){
-    showNotif('Claim exceeds deposit + interest', 'warning');
+    nestiqShowNotif('Claim exceeds deposit + interest', 'warning');
   }
   d.claimType = type;
   d.claimReasons = reasons;
@@ -860,8 +883,8 @@ function nestiqSubmitDepositClaim(tenantId){
   if (type === 'full') d.refundAmount = 0;
   else d.refundAmount = Math.max(0, tot - claimAmt);
   saveData?.();
-  closeModal();
-  showNotif('Claim recorded', 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Claim recorded', 'success');
   nestiqPrintClaimLetter(t, claimAmt);
   nestiqRenderDepositsPage?.();
   renderTenants?.();
@@ -899,8 +922,8 @@ function nestiqOpenDepositDispute(tenantId){
   nestiqEnsureTenantDeposit(t);
   t.deposit.status = 'disputed';
   saveData?.();
-  showNotif('Deposit marked as disputed', 'warning');
-  closeModal();
+  nestiqShowNotif('Deposit marked as disputed', 'warning');
+  nestiqCloseModalAnimated();
   nestiqRenderDepositsPage?.();
 }
 
@@ -917,7 +940,7 @@ function nestiqTenantDetailDepositSection(t){
         <div><span style="color:var(--muted)">Total value</span><br><strong>R${total.toLocaleString('en-ZA')}</strong></div>
         <div><span style="color:var(--muted)">Status</span><br><span class="badge ${nestiqDepositStatusBadgeClass(d.status)}">${nestiqDepositStatusLabel(d.status)}</span></div>
       </div>
-      <button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="closeModal();showPage('deposits');setTimeout(function(){nestiqOpenDepositDetailModal(${t.id})},400)">Manage deposit</button>
+      <button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="nestiqCloseModalAnimated();showPage('deposits');setTimeout(function(){nestiqOpenDepositDetailModal(${t.id})},400)">Manage deposit</button>
     </div>`;
 }
 

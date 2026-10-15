@@ -7,6 +7,8 @@ const NESTIQ_PROPERTY_TYPES=[
   {v:'apartment',l:'Apartment'},
   {v:'house',l:'House'},
   {v:'townhouse',l:'Townhouse'},
+  {v:'bachelor',l:'Bachelor Apartment'},
+  {v:'backroom',l:'Backroom / Garden Flat'},
   {v:'duplex',l:'Duplex'},
   {v:'studio',l:'Studio'},
   {v:'penthouse',l:'Penthouse'},
@@ -57,6 +59,8 @@ function nestiqAfterCoreDataEdit(){
   renderTenants?.();
   renderProperties?.();
   renderKanban?.();
+  nestiqRenderMaintTable?.();
+  updateMaintenanceBadge?.();
   renderExpenses?.();
   refreshNestiqCalendar?.();
   refreshMapMarkers?.();
@@ -128,9 +132,9 @@ function openEditTenantModal(tenantId){
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="saveEditedTenant(${t.id})">Save Changes</button>
       <button type="button" class="btn-outline btn-sm" onclick="openLogCommunicationModal(${t.id})">Log communication</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function saveEditedTenant(tenantId){
@@ -162,6 +166,8 @@ function saveEditedTenant(tenantId){
   const amenities=TENANT_AMENITIES.filter(a=>document.getElementById(a.id)?.checked).map(a=>a.value);
   const av=document.getElementById('edit_t_avatar')?.value?.trim()||'👤';
   const emojiPick=([...av][0]||'👤');
+  const prevStatus=String(t.status||'');
+  const prevUnitId=t.unitId!=null&&t.unitId!==''?String(t.unitId):'';
   t.name=name;
   t.email=email.toLowerCase();
   t.phone=phone;
@@ -188,19 +194,37 @@ function saveEditedTenant(tenantId){
   t.avatar=emojiPick;
   t.notes=document.getElementById('edit_t_notes')?.value?.trim()||'';
   t.amenities=amenities.length?amenities:['Water included'];
+
+  // Move-out / vacant: free the linked unit
+  if(String(t.status).toLowerCase()==='vacant' && prevStatus.toLowerCase()!=='vacant'){
+    t.unitId=prevUnitId||t.unitId;
+    void (async()=>{
+      try{ await window.nestiqUnlinkTenantFromUnit?.(t); }catch(_e){}
+      try{ await window.nestiqTerminateLeasesForTenant?.(t.id); }catch(_e){}
+      try{ await window.nestiqMarkApplicationsTenancyEndedForTenant?.(t); }catch(_e){}
+      nestiqAfterCoreDataEdit();
+      nestiqCloseModalAnimated();
+      nestiqShowNotif(`✅ ${name} updated successfully`,'success');
+    })();
+    return;
+  }
+
   nestiqAfterCoreDataEdit();
-  closeModal();
-  showNotif(`✅ ${name} updated successfully`,'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif(`✅ ${name} updated successfully`,'success');
 }
 
 /* ─── Property ─── */
 
 const NESTIQ_EDIT_PROPERTY_TYPES=[
   {v:'apartment',l:'Apartment'},
+  {v:'apartment-building',l:'Apartment Building'},
   {v:'house',l:'House'},
   {v:'townhouse',l:'Townhouse'},
-  {v:'bachelor',l:'Bachelor'},
+  {v:'residential-complex',l:'Residential Complex'},
   {v:'commercial',l:'Commercial'},
+  {v:'backroom',l:'Backroom / Garden Flat'},
+  {v:'bachelor',l:'Bachelor Apartment'},
   {v:'other',l:'Other'}
 ];
 
@@ -251,6 +275,7 @@ function nestiqCollectEditPropertyForm(){
   });
   return {
     name:document.getElementById('edit_p_name')?.value?.trim()||'',
+    description:document.getElementById('edit_p_desc')?.value?.trim()||'',
     addr:document.getElementById('edit_p_addr')?.value?.trim()||'',
     type:document.getElementById('edit_p_type')?.value||'apartment',
     bedrooms:document.getElementById('edit_p_bed')?.value||'1',
@@ -261,6 +286,8 @@ function nestiqCollectEditPropertyForm(){
     yearBuilt:document.getElementById('edit_p_year')?.value||'',
     complexName:document.getElementById('edit_p_complex')?.value?.trim()||'',
     hoaName:document.getElementById('edit_p_hoa')?.value?.trim()||'',
+    totalUnits:Number(document.getElementById('edit_p_total_units')?.value)||1,
+    unitPrefix:document.getElementById('edit_p_unit_prefix')?.value?.trim()||'Unit',
     rent:document.getElementById('edit_p_rent')?.value||'',
     deposit:document.getElementById('edit_p_deposit')?.value||'',
     levy:document.getElementById('edit_p_levy')?.value||'',
@@ -272,6 +299,7 @@ function nestiqCollectEditPropertyForm(){
     noticePeriod:document.getElementById('edit_p_notice')?.value||'',
     status:document.getElementById('edit_p_status')?.value||'vacant',
     publicListing:Boolean(document.getElementById('edit_p_public_listing')?.checked),
+    deactivated:Boolean(document.getElementById('edit_p_deactivated')?.checked),
     amenities,
     notes:document.getElementById('edit_p_notes')?.value||''
   };
@@ -286,7 +314,7 @@ function nestiqCancelEditProperty(){
   if(nestiqEditPropertyDirty()&&!confirm('You have unsaved changes. Are you sure you want to close?')) return;
   __editPropertySnapshot='';
   __editPropertyId=null;
-  closeModal();
+  nestiqCloseModalAnimated();
 }
 
 function openEditPropertyModal(propertyId,expandSection){
@@ -319,12 +347,32 @@ function openEditPropertyModal(propertyId,expandSection){
   const basicHtml=`
     <input type="hidden" id="edit_p_old_name" value="${escapeEditHtml(oldName)}">
     <div class="form-group"><label>Property Name <span style="color:var(--rust)">*</span></label><input class="form-input" id="edit_p_name" value="${escapeEditHtml(p.name)}"></div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea class="form-input" id="edit_p_desc" rows="3"
+        placeholder="Describe the property — features, neighbourhood, what makes it special..."
+      >${escapeEditHtml(p.description||'')}</textarea>
+    </div>
     <div class="form-group"><label>Full Address <span style="color:var(--rust)">*</span></label><input class="form-input" id="edit_p_addr" value="${escapeEditHtml(p.addr||'')}"></div>
     <div class="form-group"><label>Property Type</label><select class="form-input" id="edit_p_type" onchange="nestiqToggleEditStandSize()">${typeOpts}</select></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
       <div class="form-group"><label>Bedrooms</label><select class="form-input" id="edit_p_bed">${bedOpts}</select></div>
       <div class="form-group"><label>Bathrooms</label><select class="form-input" id="edit_p_bath">${bathOpts}</select></div>
       <div class="form-group"><label>Parking Bays</label><input class="form-input" id="edit_p_parking" type="number" min="0" value="${Number(p.parkingBays||0)}"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div class="form-group">
+        <label>Total Units / Rooms</label>
+        <input class="form-input" id="edit_p_total_units" type="number" min="1"
+          value="${Number(p.totalUnits||1)}"
+          placeholder="e.g. 20 for an apartment block">
+      </div>
+      <div class="form-group">
+        <label>Unit Numbering Prefix</label>
+        <input class="form-input" id="edit_p_unit_prefix"
+          value="${escapeEditHtml(p.unitPrefix||'Unit')}"
+          placeholder="e.g. A, Unit, Room">
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group"><label>Floor Size (m²)</label><input class="form-input" id="edit_p_floor" type="number" min="0" value="${p.floorSize!=null?p.floorSize:''}"></div>
@@ -337,7 +385,8 @@ function openEditPropertyModal(propertyId,expandSection){
     <div class="form-group"><label>Body Corporate / HOA Name</label><input class="form-input" id="edit_p_hoa" value="${escapeEditHtml(p.hoaName||'')}"></div>`;
 
   const financialHtml=`
-    <div class="form-group"><label>Monthly Rent (R) <span style="color:var(--rust)">*</span></label><input class="form-input" id="edit_p_rent" type="number" min="1" value="${Number(p.rent||0)}"></div>
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">Unit rents are managed under Units. Property-level rent is optional legacy/fallback for older single-unit properties.</p>
+    <div class="form-group"><label>Monthly Rent (R) <span style="font-weight:400;color:var(--muted)">(optional fallback)</span></label><input class="form-input" id="edit_p_rent" type="number" min="0" value="${Number(p.rent||0)}"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
       <div class="form-group"><label>Deposit Required (R)</label><input class="form-input" id="edit_p_deposit" type="number" min="0" value="${Number(p.deposit||0)}"></div>
       <div class="form-group"><label>Levy Amount (R/month)</label><input class="form-input" id="edit_p_levy" type="number" min="0" value="${Number(p.levy||0)}"></div>
@@ -360,6 +409,7 @@ function openEditPropertyModal(propertyId,expandSection){
       <select class="form-input" id="edit_p_status" onchange="nestiqToggleEditPublicListing()">
         <option value="occupied" ${p.status==='occupied'?'selected':''}>Occupied</option>
         <option value="vacant" ${p.status==='vacant'?'selected':''}>Vacant</option>
+        <option value="reserved" ${p.status==='reserved'?'selected':''}>Reserved</option>
         <option value="maintenance" ${p.status==='maintenance'?'selected':''}>Maintenance</option>
       </select>
     </div>
@@ -368,6 +418,12 @@ function openEditPropertyModal(propertyId,expandSection){
         <input type="checkbox" id="edit_p_public_listing" ${p.publicListing!==false?'checked':''}>
         Show on public listings
       </label>
+    </div>
+    <div class="form-group" style="margin-top:12px">
+      <label style="display:flex;align-items:center;gap:8px;font-size:0.88rem;cursor:pointer">
+        <input type="checkbox" id="edit_p_deactivated" ${p.archived||p.deactivated?'checked':''}>
+        Archive / deactivate this property (hides it from the portfolio without deleting data)
+      </label>
     </div>`;
 
   const amenitiesHtml=`<div id="edit_p_amenities" style="display:flex;flex-wrap:wrap;gap:8px">${amenChips}</div>`;
@@ -375,7 +431,7 @@ function openEditPropertyModal(propertyId,expandSection){
   const mainPhoto=typeof nestiqPropertyCardPhotoUrl==='function'?nestiqPropertyCardPhotoUrl(p):'';
   const photosHtml=`
     <div class="form-group"><label>Main Property Photo</label>
-      ${mainPhoto?`<div style="position:relative;height:140px;border-radius:14px;overflow:hidden;border:1px solid var(--border);margin-bottom:8px"><img src="${mainPhoto}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`:''}
+      ${mainPhoto?`<div style="position:relative;height:140px;border-radius:14px;overflow:hidden;border:1px solid var(--border);margin-bottom:8px"><img src="${typeof nestiqEscAttr==='function'?nestiqEscAttr(mainPhoto):String(mainPhoto).replace(/"/g,'&quot;')}" style="width:100%;height:100%;object-fit:cover" alt="" onerror="nestiqPropertyPhotoImgError(this)"></div>`:''}
       <button type="button" class="btn-outline btn-sm" onclick="changePropertyPhoto('${String(p.id).replace(/'/g,"\\'")}')">Change Main Photo</button>
     </div>
     ${typeof nestiqAmenityUploadSectionHtml==='function'?nestiqAmenityUploadSectionHtml({dropId:'editAmenityDrop',gridId:'editAmenityGrid',countId:'editAmenityCount',inputId:'editAmenityInput'}):''}`;
@@ -396,7 +452,7 @@ function openEditPropertyModal(propertyId,expandSection){
         <button type="button" class="btn-primary btn-sm" id="edit_p_save_btn" onclick="saveEditedProperty('${String(p.id).replace(/'/g,"\\'")}')">Save Changes</button>
       </div>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   const modal=document.querySelector('#modalOverlay .modal');
   if(modal) modal.classList.add('modal-wide');
   setTimeout(()=>{
@@ -423,26 +479,62 @@ async function saveEditedProperty(propertyId){
   if(!p) return;
   const f=nestiqCollectEditPropertyForm();
   let ok=true;
-  if(!f.name){ setFieldError('edit_p_name','Required'); ok=false; }
-  if(!f.addr){ setFieldError('edit_p_addr','Required'); ok=false; }
+  let firstErrorId='';
+  if(!f.name){ setFieldError('edit_p_name','Required'); ok=false; firstErrorId=firstErrorId||'edit_p_name'; }
+  if(!f.addr){ setFieldError('edit_p_addr','Required'); ok=false; firstErrorId=firstErrorId||'edit_p_addr'; }
   const rent=Number(f.rent);
-  if(!rent||rent<=0){ setFieldError('edit_p_rent','Rent must be greater than 0'); ok=false; }
-  if(!ok) return;
+  // Property-level rent is optional when units carry rent (unit-based model)
+  const unitRents=(typeof nestiqUnitsForProperty==='function'?nestiqUnitsForProperty(propertyId):[])
+    .map(u=>Number(u.rent||0)).filter(n=>n>0);
+  const hasUnitRent=unitRents.length>0;
+  if(f.rent!==''&&f.rent!=null&&Number.isFinite(rent)&&rent<0){
+    setFieldError('edit_p_rent','Rent cannot be negative');
+    ok=false;
+    firstErrorId=firstErrorId||'edit_p_rent';
+  }
+  if(!ok){
+    // Expand the section containing the first error so it is visible
+    const errEl=document.getElementById(firstErrorId);
+    const section=errEl?.closest?.('.nestiq-edit-section');
+    const header=section?.querySelector?.('.nestiq-edit-section-header');
+    if(header&&!header.classList.contains('open')) nestiqToggleEditSection(header);
+    nestiqShowNotif?.('Fix the highlighted fields, then save again','warning');
+    errEl?.scrollIntoView?.({ behavior:'smooth', block:'center' });
+    return;
+  }
 
   const btn=document.getElementById('edit_p_save_btn');
-  const prevTxt=btn?.textContent||'Save Changes';
-  if(btn){ btn.disabled=true; btn.innerHTML='<span class="nestiq-btn-spinner"></span> Saving…'; }
+  nestiqSetBtnLoading?.(btn,true,'Saving...');
 
   const oldName=document.getElementById('edit_p_old_name')?.value||p.name;
   const draftKey=String(propertyId);
-  const amenityPhotos=typeof nestiqGetAmenityDraft==='function'?nestiqNormalizeAmenityPhotos(nestiqGetAmenityDraft(draftKey)):[];
+  let amenityPhotos=typeof nestiqGetAmenityDraft==='function'?nestiqNormalizeAmenityPhotos(nestiqGetAmenityDraft(draftKey)):[];
+  try{
+    if(typeof nestiqPersistAmenityPhotos==='function'){
+      amenityPhotos=await nestiqPersistAmenityPhotos(propertyId, amenityPhotos);
+      nestiqSetAmenityDraft?.(draftKey, amenityPhotos);
+    }
+  }catch(err){
+    console.warn('NestIQ: edit amenity photo persist', err);
+    nestiqShowNotif?.('Some photos could not be uploaded. Other changes will still save.','warning');
+  }
+  // Only persist cloud-safe gallery entries on the property doc (avoid Firestore 1MB blowups)
+  const cloudSafePhotos=(amenityPhotos||[]).filter(ph=>{
+    const src=String(ph.base64||ph.url||'');
+    if(src.startsWith('http://')||src.startsWith('https://')) return true;
+    if(src.startsWith('data:image/') && typeof estimateBase64Size==='function'){
+      return estimateBase64Size(src)<=550;
+    }
+    return false;
+  });
   const bedVal=f.bedrooms==='5+'?5:Number(f.bedrooms)||1;
   const bathVal=f.bathrooms==='4+'?4:Number(f.bathrooms)||1;
 
   p.name=f.name;
+  p.description=f.description;
   p.addr=f.addr;
   p.type=f.type;
-  p.icon=f.type==='house'?'🏠':f.type==='townhouse'?'🏘️':'🏢';
+  p.icon=f.type==='house'?'🏠':f.type==='townhouse'?'🏘️':f.type==='backroom'?'🏡':f.type==='bachelor'?'🛏️':'🏢';
   p.bedrooms=bedVal;
   p.bathrooms=bathVal;
   p.parkingBays=Number(f.parkingBays)||0;
@@ -451,7 +543,13 @@ async function saveEditedProperty(propertyId){
   p.yearBuilt=f.yearBuilt?Number(f.yearBuilt):null;
   p.complexName=f.complexName;
   p.hoaName=f.hoaName;
-  p.rent=rent;
+  p.totalUnits=Math.max(1,Number(f.totalUnits)||1);
+  p.unitPrefix=f.unitPrefix||'Unit';
+  p.rent=Number.isFinite(rent)&&rent>=0?rent:(hasUnitRent?Math.min(...unitRents):0);
+  if(hasUnitRent){
+    p.rentMin=Math.min(...unitRents);
+    p.rentMax=Math.max(...unitRents);
+  }
   p.deposit=Number(f.deposit)||0;
   p.levy=Number(f.levy)||0;
   p.rates=Number(f.rates)||0;
@@ -462,6 +560,10 @@ async function saveEditedProperty(propertyId){
   p.noticePeriod=Number(f.noticePeriod)||30;
   p.status=f.status;
   p.publicListing=f.status==='vacant'?f.publicListing:false;
+  p.deactivated=!!f.deactivated;
+  p.archived=!!f.deactivated; // soft-delete flag (stage 1 / deactivate action)
+  if(p.archived) p.publishStatus='archived';
+  else if(p.publishStatus==='archived') p.publishStatus='published';
   p.amenities=f.amenities;
   p.amenityPhotos=amenityPhotos;
   // Never let amenity gallery overwrite / clear the saved main property photo.
@@ -487,24 +589,29 @@ async function saveEditedProperty(propertyId){
       const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
       if(lid){
         const ref=window.nestiqFs.properties(window.nestiqDb,lid).doc(String(propertyId));
-        const payload={...p};
+        const payload={...p, amenityPhotos:cloudSafePhotos};
         delete payload.id;
+        Object.keys(payload).forEach(k=>{ if(payload[k]===undefined) delete payload[k]; });
         await ref.set(payload,{merge:true});
         try{ await window.nestiqSyncPublicListingMirror?.(p); }catch(_e){}
       }
     }
+    try{ await window.nestiqSyncPropertyUnits?.(propertyId, p.totalUnits, p.unitPrefix||'Unit', p.rent); }catch(_e){}
     saveData();
     renderProperties?.();
     if(window.currentPage==='listings') window.nestiqRenderListingsPage?.();
     __editPropertySnapshot='';
     __editPropertyId=null;
-    closeModal();
-    showNotif('Property updated successfully','success');
+    nestiqCloseModalAnimated();
+    nestiqShowNotif('Property updated successfully','success');
   }catch(err){
     console.error('Save property',err);
-    showNotif('Failed to save property','error');
+    const msg=typeof nestiqPropertyFirestoreErrorMessage==='function'
+      ? nestiqPropertyFirestoreErrorMessage(err,'save')
+      : 'Failed to save property';
+    nestiqShowNotif(msg,'error');
   }finally{
-    if(btn){ btn.disabled=false; btn.textContent=prevTxt; }
+    nestiqSetBtnLoading?.(btn,false);
     const modal=document.querySelector('#modalOverlay .modal');
     if(modal) modal.classList.remove('modal-wide');
   }
@@ -538,9 +645,9 @@ function openEditExpenseModal(expenseId){
     <div class="form-group"><label>Date</label><input class="form-input" id="edit_e_date" type="date" value="${escapeEditHtml(toDateInputValue(e.date))}"></div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="saveEditedExpense(${e.id})">Save Changes</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function saveEditedExpense(expenseId){
@@ -563,8 +670,8 @@ function saveEditedExpense(expenseId){
   e.color=catColors[cat]||e.color||'#888';
   saveData();
   renderExpenses();
-  closeModal();
-  showNotif('Expense updated','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Expense updated','success');
 }
 
 /* ─── Maintenance ─── */
@@ -577,32 +684,43 @@ function nestiqMaintResolutionVisibility(){
 }
 
 function openEditMaintenanceModal(maintId){
-  const m=maintenanceData.find(x=>Number(x.id)===Number(maintId));
+  const m=maintenanceData.find(x=>String(x.id)===String(maintId));
   if(!m) return;
   const propOpts=(propertiesData||[]).map(p=>{
     const sel=Number(m.propertyId)===Number(p.id)||m.property===p.name;
     return `<option ${sel?'selected':''}>${escapeEditHtml(p.name)}</option>`;
   }).join('');
-  const pr=m.priority||'Medium';
   const st=m.status||'open';
+  const lock=typeof nestiqMaintLandlordLockMeta==='function'?nestiqMaintLandlordLockMeta(m):null;
+  const locked=!!(lock?.locked || (typeof nestiqMaintIsLandlordLocked==='function'&&nestiqMaintIsLandlordLocked(m)));
+  const statusOpt=(val,label)=>{
+    const sel=st===val?'selected':'';
+    const dis=locked && val!=='cancelled' && val!==st?'disabled':'';
+    return `<option value="${val}" ${sel} ${dis}>${label}</option>`;
+  };
   document.getElementById('modalContent').innerHTML=`
-    <h2 class="modal-title">Edit Maintenance</h2>
+    <h2 class="modal-title">Edit maintenance</h2>
     <p class="modal-sub">${escapeEditHtml(m.title)}</p>
-    <div class="form-group"><label>Issue Title</label><input class="form-input" id="edit_m_title" value="${escapeEditHtml(m.title)}"></div>
+    <div class="form-group"><label>Issue title</label><input class="form-input" id="edit_m_title" value="${escapeEditHtml(m.title)}"></div>
     <div class="form-group"><label>Property</label><select class="form-input" id="edit_m_prop">${propOpts}</select></div>
-    <div class="form-group"><label>Priority</label>
-      <select class="form-input" id="edit_m_priority">
-        <option ${pr==='High'?'selected':''}>High</option>
-        <option ${pr==='Medium'?'selected':''}>Medium</option>
-        <option ${pr==='Low'?'selected':''}>Low</option>
+    <div class="form-group"><label>Location</label>
+      <select class="form-input" id="edit_m_location_type">
+        <option value="common" ${(m.locationType||(!m.unit?'common':'unit'))!=='unit'?'selected':''}>Common Area</option>
+        <option value="unit" ${(m.locationType||(m.unit?'unit':'common'))==='unit'?'selected':''}>Specific unit</option>
       </select>
     </div>
+    <div class="form-group"><label>Unit number</label>
+      <input class="form-input" id="edit_m_unit" value="${escapeEditHtml(m.unit||m.unitNumber||'')}" placeholder="e.g. A03">
+    </div>
     <div class="form-group"><label>Status</label>
-      <select class="form-input" id="edit_m_status" onchange="nestiqMaintResolutionVisibility()">
-        <option value="open" ${st==='open'?'selected':''}>open</option>
-        <option value="progress" ${st==='progress'?'selected':''}>progress</option>
-        <option value="done" ${st==='done'?'selected':''}>done</option>
+      <select class="form-input" id="edit_m_status" onchange="nestiqMaintResolutionVisibility()" ${locked?'disabled title="'+escapeEditHtml(lock?.message||'')+'"':''}>
+        ${statusOpt('open','open')}
+        ${statusOpt('progress','progress')}
+        ${statusOpt('done','done')}
+        ${statusOpt('cancelled','cancelled')}
       </select>
+      ${locked&&lock?.label?`<div class="nestiq-maint-awaiting" style="margin-top:8px;display:inline-flex">${escapeEditHtml(lock.label)}</div><div style="font-size:0.78rem;color:var(--muted);margin-top:6px">${escapeEditHtml(lock.message)}${lock.reason==='approval'?' Approve or reject remains available from the request details.':' You can still reassign the contractor or cancel the request.'}</div>
+      <div style="margin-top:8px"><button type="button" class="btn-outline btn-sm" onclick="nestiqMaintCancelJob(${typeof nestiqHtmlJsArg==='function'?nestiqHtmlJsArg(m.id):JSON.stringify(String(m.id))})">Cancel request</button></div>`:''}
     </div>
     <div class="form-group"><label>Description</label><textarea class="form-input" id="edit_m_desc" rows="3">${escapeEditHtml(m.description||'')}</textarea></div>
     <div class="form-group"><label>Date</label><input class="form-input" id="edit_m_date" type="date" value="${escapeEditHtml(toDateInputValue(m.date))}"></div>
@@ -611,16 +729,16 @@ function openEditMaintenanceModal(maintId){
     <div class="form-group" id="edit_m_resolution_wrap" style="display:${st==='done'?'block':'none'}"><label>Resolution Notes</label><textarea class="form-input" id="edit_m_resolution" rows="2">${escapeEditHtml(m.resolutionNotes||'')}</textarea></div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="saveEditedMaintenance(${m.id})">Save Changes</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   setTimeout(()=>{ nestiqMaintResolutionVisibility(); nestiqOnMaintVendorPick?.(); },0);
 }
 
 function saveEditedMaintenance(maintId){
   const root=document.getElementById('modalContent');
   clearEditErrors(root);
-  const m=maintenanceData.find(x=>Number(x.id)===Number(maintId));
+  const m=maintenanceData.find(x=>String(x.id)===String(maintId));
   if(!m) return;
   const title=document.getElementById('edit_m_title')?.value?.trim()||'';
   if(!title){ setFieldError('edit_m_title','Required'); return; }
@@ -629,8 +747,15 @@ function saveEditedMaintenance(maintId){
   m.title=title;
   m.property=propName;
   m.propertyId=prop?.id||null;
-  m.priority=document.getElementById('edit_m_priority')?.value||m.priority;
-  m.status=document.getElementById('edit_m_status')?.value||m.status;
+  const locType=document.getElementById('edit_m_location_type')?.value||m.locationType||'common';
+  const unit=(document.getElementById('edit_m_unit')?.value||'').trim();
+  m.locationType=locType==='unit'&&unit?'unit':'common';
+  m.unit=m.locationType==='unit'?unit:'';
+  const prevStatus=String(m.status||'open');
+  const prevVendorId=m.vendorId;
+  const prevPending=!!m.pendingLandlordApproval;
+  let requested=document.getElementById('edit_m_status')?.value||m.status;
+  if(requested==='assigned') requested='open';
   m.description=document.getElementById('edit_m_desc')?.value?.trim()||'';
   const d=document.getElementById('edit_m_date')?.value;
   if(d) m.date=d;
@@ -638,11 +763,27 @@ function saveEditedMaintenance(maintId){
   if(typeof nestiqApplyMaintCostFields==='function'){
     if(!nestiqApplyMaintCostFields(maintId)) return;
   }
+  const lockRecord={
+    ...m,
+    status:prevStatus,
+    vendorId:prevVendorId,
+    pendingLandlordApproval:prevPending
+  };
+  const blocked=typeof nestiqMaintLandlordStatusBlocked==='function'
+    ? nestiqMaintLandlordStatusBlocked(lockRecord, requested)
+    : null;
+  if(blocked){
+    nestiqShowNotif(blocked,'warning');
+    m.status=prevStatus;
+  }else{
+    m.status=requested;
+  }
   if(m.status==='done') m.resolutionNotes=document.getElementById('edit_m_resolution')?.value?.trim()||'';
   else m.resolutionNotes='';
   nestiqAfterCoreDataEdit();
-  closeModal();
-  showNotif('Maintenance updated','success');
+  nestiqCloseModalAnimated();
+  if(blocked) return;
+  nestiqShowNotif('Maintenance updated','success');
 }
 
 window.openEditTenantModal=openEditTenantModal;

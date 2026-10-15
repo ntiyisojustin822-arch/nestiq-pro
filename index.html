@@ -4,19 +4,24 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>NestIQ — Smart Rental Management</title>
+  <style>
+    :root { scroll-behavior: smooth; }
+    * { -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+  </style>
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#c9a84c">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="NestIQ Pro">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <!-- FullCalendar v6 global bundle does not ship index.global.min.css (that URL returns plain text). Base grid styles load with the JS; app overrides live in css/styles.css -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-functions-compat.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -25,9 +30,10 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-  <script src="./js/pdf.js"></script>
-  <link rel="stylesheet" href="./css/styles.css" />
-  <link rel="stylesheet" href="./css/animations.css" />
+  <script src="./js/pdf.js?v=money-gate1"></script>
+  <link rel="stylesheet" href="./css/styles.css?v=ux-polish1" />
+  <link rel="stylesheet" href="./css/animations.css?v=theme-polish2" />
+  <script src="./js/icons.js?v=icons1"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -35,11 +41,11 @@
       theme: {
         extend: {
           colors: {
-            gold: '#C46A3A',
+            gold: '#c9a84c',
             ink: '#0E1117',
-            cream: '#F5F0E8',
-            rust: '#A63D2F',
-            muted: '#6B7280',
+            cream: '#f7f4ef',
+            rust: '#c46a3a',
+            muted: '#6b665e',
           },
           fontFamily: {
             display: ['Playfair Display', 'serif'],
@@ -55,8 +61,6 @@
   </script>
   <style type="text/tailwindcss">
     @layer utilities {
-      .btn-gold { @apply transition-all duration-200 hover:scale-[1.02] hover:shadow-md; }
-      .btn-outline { @apply transition-all duration-200 hover:scale-[1.02]; }
       .prop-card { @apply transition-all duration-200 hover:shadow-xl; }
       .nestiq-app-card { @apply transition-all duration-200 hover:shadow-md; }
     }
@@ -84,6 +88,9 @@
       var params=new URLSearchParams(location.search);
       var flow=params.get('flow');
       var hash=(location.hash||'').replace('#','').toLowerCase();
+      if(flow==='choose'||hash==='welcome'||hash==='choose'){
+        try{ sessionStorage.setItem('nestiq-auth-flow','choose'); }catch(_e){}
+      }
       if(flow==='signup'||hash==='auth-signup'||hash==='signup'){
         try{ sessionStorage.setItem('nestiq-auth-flow','signup'); }catch(_e){}
       }
@@ -94,12 +101,42 @@
   </script>
 </head>
 <body>
-  <div id="nestiqBootOverlay" style="position:fixed;inset:0;z-index:30000;background:var(--paper);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;font-family:'DM Sans',sans-serif;transition:opacity .22s">
-    <div class="nav-logo" style="font-size:1.6rem"><span class="logo-dot"></span>NestIQ Pro</div>
-    <div style="font-size:0.88rem;color:var(--muted)">Loading…</div>
+  <div id="nqPageBar" style="
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--gold), var(--rust), var(--gold));
+    background-size:200% 100%;
+    z-index:99999; border-radius:0 2px 2px 0;
+    transition:width 0.25s ease, opacity 0.3s ease;
+    animation:nq-gradient-x 1.5s ease infinite;
+    pointer-events:none; opacity:0;
+  "></div>
+  <div id="nestiqBootOverlay" class="nestiq-boot-overlay" role="status" aria-live="polite">
+    <div class="nestiq-boot-mark" aria-hidden="true"><span class="logo-dot"></span></div>
+    <div class="nestiq-boot-title">NestIQ Pro</div>
+    <div class="nestiq-boot-spinner" aria-hidden="true"></div>
+    <div class="nestiq-boot-copy">Loading your workspace…</div>
   </div>
+  <script>
+    (function(){
+      function nestiqKillBootOverlay(){
+        document.body.classList.add('nestiq-app-ready');
+        var el=document.getElementById('nestiqBootOverlay');
+        if(!el) return;
+        el.style.display='none';
+        el.style.opacity='0';
+        el.style.pointerEvents='none';
+        el.setAttribute('hidden','');
+        var outlet=document.getElementById('appOutlet');
+        if(outlet && !outlet.innerHTML.trim() && typeof window.showLandingPage==='function'){
+          try{ window.showLandingPage(); }catch(_e){}
+        }
+      }
+      window.nestiqKillBootOverlay=nestiqKillBootOverlay;
+      setTimeout(nestiqKillBootOverlay, 4000);
+    })();
+  </script>
   <!-- ══ NAV ══ -->
-  <nav id="navbar" aria-label="Primary">
+  <nav id="navbar" class="app-header" aria-label="Primary">
     <div class="nav-brand">
       <a href="#home" class="nav-logo" onclick="showPage('home');return false;">
         <span class="logo-dot" aria-hidden="true"></span>
@@ -108,48 +145,39 @@
     </div>
 
     <ul class="nav-links" role="menubar">
-      <li data-landlord-nav role="none"><a href="#home" class="nav-tab" role="menuitem" data-nav="home" data-i18n="nav.home" onclick="showPage('home');return false;">Home</a></li>
-      <li data-landlord-nav role="none"><a href="#properties" class="nav-tab" role="menuitem" data-nav="properties" data-i18n="nav.properties" onclick="showPage('properties');return false;">Properties</a></li>
-      <li data-tenant-nav role="none"><a href="#tenant-dashboard" class="nav-tab" role="menuitem" data-nav="tenant-dashboard" onclick="showPage('tenant-dashboard');return false;">My Portal</a></li>
-      <li data-tenant-nav role="none"><a href="#listings" class="nav-tab" role="menuitem" data-nav="listings" onclick="showPage('listings');return false;">Listings</a></li>
-      <li data-landlord-nav role="none"><a href="#tenants" class="nav-tab" role="menuitem" data-nav="tenants" data-i18n="nav.tenants" onclick="showPage('tenants');return false;">Tenants</a></li>
-      <li data-landlord-nav role="none"><a href="#applications" class="nav-tab" role="menuitem" data-nav="applications" onclick="showPage('applications');return false;">Applications <span id="navAppsBadge" class="nav-item-badge" style="display:none">0</span></a></li>
-      <li data-landlord-nav role="none"><a href="#settings" class="nav-tab" role="menuitem" data-nav="settings" data-i18n="nav.settings" onclick="showPage('settings');return false;">Settings</a></li>
+      <li data-landlord-nav role="none"><a href="#home" class="nav-tab" role="menuitem" data-nav="home" onclick="showPage('home');return false;"><span class="nq-ico" data-nq-icon="house" data-nq-size="16"></span><span data-i18n="nav.home">Home</span></a></li>
+      <li data-landlord-nav role="none"><a href="#properties" class="nav-tab" role="menuitem" data-nav="properties" onclick="showPage('properties');return false;"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="16"></span><span data-i18n="nav.properties">Properties</span></a></li>
+      <li data-tenant-nav role="none"><a href="#tenant-dashboard" class="nav-tab" role="menuitem" data-nav="tenant-dashboard" onclick="showPage('tenant-dashboard');return false;"><span class="nq-ico" data-nq-icon="house" data-nq-size="16"></span>My Portal</a></li>
+      <li data-tenant-nav role="none"><a href="#listings" class="nav-tab" role="menuitem" data-nav="listings" onclick="showPage('listings');return false;"><span class="nq-ico" data-nq-icon="search" data-nq-size="16"></span>Listings</a></li>
+      <li data-landlord-nav role="none"><a href="#tenants" class="nav-tab" role="menuitem" data-nav="tenants" onclick="showPage('tenants');return false;"><span class="nq-ico" data-nq-icon="users" data-nq-size="16"></span><span data-i18n="nav.tenants">Tenants</span> <span id="navMessageBadge" class="nav-item-badge" style="display:none">0</span></a></li>
+      <li data-landlord-nav role="none"><a href="#applications" class="nav-tab" role="menuitem" data-nav="applications" onclick="showPage('applications');return false;"><span class="nq-ico" data-nq-icon="clipboard-list" data-nq-size="16"></span>Applications <span id="navAppsBadge" class="nav-item-badge" style="display:none">0</span></a></li>
+      <li data-landlord-nav role="none"><a href="#maintenance" class="nav-tab" role="menuitem" data-nav="maintenance" onclick="showPage('maintenance');return false;"><span class="nq-ico" data-nq-icon="wrench" data-nq-size="16"></span><span data-i18n="nav.maintenance">Maintenance</span> <span id="navMaintBadge" class="nav-item-badge" style="display:none">0</span></a></li>
       <li class="nav-more" id="navMoreWrap" data-landlord-nav role="none">
         <button type="button" class="nav-more-btn" id="navMoreBtn" onclick="toggleNavMoreMenu(event)" aria-haspopup="menu" aria-expanded="false">
-          More <span class="nav-more-caret" aria-hidden="true"></span>
+          <span class="nq-ico" data-nq-icon="ellipsis" data-nq-size="16"></span> More <span class="nav-more-caret" aria-hidden="true"></span>
         </button>
         <div class="nav-more-menu" id="navMoreMenu" role="menu" aria-label="More navigation">
           <div class="nav-more-group" role="group" aria-label="Operations">
             <div class="nav-more-label">Operations</div>
-            <a href="#maintenance" class="nav-tab" data-nav="maintenance" data-i18n="nav.maintenance" onclick="showPage('maintenance');closeNavMoreMenu();return false;" role="menuitem">Maintenance</a>
-            <a href="#vendors" class="nav-tab sidebar-nav-item" data-nav="vendors" onclick="showPage('vendors');closeNavMoreMenu();return false;" role="menuitem">🛠️ Vendors</a>
-            <a href="#inspections" class="nav-tab" data-nav="inspections" data-i18n="nav.inspections" onclick="showPage('inspections');closeNavMoreMenu();return false;" role="menuitem">Inspections</a>
-            <a href="#calendar" class="nav-tab" data-nav="calendar" data-i18n="nav.calendar" onclick="showPage('calendar');closeNavMoreMenu();return false;" role="menuitem">Calendar</a>
-            <a href="#renewals" class="nav-tab" data-nav="renewals" data-i18n="nav.renewals" onclick="showPage('renewals');closeNavMoreMenu();return false;" role="menuitem">Renewals</a>
-            <a href="#portal" class="nav-tab" data-nav="portal" onclick="showPage('portal');closeNavMoreMenu();return false;" role="menuitem">Tenant Portal</a>
+            <a href="#vendors" class="nav-tab sidebar-nav-item" data-nav="vendors" onclick="showPage('vendors');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="hammer" data-nq-size="16"></span>Vendors</a>
+            <a href="#inspections" class="nav-tab" data-nav="inspections" onclick="showPage('inspections');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="clipboard-check" data-nq-size="16"></span><span data-i18n="nav.inspections">Inspections</span></a>
+            <a href="#calendar" class="nav-tab" data-nav="calendar" onclick="showPage('calendar');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="calendar" data-nq-size="16"></span><span data-i18n="nav.calendar">Calendar</span></a>
+            <a href="#renewals" class="nav-tab" data-nav="renewals" onclick="showPage('renewals');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="file-text" data-nq-size="16"></span><span data-i18n="nav.renewals">Leases</span></a>
           </div>
           <div class="nav-more-group" role="group" aria-label="Finance">
             <div class="nav-more-label">Finance</div>
-            <a href="#charts" class="nav-tab" data-nav="charts" data-i18n="nav.analytics" onclick="showPage('charts');closeNavMoreMenu();return false;" role="menuitem">Analytics</a>
-            <a href="#expenses" class="nav-tab" data-nav="expenses" data-i18n="nav.expenses" onclick="showPage('expenses');closeNavMoreMenu();return false;" role="menuitem">Expenses</a>
-            <a href="#deposits" class="nav-tab" data-nav="deposits" onclick="showPage('deposits');closeNavMoreMenu();return false;" role="menuitem">Deposits</a>
-            <a href="#latefees" class="nav-tab sidebar-nav-item" data-nav="latefees" onclick="showPage('latefees');closeNavMoreMenu();return false;" role="menuitem">💸 Late Fees</a>
-            <a href="#reconcile" class="nav-tab" data-nav="reconcile" onclick="showPage('reconcile');closeNavMoreMenu();return false;" role="menuitem">Reconcile</a>
-            <a href="#tax" class="nav-tab" data-nav="tax" data-i18n="nav.tax" onclick="showPage('tax');closeNavMoreMenu();return false;" role="menuitem">Tax Report</a>
-            <a href="#rentroll" class="nav-tab" data-nav="rentroll" data-i18n="nav.rentroll" onclick="showPage('rentroll');closeNavMoreMenu();return false;" role="menuitem">Rent Roll</a>
-          </div>
-          <div class="nav-more-group" role="group" aria-label="Insights">
-            <div class="nav-more-label">Insights</div>
-            <a href="#valuation" class="nav-tab" data-nav="valuation" onclick="showPage('valuation');closeNavMoreMenu();return false;" role="menuitem">Valuation</a>
-            <a href="#roi" class="nav-tab" data-nav="roi" onclick="showPage('roi');closeNavMoreMenu();return false;" role="menuitem">ROI Calculator</a>
+            <a href="#charts" class="nav-tab" data-nav="charts" onclick="showPage('charts');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="chart-column" data-nq-size="16"></span><span data-i18n="nav.analytics">Analytics</span></a>
+            <a href="#deposits" class="nav-tab" data-nav="deposits" onclick="showPage('deposits');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="wallet" data-nq-size="16"></span>Deposits</a>
+            <a href="#latefees" class="nav-tab sidebar-nav-item" data-nav="latefees" onclick="showPage('latefees');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="circle-alert" data-nq-size="16"></span>Late Fees</a>
+            <a href="#rentroll" class="nav-tab" data-nav="rentroll" onclick="showPage('rentroll');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="table" data-nq-size="16"></span><span data-i18n="nav.rentroll">Rent Roll</span></a>
           </div>
           <div class="nav-more-group nav-more-group-last" role="group" aria-label="Account">
             <div class="nav-more-label">Account</div>
-            <a href="billing.html" class="nav-tab" data-nav="billing" role="menuitem">Billing &amp; Plan <span data-billing-upgrade-badge class="nav-upgrade-badge" style="display:none">Upgrade</span></a>
+            <a href="#settings" class="nav-tab" data-nav="settings" onclick="showPage('settings');closeNavMoreMenu();return false;" role="menuitem"><span class="nq-ico" data-nq-icon="settings" data-nq-size="16"></span><span data-i18n="nav.settings">Settings</span></a>
+            <a href="billing.html" class="nav-tab" data-nav="billing" role="menuitem"><span class="nq-ico" data-nq-icon="credit-card" data-nq-size="16"></span>Billing &amp; Plan <span data-billing-upgrade-badge class="nav-upgrade-badge" style="display:none">Upgrade</span></a>
             <div style="height:1px;background:var(--border);margin:4px 0"></div>
-            <a href="changelog.html" class="nav-tab sidebar-nav-item" target="_blank" role="menuitem">📋 Changelog &amp; Roadmap</a>
-            <a href="support.html" class="nav-tab sidebar-nav-item" target="_blank" role="menuitem">🎧 Help &amp; Support</a>
+            <a href="changelog.html" class="nav-tab sidebar-nav-item" target="_blank" role="menuitem"><span class="nq-ico" data-nq-icon="list" data-nq-size="16"></span>Changelog &amp; Roadmap</a>
+            <a href="support.html" class="nav-tab sidebar-nav-item" target="_blank" role="menuitem"><span class="nq-ico" data-nq-icon="headphones" data-nq-size="16"></span>Help &amp; Support</a>
           </div>
         </div>
       </li>
@@ -158,7 +186,7 @@
     <div class="nav-right">
       <div class="nav-tools">
         <div class="notif-bell-wrap" id="bellWrap">
-          <button type="button" class="notif-bell-btn" onclick="toggleBell()" title="Notifications" aria-label="Notifications">
+          <button type="button" class="notif-bell-btn" onclick="toggleBell()" title="Notifications" aria-label="Notifications" data-nq-tip="Notifications">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
           </button>
           <div class="bell-count bell-fu-count" id="bellFollowUpBadge" title="Communication follow-ups due" style="display:none">0</div>
@@ -171,12 +199,12 @@
         <div class="nav-theme-wrap" id="navThemeWrap">
           <button type="button" class="theme-dot-btn" id="navThemeDot" onclick="toggleNavThemeMenu()" title="Themes" aria-label="Themes"></button>
           <div class="theme-mini-menu" id="navThemeMenu" style="display:none">
-            <button type="button" class="theme-mini-dot" data-theme-pick="gold" style="background:#c9a84c" onmouseenter="previewTheme('gold')" onmouseleave="restoreThemePreview()" onclick="applyTheme('gold');toggleNavThemeMenu()"></button>
-            <button type="button" class="theme-mini-dot" data-theme-pick="ocean" style="background:#2563eb" onmouseenter="previewTheme('ocean')" onmouseleave="restoreThemePreview()" onclick="applyTheme('ocean');toggleNavThemeMenu()"></button>
-            <button type="button" class="theme-mini-dot" data-theme-pick="forest" style="background:#16a34a" onmouseenter="previewTheme('forest')" onmouseleave="restoreThemePreview()" onclick="applyTheme('forest');toggleNavThemeMenu()"></button>
-            <button type="button" class="theme-mini-dot" data-theme-pick="sunset" style="background:#ea580c" onmouseenter="previewTheme('sunset')" onmouseleave="restoreThemePreview()" onclick="applyTheme('sunset');toggleNavThemeMenu()"></button>
-            <button type="button" class="theme-mini-dot" data-theme-pick="midnight" style="background:#4f46e5" onmouseenter="previewTheme('midnight')" onmouseleave="restoreThemePreview()" onclick="applyTheme('midnight');toggleNavThemeMenu()"></button>
-            <button type="button" class="theme-mini-dot" data-theme-pick="classic" style="background:#111111" onmouseenter="previewTheme('classic')" onmouseleave="restoreThemePreview()" onclick="applyTheme('classic');toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="gold" style="background:#c9a84c" onmouseenter="previewTheme('gold')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('gold'));toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="ocean" style="background:#2563eb" onmouseenter="previewTheme('ocean')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('ocean'));toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="forest" style="background:#16a34a" onmouseenter="previewTheme('forest')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('forest'));toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="sunset" style="background:#ea580c" onmouseenter="previewTheme('sunset')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('sunset'));toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="midnight" style="background:#4f46e5" onmouseenter="previewTheme('midnight')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('midnight'));toggleNavThemeMenu()"></button>
+            <button type="button" class="theme-mini-dot" data-theme-pick="classic" style="background:#111111" onmouseenter="previewTheme('classic')" onmouseleave="restoreThemePreview()" onclick="nestiqAnimatedThemeSwitch(()=>applyTheme('classic'));toggleNavThemeMenu()"></button>
           </div>
         </div>
         <button type="button" class="dark-toggle" onclick="toggleDark()" title="Toggle dark mode" aria-label="Toggle dark mode"></button>
@@ -184,56 +212,55 @@
 
       <div class="nav-divider" aria-hidden="true"></div>
 
-      <div class="nav-user">
-        <div id="navUserAvatar" class="nav-user-avatar" style="display:none">A</div>
+      <div class="nav-user" id="navUserWrap">
+        <button type="button" id="navUserAvatar" class="nav-user-avatar" style="display:none" aria-label="Account menu" aria-haspopup="menu" aria-expanded="false" onclick="nestiqToggleNavAccountMenu(event)"></button>
         <span id="navUserLabel" class="nav-user-label" style="display:none"></span>
-        <button type="button" id="navLogoutBtn" class="nav-logout-btn" style="display:none" data-i18n="nav.logout" onclick="logoutSession()">Sign out</button>
+        <button type="button" id="navLogoutBtn" class="nav-logout-btn" style="display:none" data-i18n="nav.logout" onclick="nestiqLandlordLogout()">Sign out</button>
+        <div id="navAccountMenu" class="nav-account-menu" hidden role="menu" aria-label="Account"></div>
       </div>
 
-      <a href="#" class="nav-cta" onclick="openModal('getStarted');return false;">Get Started</a>
+      <a href="#" class="nav-cta" onclick="openModal('getStarted');nestiqOpenModalAnimated();return false;">Get Started</a>
       <button type="button" class="hamburger" id="hamburgerBtn" onclick="toggleMobileNav()" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>
     </div>
   </nav>
   <div class="mobile-nav" id="mobileNav">
+    <div class="mobile-nav-section" data-tenant-nav style="display:none">
+      <div class="mobile-nav-label">Browse</div>
+      <a href="#listings" onclick="showPage('listings');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="search" data-nq-size="16"></span>Listings</a>
+      <a href="#tenant-dashboard" onclick="showPage('tenant-dashboard');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="house" data-nq-size="16"></span>My Portal</a>
+      <a href="#" onclick="toggleMobileNav();nestiqTenantLogout?.();return false;"><span class="nq-ico" data-nq-icon="log-out" data-nq-size="16"></span>Sign out</a>
+    </div>
     <div class="mobile-nav-section">
       <div class="mobile-nav-label">Main</div>
-      <a href="#home" data-i18n="nav.home" onclick="showPage('home');toggleMobileNav();return false;">Home</a>
-      <a href="#properties" data-i18n="nav.properties" onclick="showPage('properties');toggleMobileNav();return false;">Properties</a>
-      <a href="#tenants" data-i18n="nav.tenants" data-landlord-nav onclick="showPage('tenants');toggleMobileNav();return false;">Tenants</a>
-      <a href="#applications" data-landlord-nav onclick="showPage('applications');toggleMobileNav();return false;">Applications</a>
-      <a href="#settings" data-i18n="nav.settings" onclick="showPage('settings');toggleMobileNav();return false;">Settings</a>
+      <a href="#home" onclick="showPage('home');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="house" data-nq-size="16"></span><span data-i18n="nav.home">Home</span></a>
+      <a href="#properties" onclick="showPage('properties');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="16"></span><span data-i18n="nav.properties">Properties</span></a>
+      <a href="#tenants" data-landlord-nav onclick="showPage('tenants');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="users" data-nq-size="16"></span><span data-i18n="nav.tenants">Tenants</span> <span id="navMessageBadgeMobile" class="nav-item-badge" style="display:none">0</span></a>
+      <a href="#applications" data-landlord-nav onclick="showPage('applications');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="clipboard-list" data-nq-size="16"></span>Applications</a>
+      <a href="#maintenance" data-landlord-nav onclick="showPage('maintenance');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="wrench" data-nq-size="16"></span><span data-i18n="nav.maintenance">Maintenance</span> <span id="navMaintBadgeMobile" class="nav-item-badge" style="display:none">0</span></a>
     </div>
     <div class="mobile-nav-section" data-landlord-nav>
       <div class="mobile-nav-label">Operations</div>
-      <a href="#maintenance" data-i18n="nav.maintenance" onclick="showPage('maintenance');toggleMobileNav();return false;">Maintenance</a>
-      <a href="#vendors" onclick="showPage('vendors');toggleMobileNav();return false;">🛠️ Vendors</a>
-      <a href="#inspections" data-i18n="nav.inspections" onclick="showPage('inspections');toggleMobileNav();return false;">Inspections</a>
-      <a href="#calendar" data-i18n="nav.calendar" onclick="showPage('calendar');toggleMobileNav();return false;">Calendar</a>
-      <a href="#renewals" data-i18n="nav.renewals" onclick="showPage('renewals');toggleMobileNav();return false;">Renewals</a>
-      <a href="#portal" onclick="showPage('portal');toggleMobileNav();return false;">Tenant Portal</a>
+      <a href="#vendors" onclick="showPage('vendors');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="hammer" data-nq-size="16"></span>Vendors</a>
+      <a href="#inspections" onclick="showPage('inspections');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="clipboard-check" data-nq-size="16"></span><span data-i18n="nav.inspections">Inspections</span></a>
+      <a href="#calendar" onclick="showPage('calendar');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="calendar" data-nq-size="16"></span><span data-i18n="nav.calendar">Calendar</span></a>
+      <a href="#renewals" onclick="showPage('renewals');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="file-text" data-nq-size="16"></span><span data-i18n="nav.renewals">Leases</span></a>
     </div>
     <div class="mobile-nav-section" data-landlord-nav>
       <div class="mobile-nav-label">Finance</div>
-      <a href="#charts" data-i18n="nav.analytics" onclick="showPage('charts');toggleMobileNav();return false;">Analytics</a>
-      <a href="#expenses" data-i18n="nav.expenses" onclick="showPage('expenses');toggleMobileNav();return false;">Expenses</a>
-      <a href="#deposits" onclick="showPage('deposits');toggleMobileNav();return false;">Deposits</a>
-      <a href="#latefees" onclick="showPage('latefees');toggleMobileNav();return false;">💸 Late Fees</a>
-      <a href="#reconcile" onclick="showPage('reconcile');toggleMobileNav();return false;">Reconcile</a>
-      <a href="#tax" data-i18n="nav.tax" onclick="showPage('tax');toggleMobileNav();return false;">Tax Report</a>
-      <a href="#rentroll" data-i18n="nav.rentroll" onclick="showPage('rentroll');toggleMobileNav();return false;">Rent Roll</a>
-    </div>
-    <div class="mobile-nav-section" data-landlord-nav>
-      <div class="mobile-nav-label">Insights</div>
-      <a href="#valuation" onclick="showPage('valuation');toggleMobileNav();return false;">Valuation</a>
-      <a href="#roi" onclick="showPage('roi');toggleMobileNav();return false;">ROI Calculator</a>
+      <a href="#charts" onclick="showPage('charts');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="chart-column" data-nq-size="16"></span><span data-i18n="nav.analytics">Analytics</span></a>
+      <a href="#deposits" onclick="showPage('deposits');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="wallet" data-nq-size="16"></span>Deposits</a>
+      <a href="#latefees" onclick="showPage('latefees');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="circle-alert" data-nq-size="16"></span>Late Fees</a>
+      <a href="#rentroll" onclick="showPage('rentroll');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="table" data-nq-size="16"></span><span data-i18n="nav.rentroll">Rent Roll</span></a>
     </div>
     <div class="mobile-nav-section" data-landlord-nav>
       <div class="mobile-nav-label">Account</div>
-      <a href="billing.html">Billing &amp; Plan</a>
-      <a href="support.html">🎧 Help &amp; Support</a>
-      <a href="changelog.html" target="_blank">📋 Changelog</a>
+      <a href="#settings" onclick="showPage('settings');toggleMobileNav();return false;"><span class="nq-ico" data-nq-icon="settings" data-nq-size="16"></span><span data-i18n="nav.settings">Settings</span></a>
+      <a href="billing.html"><span class="nq-ico" data-nq-icon="credit-card" data-nq-size="16"></span>Billing &amp; Plan</a>
+      <a href="support.html"><span class="nq-ico" data-nq-icon="headphones" data-nq-size="16"></span>Help &amp; Support</a>
+      <a href="changelog.html" target="_blank"><span class="nq-ico" data-nq-icon="list" data-nq-size="16"></span>Changelog</a>
+      <a href="#" onclick="toggleMobileNav();nestiqLandlordLogout();return false;"><span class="nq-ico" data-nq-icon="log-out" data-nq-size="16"></span>Sign out</a>
     </div>
   </div>
 
@@ -256,13 +283,14 @@
     <span>© 2026 <strong style="color:var(--gold)">NestIQ Pro</strong> — Smart Property Management</span>
     <span style="display:flex;gap:16px;flex-wrap:wrap">
       <a href="changelog.html" target="_blank"
-         style="color:var(--muted);text-decoration:none;transition:color 0.2s"
+         style="color:var(--muted);text-decoration:none;transition:color 0.2s;display:inline-flex;align-items:center;gap:6px"
          onmouseover="this.style.color='var(--gold)'"
-         onmouseout="this.style.color='var(--muted)'">📋 Changelog</a>
+         onmouseout="this.style.color='var(--muted)'"><span class="nq-ico" data-nq-icon="list" data-nq-size="14"></span> Changelog</a>
       <a href="support.html" target="_blank"
-         style="color:var(--muted);text-decoration:none;transition:color 0.2s"
+         style="color:var(--muted);text-decoration:none;transition:color 0.2s;display:inline-flex;align-items:center;gap:6px"
          onmouseover="this.style.color='var(--gold)'"
-         onmouseout="this.style.color='var(--muted)'">🎧 Support</a>
+         onmouseout="this.style.color='var(--muted)'"
+         title="Help & Support" data-nq-tip="Help & Support"><span class="nq-ico" data-nq-icon="headphones" data-nq-size="14"></span> Support</a>
       <a href="landing.html" target="_blank"
          style="color:var(--muted);text-decoration:none;transition:color 0.2s"
          onmouseover="this.style.color='var(--gold)'"
@@ -292,16 +320,16 @@
         <a href="#home" class="nav-logo" style="color:var(--paper)" onclick="showPage('home');return false;"><span class="logo-dot"></span>NestIQ</a>
         <p class="footer-desc">Smart rental property management for the modern landlord. Simplify operations, maximise returns.</p>
       </div>
-      <div><div class="footer-col-title">Product</div><ul class="footer-links"><li><a href="#">Features</a></li><li><a href="#">Pricing</a></li><li><a href="#">API</a></li><li><a href="changelog.html" target="_blank">Changelog</a></li></ul></div>
-      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="landing.html" target="_blank">About</a></li><li><a href="#">Blog</a></li><li><a href="#">Careers</a></li><li><a href="#">Contact</a></li></ul></div>
-      <div><div class="footer-col-title">Support</div><ul class="footer-links"><li><a href="support.html" target="_blank">Help Centre</a></li><li><a href="#">Privacy</a></li><li><a href="#">Terms</a></li><li><a href="#">Status</a></li></ul></div>
+      <div><div class="footer-col-title">Product</div><ul class="footer-links"><li><a href="landing.html#features">Features</a></li><li><a href="landing.html#pricing">Pricing</a></li><li><a href="changelog.html" target="_blank">Changelog</a></li></ul></div>
+      <div><div class="footer-col-title">Company</div><ul class="footer-links"><li><a href="landing.html">About</a></li><li><a href="mailto:hello@nestiq.co.za">Contact</a></li></ul></div>
+      <div><div class="footer-col-title">Support</div><ul class="footer-links"><li><a href="support.html" target="_blank">Help Centre</a></li><li><a href="legal.html#privacy">Privacy</a></li><li><a href="legal.html#terms">Terms</a></li></ul></div>
     </div>
     <div class="footer-bottom"><div class="footer-copy">© 2026 NestIQ. All rights reserved.</div><div class="footer-copy">Made with ♥ for property managers</div></div>
   </footer>
 
   <!-- ══ MODAL ══ -->
   <div class="modal-overlay backdrop-blur-sm bg-black/40 transition-all duration-200" id="modalOverlay" onclick="closeModalOutside(event)">
-    <div class="modal rounded-2xl shadow-2xl p-6 max-w-lg w-full mx-4 animate-fade-in"><button class="modal-close" onclick="closeModal()">✕</button><div id="modalContent"></div></div>
+    <div class="modal rounded-2xl shadow-2xl p-6 max-w-lg w-full mx-4 animate-fade-in"><button class="modal-close" onclick="nestiqCloseModalAnimated()">✕</button><div id="modalContent"></div></div>
   </div>
 
   <!-- ══ NOTIFICATIONS ══ -->
@@ -348,7 +376,7 @@
           <div class="wizard-sub">Your all-in-one rental management platform. Let's get you set up in under 2 minutes — no credit card needed.</div>
           <div style="background:var(--cream);border-radius:12px;padding:16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;text-align:center">
             <div><div style="font-size:1.4rem">🏘️</div><div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Add Properties</div></div>
-            <div><div style="font-size:1.4rem">👥</div><div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Manage Tenants</div></div>
+            <div><div style="font-size:1.4rem">👥</div><div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Review Applications</div></div>
             <div><div style="font-size:1.4rem">📊</div><div style="font-size:0.78rem;color:var(--muted);margin-top:4px">Track Finances</div></div>
           </div>
         </div>
@@ -360,11 +388,14 @@
           <div class="form-group" style="margin-top:12px"><label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:6px">Monthly Rent (R)</label><input class="form-input" id="wiz_rent" type="number" placeholder="0"></div>
         </div>
         <div class="wizard-step" id="wizard-step-3">
-          <div style="font-size:2.4rem;margin-bottom:16px">👤</div>
-          <div class="wizard-title">Add your first tenant</div>
-          <div class="wizard-sub">Who lives in your property? Add their details for easy management.</div>
-          <div class="form-group"><label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:6px">Tenant Name</label><input class="form-input" id="wiz_tenant" placeholder="Full name"></div>
-          <div class="form-group" style="margin-top:12px"><label style="font-size:0.8rem;font-weight:600;display:block;margin-bottom:6px">Phone / Email</label><input class="form-input" id="wiz_contact" placeholder="Contact info"></div>
+          <div style="font-size:2.4rem;margin-bottom:16px">📋</div>
+          <div class="wizard-title">Tenants apply in NestIQ</div>
+          <div class="wizard-sub">Publish a vacant unit. Applicants create an account, apply from Browse listings, and you decide under Applications. That is the only way someone becomes a tenant.</div>
+          <div class="nestiq-flow-banner" style="margin:0">
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">1</span><strong>List</strong><span>Vacant units</span></div>
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">2</span><strong>Apply</strong><span>From listings</span></div>
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">3</span><strong>Approve</strong><span>You review</span></div>
+          </div>
         </div>
         <div class="wizard-step" id="wizard-step-4">
           <div style="font-size:2.4rem;margin-bottom:16px">🎉</div>
@@ -393,55 +424,63 @@
   </div>
 
   <!-- JS (no modules; globals preserved) -->
-  <script src="./js/utils.js?v=tenantphoto1"></script>
+  <script src="./js/utils.js?v=apply-only1"></script>
   <script src="./js/qrcodes.js"></script>
-  <script src="./js/photos.js"></script>
-  <script src="./js/deposits.js"></script>
+  <script src="./js/photos.js?v=prop-fast1"></script>
+  <script src="./js/deposits.js?v=money-gate1"></script>
   <script src="./js/valuations.js"></script>
-  <script src="./js/data.js?v=demo-off1"></script>
-  <script src="./js/firebase-config.js"></script>
-  <script src="./js/firestore-paths.js"></script>
+  <script src="./js/data.js?v=money-gate1"></script>
+  <script src="./js/firebase-config.js?v=payfastrent1"></script>
+  <script src="./js/firestore-paths.js?v=no-tenant-code1"></script>
   <script src="./js/onboarding-gate.js?v=demo-off1"></script>
-  <script src="./js/firebase-db.js?v=tenant-role-guard1"></script>
+  <script src="./js/firebase-db.js?v=no-tenant-code1"></script>
   <script src="./js/migrate.js"></script>
-  <script src="./js/i18n.js"></script>
-  <script src="./js/themes.js"></script>
-  <script src="./js/notifications.js"></script>
-  <script src="./js/email.js"></script>
-  <script src="./js/emailSequences.js"></script>
-  <script src="./js/billing.js"></script>
-  <script src="./js/support-articles.js"></script>
+  <script src="./js/i18n.js?v=ux-polish1"></script>
+  <script src="./js/themes.js?v=theme-polish2"></script>
+  <script src="./js/notifications.js?v=caretaker-chat1"></script>
+  <script src="./js/email.js?v=visit-tpl4"></script>
+  <script src="./js/emailSequences.js?v=lease-email1"></script>
+  <script src="./js/payment-modal.js?v=card-len1"></script>
+  <script src="./js/billing.js?v=no-walkin1"></script>
+  <script src="./js/support-articles.js?v=apply-only1"></script>
   <script src="./js/support.js"></script>
   <script src="./js/ai.js"></script>
-  <script src="./js/applications.js?v=tenantpersist8"></script>
-  <script src="./js/listings.js"></script>
-  <script src="./js/modals.js?v=tenantpersist8"></script>
-  <script src="./js/animations.js"></script>
-  <script src="./js/auth.js?v=tenant-role-guard1"></script>
-  <script src="./js/invitations.js"></script>
-  <script src="./js/onboarding.js"></script>
-  <script src="./js/properties.js"></script>
-  <script src="./js/map.js"></script>
+  <script src="./js/applications.js?v=ux-polish1"></script>
+  <script src="./js/reviews.js?v=reviews-left2"></script>
+  <script src="./js/listings.js?v=ux-polish1"></script>
+  <script src="./js/modals.js?v=apply-only1"></script>
+  <script src="./js/legal.js?v=legal1"></script>
+  <script src="./js/auth.js?v=signin-hold1"></script>
+  <script src="./js/invitations.js?v=no-tenant-code1"></script>
+  <script src="./js/staff.js?v=caretaker-manage1"></script>
+  <script src="./js/contractor-invitations.js?v=staff-invite-mail1"></script>
+  <script src="./js/onboarding.js?v=apply-only1"></script>
+  <script src="./js/properties.js?v=no-app-link1"></script>
+  <script src="./js/units.js?v=apply-only1"></script>
+  <script src="./js/leases.js?v=tenancy-ended1"></script>
+  <script src="./js/property-form.js?v=listing-units1"></script>
+  <script src="./js/map.js?v=leases1"></script>
   <script src="./js/charts.js"></script>
   <script src="./js/roi.js"></script>
   <script src="./js/expenses.js"></script>
   <script src="./js/portal.js"></script>
-  <script src="./js/tenants.js?v=tenantphoto1"></script>
-  <script src="./js/vendors.js"></script>
-  <script src="./js/maintenance.js"></script>
-  <script src="./js/edit.js"></script>
+  <script src="./js/tenants.js?v=apply-only1"></script>
+  <script src="./js/vendors.js?v=maint-table1"></script>
+  <script src="./js/maintenance.js?v=visit-date1"></script>
+  <script src="./js/dashboard-home.js?v=prop-fast1"></script>
+  <script src="./js/edit.js?v=no-priority1"></script>
   <script src="./js/communications.js"></script>
-  <script src="./js/inspections.js"></script>
-  <script src="./js/calendar.js"></script>
+  <script src="./js/inspections.js?v=caretaker2"></script>
+  <script src="./js/calendar.js?v=lease-schedule1"></script>
   <script src="./js/tax.js"></script>
-  <script src="./js/rentroll.js"></script>
-  <script src="./js/renewals.js"></script>
+  <script src="./js/rentroll.js?v=apply-only1"></script>
+  <script src="./js/renewals.js?v=tenancy-ended1"></script>
   <script src="./js/reconciliation.js"></script>
-  <script src="./js/settings.js"></script>
+  <script src="./js/settings.js?v=langfix1"></script>
   <script src="./js/latefees.js"></script>
   <script src="./js/reports.js"></script>
-  <script src="./js/tenant-dashboard.js"></script>
-  <script src="./js/router.js?v=tenant-role-guard1"></script>
+  <script src="./js/tenant-dashboard.js?v=ux-polish1"></script>
+  <script src="./js/router.js?v=apply-only1"></script>
   <script>
     let deferredPrompt = null;
     let installShownThisSession = false;
@@ -485,7 +524,7 @@
       const { outcome } = await deferredPrompt.userChoice;
       if(outcome === 'accepted'){
         hideInstallBanner();
-        showNotif('NestIQ Pro installed!', 'success');
+        nestiqShowNotif('NestIQ Pro installed!', 'success');
         deferredPrompt = null;
         window.nestiqPwa.canInstall = false;
         return true;
@@ -510,7 +549,7 @@
               const newWorker = reg.installing;
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  showNotif('Update available — refresh to update', 'warning');
+                  nestiqShowNotif('Update available — refresh to update', 'warning');
                 }
               });
             });
@@ -547,5 +586,7 @@
       } catch (_e) {}
     })();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="./js/animations.js?v=ux-polish1"></script>
 </body>
 </html>

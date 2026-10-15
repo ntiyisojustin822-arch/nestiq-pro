@@ -177,7 +177,7 @@
       }else{
         btn.disabled = false;
         btn.textContent = 'Continue to dashboard';
-        window.showNotif?.('Could not save settings. Check Firestore rules and try again.', 'error');
+        window.nestiqShowNotif?.('Could not save settings. Check Firestore rules and try again.', 'error');
       }
     };
   }
@@ -205,7 +205,7 @@
             window.mountPage(route).catch(()=>{});
           }
         }
-        window.showNotif?.('The app took longer than expected to load. Some data may still be syncing.','warning');
+        window.nestiqShowNotif?.('The app took longer than expected to load. Some data may still be syncing.','warning');
         return;
       }
       console.warn('NestIQ: boot safeguard — showing sign-in after slow load');

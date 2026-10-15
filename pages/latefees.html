@@ -1,7 +1,7 @@
 <div id="page-latefees" class="page" style="padding-top:70px">
 
   <!-- Page header -->
-  <div class="page-header reveal">
+  <div class="page-header reveal nq-reveal">
     <div>
       <h1 class="page-title">💸 Late Fee Management</h1>
       <p class="page-sub">Configure your late fee policy and track outstanding fees</p>
@@ -16,12 +16,12 @@
   <div id="lateFeePolicySummary" class="reveal" style="margin-bottom:20px"></div>
 
   <!-- Stats row -->
-  <div class="stats-row reveal" id="lateFeeStatsRow"></div>
+  <div class="stats-row reveal nq-reveal" id="lateFeeStatsRow"></div>
 
   <!-- Late fee ledger table -->
-  <div class="card reveal" style="margin-top:20px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg)">
+  <div class="card reveal nq-reveal" style="margin-top:20px;padding:18px;border:1px solid var(--border);border-radius:14px;background:var(--card-bg)">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-      <h3 class="card-title" style="margin:0;font-family:'Playfair Display',serif;font-size:1.15rem">Late Fee Ledger</h3>
+      <h3 class="card-title nq-reveal" style="margin:0;font-family:'Playfair Display',serif;font-size:1.15rem">Late Fee Ledger</h3>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
         <select class="form-input" id="lateFeeStatusFilter" onchange="nestiqFilterLateFeeLedger()" style="width:auto;padding:6px 10px;font-size:0.85rem">
           <option value="all">All Fees</option>
@@ -29,10 +29,9 @@
           <option value="paid">Paid</option>
           <option value="waived">Waived</option>
         </select>
-        <button class="btn-outline btn-sm" onclick="nestiqExportLateFeesCSV()">⬇ Export</button>
       </div>
     </div>
-    <div id="lateFeeTableWrap" style="overflow-x:auto">
+    <div id="lateFeeTableWrap" class="nq-reveal" style="overflow-x:auto">
       <table class="nestiq-table" style="width:100%;border-collapse:collapse;font-size:0.86rem">
         <thead>
           <tr style="text-align:left;background:var(--paper)">

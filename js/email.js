@@ -18,16 +18,46 @@ function isEmailJsFullyConfigured(){
   );
 }
 
+function isEmailJsInviteReady(){
+  const cfg=emailjsCfg();
+  const t=cfg.templates||{};
+  return Boolean(cfg.publicKey && cfg.serviceId && (t.welcomeTenant || t.customMessage || t.rentReminder));
+}
+window.isEmailJsInviteReady=isEmailJsInviteReady;
+
 function initEmailJS(){
-  if(!window.emailjs || !emailjsCfg().publicKey) return false;
+  const key=String(emailjsCfg().publicKey||'').trim();
+  if(!window.emailjs || !key) return false;
   try{
-    window.emailjs.init(emailjsCfg().publicKey);
+    try{ window.emailjs.init({ publicKey:key }); }
+    catch(_e){ window.emailjs.init(key); }
     return true;
   }catch(err){
     console.warn('EmailJS init error', err);
     return false;
   }
 }
+
+async function nestiqEmailJsSend(serviceId, templateId, params){
+  const cfg=emailjsCfg();
+  const key=String(cfg.publicKey||'').trim();
+  const sid=String(serviceId||cfg.serviceId||'').trim();
+  const tid=String(templateId||'').trim();
+  if(!window.emailjs) throw new Error('EmailJS library not loaded');
+  if(!key||!sid||!tid) throw new Error('EmailJS not configured');
+  initEmailJS();
+  const payload={
+    ...(params&&typeof params==='object'?params:{}),
+    to_email:String(params?.to_email||params?.email||'').trim(),
+    email:String(params?.email||params?.to_email||'').trim()
+  };
+  try{
+    return await window.emailjs.send(sid, tid, payload, { publicKey:key });
+  }catch(_v4){
+    return await window.emailjs.send(sid, tid, payload, key);
+  }
+}
+window.nestiqEmailJsSend=nestiqEmailJsSend;
 
 function pushEmailLog(entry){
   emailLog.unshift(entry);
@@ -52,21 +82,24 @@ function hasEmailLogWithin(tenantId, type, ms, scope=''){
 }
 
 async function sendEmail(templateId, params, meta={}){
+  const quiet=!!meta.quiet;
   if(!isEmailConfigured()){
-    showNotif('Configure EmailJS in Settings to enable emails','warning');
+    if(!quiet) nestiqShowNotif('Configure EmailJS in Settings to enable emails','warning');
     return false;
   }
   if(!templateId){
-    showNotif('Missing template ID in Email settings','warning');
+    if(!quiet) nestiqShowNotif('Missing template ID in Email settings','warning');
     return false;
   }
   if(!params?.to_email){
-    showNotif(`No email on record for ${meta.tenantName||'tenant'}`,'error');
+    if(!quiet) nestiqShowNotif(`No email on record for ${meta.tenantName||'tenant'}`,'error');
     return false;
   }
   initEmailJS();
   try{
-    await window.emailjs.send(emailjsCfg().serviceId, templateId, params);
+    await (typeof nestiqEmailJsSend==='function'
+      ? nestiqEmailJsSend(emailjsCfg().serviceId, templateId, params)
+      : window.emailjs.send(emailjsCfg().serviceId, templateId, params));
     pushEmailLog({
       id:Date.now(),
       date:new Date().toISOString(),
@@ -78,7 +111,7 @@ async function sendEmail(templateId, params, meta={}){
       status:'sent'
     });
     nestiqCommDefer(()=>window.nestiqAutoLogEmail?.(meta,params));
-    showNotif(`Email sent to ${meta.tenantName||params.to_name||'recipient'}`,'success');
+    if(!quiet) nestiqShowNotif(`Email sent to ${meta.tenantName||params.to_name||'recipient'}`,'success');
     return true;
   }catch(err){
     pushEmailLog({
@@ -91,14 +124,16 @@ async function sendEmail(templateId, params, meta={}){
       scope:meta.scope||'',
       status:'failed'
     });
-    showNotif(`Email failed: ${err?.text||err?.message||'Unknown error'}`,'error');
+    if(!quiet) nestiqShowNotif(`Email failed: ${err?.text||err?.message||'Unknown error'}`,'error');
     return false;
   }
 }
 
 function emailParamsForTenant(tenant){
+  const to=tenant.email||'';
   return {
-    to_email:tenant.email||'',
+    to_email:to,
+    email:to,
     to_name:tenant.name||'Tenant',
     property_name:tenant.property||'Property',
     unit:tenant.unit||'',
@@ -111,7 +146,10 @@ function emailParamsForTenant(tenant){
 }
 
 async function sendTenantEmailTemplate(tenant, kind, extra={}){
-  if(!tenant?.email){ showNotif(`No email on record for ${tenant?.name||'tenant'}`,'error'); return false; }
+  if(!tenant?.email){
+    if(!extra.quiet) nestiqShowNotif(`No email on record for ${tenant?.name||'tenant'}`,'error');
+    return false;
+  }
   const templates=emailTpl();
   const map={
     rentReminder:templates.rentReminder,
@@ -123,8 +161,57 @@ async function sendTenantEmailTemplate(tenant, kind, extra={}){
     customMessage:templates.customMessage
   };
   const templateId=map[kind];
-  return sendEmail(templateId, {...emailParamsForTenant(tenant), ...extra}, {tenantId:tenant.id,tenantName:tenant.name,type:kind,scope:extra.scope||''});
+  return sendEmail(templateId, {...emailParamsForTenant(tenant), ...extra}, {tenantId:tenant.id,tenantName:tenant.name,type:kind,scope:extra.scope||'',quiet:!!extra.quiet});
 }
+
+function nestiqResolveMaintTenantContact(job){
+  const tid=job?.tenantId!=null&&job.tenantId!==''?String(job.tenantId):'';
+  const list=(typeof tenantsData!=='undefined'&&Array.isArray(tenantsData))?tenantsData:(Array.isArray(window.tenantsData)?window.tenantsData:[]);
+  const fromList=tid?list.find(t=>String(t.id)===tid):null;
+  return {
+    id:fromList?.id||job?.tenantId||null,
+    name:String(fromList?.name||job?.tenantName||'Tenant').trim()||'Tenant',
+    email:String(fromList?.email||fromList?.portalEmail||job?.tenantEmail||'').trim(),
+    property:String(fromList?.property||job?.property||''),
+    unit:String(fromList?.unit||fromList?.unitNumber||job?.unit||'')
+  };
+}
+window.nestiqResolveMaintTenantContact=nestiqResolveMaintTenantContact;
+
+async function nestiqEmailTenantContractorVisit(job, opts={}){
+  const tenant=nestiqResolveMaintTenantContact(job);
+  if(!tenant.email) return 'no-email';
+  if(!isEmailConfigured()) return 'no-config';
+  const when=typeof window.nestiqMaintVisitLabel==='function'?window.nestiqMaintVisitLabel(job):String(job?.scheduledDate||'');
+  if(!when) return 'no-date';
+  const contractor=String(opts.contractorName||job?.vendorName||'The contractor').trim()||'The contractor';
+  const issue=String(job?.title||job?.issueCategory||'your maintenance request');
+  const reschedule=!!opts.reschedule;
+  const message=reschedule
+    ? `${contractor} has changed the visit for “${issue}” to ${when}. Please be available if you can.`
+    : `${contractor} has accepted “${issue}” and will visit on ${when}.`;
+  const extra={
+    issue_title:issue,
+    old_status:reschedule?'Scheduled':'Assigned',
+    new_status:reschedule?'Rescheduled':'Visit scheduled',
+    visit_date:when,
+    contractor_name:contractor,
+    subject:reschedule?'Your repair visit was rescheduled':'Contractor visit scheduled',
+    message,
+    property_name:issue,
+    unit:contractor,
+    amount:'0',
+    due_date:when,
+    scope:`${job?._id||job?.id||'job'}-visit-${job?.scheduledDate||''}-${job?.scheduledWindow||''}-${reschedule?'r':'a'}`,
+    quiet:true
+  };
+  const t=emailTpl();
+  const kind=t.maintenanceUpdate?'maintenanceUpdate':(t.customMessage?'customMessage':(t.rentReminder?'rentReminder':(t.welcomeTenant?'welcomeTenant':null)));
+  if(!kind) return 'no-config';
+  const ok=await sendTenantEmailTemplate(tenant, kind, extra);
+  return ok?'sent':'failed';
+}
+window.nestiqEmailTenantContractorVisit=nestiqEmailTenantContractorVisit;
 
 async function sendRentReminderEmail(tenant, dueDateText, opts={}){
   return sendTenantEmailTemplate(tenant,'rentReminder',{due_date:dueDateText||getTenantDueDateText(tenant), scope:opts.scope||monthKey(new Date())});
@@ -144,8 +231,18 @@ async function sendOverdueEmail(tenant, daysOverdue){
 async function sendLeaseExpiryEmail(tenant, daysRemaining){
   return sendTenantEmailTemplate(tenant,'leaseExpiry',{lease_end:isoToPretty(tenant.leaseEnd||tenant.lease),days_remaining:String(daysRemaining||0),scope:String(tenant.leaseEnd||tenant.lease)});
 }
-async function sendMaintenanceUpdateEmail(tenant, req, oldStatus, newStatus){
-  return sendTenantEmailTemplate(tenant,'maintenanceUpdate',{issue_title:req?.title||'Maintenance Issue',old_status:oldStatus||'',new_status:newStatus||'',scope:String(req?.id||Date.now())});
+async function sendMaintenanceUpdateEmail(tenant, req, oldStatus, newStatus, extra={}){
+  const visit=typeof window.nestiqMaintVisitLabel==='function'?window.nestiqMaintVisitLabel(req):'';
+  return sendTenantEmailTemplate(tenant,'maintenanceUpdate',{
+    issue_title:req?.title||'Maintenance Issue',
+    old_status:oldStatus||'',
+    new_status:newStatus||'',
+    visit_date:extra.visit_date||visit,
+    contractor_name:extra.contractor_name||req?.vendorName||'',
+    message:extra.message||'',
+    scope:extra.scope||String(req?.id||Date.now()),
+    ...extra
+  });
 }
 async function sendWelcomeEmail(tenant){
   return sendTenantEmailTemplate(tenant,'welcomeTenant',{scope:String(tenant.id)});
@@ -157,20 +254,28 @@ async function sendCustomEmail(tenant, subject, message){
 async function sendTestEmailToLandlord(){
   const to=String(landlordSettings?.emailjs?.testEmail||'').trim()||String(landlordSettings?.email||'').trim();
   if(!to){
-    showNotif('Enter a test email address or save your landlord email','warning');
+    nestiqShowNotif('Enter a test email address or save your landlord email','warning');
     return false;
   }
-  const templateId=emailTpl().customMessage||emailTpl().rentReminder||emailTpl().welcomeTenant||emailTpl().paymentReceipt;
+  const templateId=emailTpl().customMessage||emailTpl().rentReminder||emailTpl().welcomeTenant||emailTpl().paymentReceipt||emailTpl().overdueNotice||emailTpl().leaseExpiry;
+  if(!templateId){
+    nestiqShowNotif('Paste at least one Template ID, then Save EmailJS Settings','warning');
+    return false;
+  }
   return sendEmail(templateId, {
+    // NestIQ templates use to_email; some EmailJS samples use email — send both.
     to_email:to,
+    email:to,
     to_name:landlordSettings.name||'Landlord',
     subject:'NestIQ Pro — Email Test',
     message:'Your EmailJS integration is working correctly.',
     landlord_name:landlordSettings.name||'Landlord',
+    landlord_email:to,
     property_name:'NestIQ Test Property',
     unit:'Test Unit',
     amount:'0',
-    due_date:new Date().toLocaleDateString('en-ZA')
+    due_date:new Date().toLocaleDateString('en-ZA'),
+    link:'https://example.com'
   }, {tenantName:'Landlord',type:'test',scope:'test'});
 }
 

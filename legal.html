@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Legal — NestIQ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    :root { --gold:#C46A3A; --ink:#0E1117; --cream:#F5F0E8; --muted:rgba(14,17,23,.55); --border:rgba(14,17,23,.12); }
+    html { scroll-behavior:smooth; }
+    body { margin:0; font-family:'DM Sans',system-ui,sans-serif; color:var(--ink); background:#fff; }
+    .font-display { font-family:'Playfair Display',serif; }
+    header { border-bottom:1px solid var(--border); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    a { color:var(--gold); }
+    nav a { margin-left:14px; text-decoration:none; font-weight:600; font-size:.9rem; color:var(--ink); }
+    nav a:hover { color:var(--gold); }
+    main { max-width:760px; margin:0 auto; padding:32px 20px 64px; }
+    .tabs { display:flex; gap:8px; margin:0 0 24px; }
+    .tabs a { text-decoration:none; border:1px solid var(--border); border-radius:999px; padding:8px 16px; font-weight:700; font-size:.88rem; color:var(--ink); }
+    .tabs a.active { border-color:var(--gold); color:var(--gold); background:rgba(196,106,58,.08); }
+    .nestiq-legal-copy h3 { font-size:1.05rem; margin:22px 0 8px; }
+    .nestiq-legal-copy p { font-size:.92rem; line-height:1.65; color:rgba(14,17,23,.82); }
+    .panel { display:none; }
+    .panel.active { display:block; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="landing.html" class="font-display" style="font-size:1.25rem;font-weight:700;color:var(--gold);text-decoration:none">NestIQ</a>
+    <nav>
+      <a href="landing.html">Home</a>
+      <a href="support.html">Help</a>
+      <a href="index.html">Sign in</a>
+    </nav>
+  </header>
+  <main>
+    <h1 class="font-display" style="font-size:2rem;margin:0 0 8px">Legal</h1>
+    <p style="color:var(--muted);margin:0 0 20px">How NestIQ works for landlords, tenants, and staff in South Africa.</p>
+    <div class="tabs">
+      <a id="tab-terms" href="#terms">Terms of Service</a>
+      <a id="tab-privacy" href="#privacy">Privacy Policy</a>
+    </div>
+    <article id="panel-terms" class="panel nestiq-legal-copy"></article>
+    <article id="panel-privacy" class="panel nestiq-legal-copy"></article>
+  </main>
+  <script src="./js/legal.js?v=legal1"></script>
+  <script>
+    function showLegal(){
+      var privacy = (location.hash || '').toLowerCase().indexOf('privacy') !== -1;
+      document.getElementById('panel-terms').classList.toggle('active', !privacy);
+      document.getElementById('panel-privacy').classList.toggle('active', privacy);
+      document.getElementById('tab-terms').classList.toggle('active', !privacy);
+      document.getElementById('tab-privacy').classList.toggle('active', privacy);
+      document.title = (privacy ? 'Privacy Policy' : 'Terms of Service') + ' — NestIQ';
+    }
+    document.getElementById('panel-terms').innerHTML = nestiqLegalTermsHtml();
+    document.getElementById('panel-privacy').innerHTML = nestiqLegalPrivacyHtml();
+    window.addEventListener('hashchange', showLegal);
+    showLegal();
+  </script>
+</body>
+</html>

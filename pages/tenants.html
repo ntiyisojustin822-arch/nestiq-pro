@@ -7,31 +7,17 @@
     <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:32px;flex-wrap:wrap;gap:14px">
       <div>
         <div class="eyebrow" style="justify-content:flex-start">People</div>
-        <h2 class="section-title reveal" style="margin-bottom:0">Tenant Profiles</h2>
+        <h2 class="section-title reveal nq-reveal" style="margin-bottom:0">Tenant Profiles</h2>
+        <p class="nestiq-page-lede">Approved applicants live here. New tenants apply from Browse listings — you never add them by hand.</p>
       </div>
-      <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
-        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
+      <div class="no-print nestiq-page-toolbar">
+        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px" title="Print this page" data-nq-tip="Print this page">🖨️ Print</button>
         <button class="btn-whatsapp btn-sm" onclick="openMessageAllOverdueModal()">Message All Overdue Tenants</button>
         <button class="btn-gold btn-sm" onclick="nestiqOpenBulkRecordPaymentsModal()">💳 Bulk Record Payments</button>
-        <button class="btn-outline btn-sm" onclick="exportTenantsCSV()">⬇ Export CSV</button>
         <button class="btn-outline btn-sm" onclick="openPostNoticeModal()">📣 Post Notice</button>
-        <button class="btn-primary btn-sm" onclick="openModal('addTenant')">+ Add Tenant</button>
+        <button class="btn-outline btn-sm" onclick="showPage('applications')">Applications</button>
       </div>
     </div>
     <div class="tenants-grid" id="tenantsGrid"></div>
-
-    <div class="settings-card" style="margin-top:32px" data-settings-landlord-only>
-      <h3 class="settings-card-title">Portal invitations</h3>
-      <p class="settings-card-sub">Codes for tenant portal signup. Copy a code here and share it (WhatsApp/SMS), or use <strong>Send portal invite</strong> on a tenant card.</p>
-      <div style="overflow:auto;border:1px solid var(--border);border-radius:10px">
-        <table class="rentroll-table" style="font-size:0.78rem;min-width:720px">
-          <thead><tr><th>Tenant</th><th>Email</th><th>Property</th><th>Code</th><th>Status</th><th>Expires</th><th>Actions</th></tr></thead>
-          <tbody id="nestiqInvitationsBody"></tbody>
-        </table>
-      </div>
-      <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
-        <button type="button" class="btn-outline btn-sm" onclick="nestiqBulkInviteTenantsWithoutPortal()">Invite all tenants without portal access</button>
-      </div>
-    </div>
   </section>
 </div>

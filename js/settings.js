@@ -51,7 +51,7 @@ function updateLandlordLogoPreview(b64){
 function handleLandlordLogoPick(e){
   const f=e.target.files?.[0];
   if(!f) return;
-  if(typeof compressImage!=='function'){ showNotif('Image tools not loaded','error'); return; }
+  if(typeof compressImage!=='function'){ nestiqShowNotif('Image tools not loaded','error'); return; }
   compressImage(f,200,0.82,(b64)=>{
     __pendingLandlordLogo=b64;
     updateLandlordLogoPreview(b64);
@@ -61,8 +61,8 @@ function handleLandlordLogoPick(e){
 function nestiqRevealSettingsPage(){
   const page=document.getElementById('page-settings');
   if(!page) return;
-  page.querySelectorAll('.reveal:not(.revealed), .reveal-left:not(.revealed), .reveal-right:not(.revealed)').forEach(el=>{
-    el.classList.add('revealed','visible');
+  page.querySelectorAll('.reveal:not(.revealed), .nq-reveal:not(.nq-revealed), .reveal-left:not(.revealed), .reveal-right:not(.revealed)').forEach(el=>{
+    el.classList.add('revealed','visible','nq-revealed');
   });
 }
 
@@ -108,6 +108,10 @@ function renderSettings(){
   if(g('landlord_company_input')) g('landlord_company_input').value=landlordSettings.companyName||'';
   if(g('landlord_address_input')) g('landlord_address_input').value=landlordSettings.physicalAddress||'';
   if(g('landlord_vat_input')) g('landlord_vat_input').value=landlordSettings.vatNumber||'';
+  if(g('caretaker_auto_approve_limit')){
+    const lim=Number(landlordSettings.caretakerAutoApproveLimit);
+    g('caretaker_auto_approve_limit').value=String(Number.isFinite(lim)&&lim>=0?lim:1000);
+  }
   __pendingLandlordLogo=null;
   if(g('landlord_logo_input')) g('landlord_logo_input').value='';
   updateLandlordLogoPreview();
@@ -163,14 +167,27 @@ function renderSettings(){
   applyTranslations?.();
   nestiqRevealSettingsPage();
   try{ window.nestiqInitScrollReveal?.(); }catch(_e){}
+  nestiqFillProductReviewForm?.();
 }
 
 function updateEmailStatusBadge(){
   const el=document.getElementById('emailStatusBadge');
   if(!el) return;
-  const ok=typeof isEmailJsFullyConfigured==='function' && isEmailJsFullyConfigured();
-  el.className=`badge ${ok?'badge-green':'badge-amber'}`;
-  el.textContent=ok?'Configured':'Not configured';
+  const full=typeof isEmailJsFullyConfigured==='function' && isEmailJsFullyConfigured();
+  const invites=typeof isEmailJsInviteReady==='function' && isEmailJsInviteReady();
+  if(full){
+    el.className='badge badge-green';
+    el.textContent='Configured';
+  }else if(invites){
+    el.className='badge badge-green';
+    el.textContent='Invites ready';
+  }else if(typeof isEmailConfigured==='function' && isEmailConfigured()){
+    el.className='badge badge-amber';
+    el.textContent='Partial';
+  }else{
+    el.className='badge badge-amber';
+    el.textContent='Not configured';
+  }
 }
 
 function updateAiStatusBadge(){
@@ -204,7 +221,7 @@ function clearEmailLog(){
   emailLog=[];
   saveData();
   renderEmailLogTable();
-  showNotif('Email log cleared','success');
+  nestiqShowNotif('Email log cleared','success');
 }
 
 function renderWhatsAppLog(){
@@ -227,7 +244,7 @@ function clearWhatsAppLog(){
   whatsappLog=[];
   saveData();
   renderWhatsAppLog();
-  showNotif('WhatsApp log cleared','success');
+  nestiqShowNotif('WhatsApp log cleared','success');
 }
 
 function renderNotificationSettingsExtended(){
@@ -260,10 +277,13 @@ function saveNotificationSettingsExtended(){
     lowOccupancyThreshold:Math.max(0,Math.min(100,Number(document.getElementById('notif_occ_threshold')?.value)||80))
   };
   setNotificationSettings?.(next);
-  showNotif('Notification settings saved','success');
+  nestiqShowNotif('Notification settings saved','success');
 }
 
 function saveEmailSettings(){
+  const btn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="saveEmailSettings"]');
+  nestiqSetBtnLoading?.(btn,true,'Saving...');
+  try{
   landlordSettings.emailjs=landlordSettings.emailjs||{templates:{}};
   landlordSettings.emailjs.templates=landlordSettings.emailjs.templates||{};
   landlordSettings.emailjs.publicKey=document.getElementById('email_publicKey')?.value.trim()||'';
@@ -279,22 +299,113 @@ function saveEmailSettings(){
   saveData();
   initEmailJS();
   updateEmailStatusBadge();
-  showNotif('Email settings saved','success');
+  nestiqShowNotif('Email settings saved','success');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+  }
 }
 
 async function sendEmailSettingsTest(){
+  const btn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="sendEmailSettingsTest"]');
+  nestiqSetBtnLoading?.(btn,true,'Sending...');
   try{
+    // Persist form values first so Test Email / template IDs aren't lost if Save wasn't clicked.
+    if(typeof saveEmailSettings==='function'){
+      const publicKey=document.getElementById('email_publicKey')?.value.trim()||'';
+      const serviceId=document.getElementById('email_serviceId')?.value.trim()||'';
+      const testTo=document.getElementById('email_test_address')?.value.trim()||'';
+      if(publicKey&&serviceId){
+        landlordSettings.emailjs=landlordSettings.emailjs||{templates:{}};
+        landlordSettings.emailjs.templates=landlordSettings.emailjs.templates||{};
+        landlordSettings.emailjs.publicKey=publicKey;
+        landlordSettings.emailjs.serviceId=serviceId;
+        landlordSettings.emailjs.testEmail=testTo;
+        landlordSettings.emailjs.templates.rentReminder=document.getElementById('email_tpl_rentReminder')?.value.trim()||landlordSettings.emailjs.templates.rentReminder||'';
+        landlordSettings.emailjs.templates.paymentReceipt=document.getElementById('email_tpl_paymentReceipt')?.value.trim()||landlordSettings.emailjs.templates.paymentReceipt||'';
+        landlordSettings.emailjs.templates.overdueNotice=document.getElementById('email_tpl_overdueNotice')?.value.trim()||landlordSettings.emailjs.templates.overdueNotice||'';
+        landlordSettings.emailjs.templates.leaseExpiry=document.getElementById('email_tpl_leaseExpiry')?.value.trim()||landlordSettings.emailjs.templates.leaseExpiry||'';
+        landlordSettings.emailjs.templates.welcomeTenant=document.getElementById('email_tpl_welcomeTenant')?.value.trim()||landlordSettings.emailjs.templates.welcomeTenant||'';
+        landlordSettings.emailjs.templates.maintenanceUpdate=document.getElementById('email_tpl_maintenanceUpdate')?.value.trim()||landlordSettings.emailjs.templates.maintenanceUpdate||'';
+        landlordSettings.emailjs.templates.customMessage=document.getElementById('email_tpl_customMessage')?.value.trim()||landlordSettings.emailjs.templates.customMessage||'';
+        initEmailJS();
+        try{ saveData?.(); }catch(_e){}
+      }
+    }
     if(!isEmailConfigured()){
-      showNotif('Configure EmailJS public key and service ID first','warning');
+      nestiqShowNotif('Configure EmailJS public key and service ID first','warning');
       return;
     }
     const ok=await sendTestEmailToLandlord();
     if(!ok) return;
     renderEmailLogTable();
-    showNotif('Email sent successfully','success');
+    nestiqShowNotif('Email sent successfully','success');
   }catch(err){
     renderEmailLogTable();
-    showNotif(`Error: ${err?.message||'Unknown error'}`,'error');
+    nestiqShowNotif(`Error: ${err?.message||'Unknown error'}`,'error');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+  }
+}
+
+async function sendEmailSettingsInviteTest(){
+  const btn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="sendEmailSettingsInviteTest"]');
+  nestiqSetBtnLoading?.(btn,true,'Sending...');
+  try{
+    if(typeof saveEmailSettings==='function'){
+      const publicKey=document.getElementById('email_publicKey')?.value.trim()||'';
+      const serviceId=document.getElementById('email_serviceId')?.value.trim()||'';
+      const testTo=document.getElementById('email_test_address')?.value.trim()||'';
+      if(publicKey&&serviceId){
+        landlordSettings.emailjs=landlordSettings.emailjs||{templates:{}};
+        landlordSettings.emailjs.templates=landlordSettings.emailjs.templates||{};
+        landlordSettings.emailjs.publicKey=publicKey;
+        landlordSettings.emailjs.serviceId=serviceId;
+        landlordSettings.emailjs.testEmail=testTo;
+        landlordSettings.emailjs.templates.welcomeTenant=document.getElementById('email_tpl_welcomeTenant')?.value.trim()||landlordSettings.emailjs.templates.welcomeTenant||'';
+        landlordSettings.emailjs.templates.rentReminder=document.getElementById('email_tpl_rentReminder')?.value.trim()||landlordSettings.emailjs.templates.rentReminder||'';
+        initEmailJS();
+        try{ saveData?.(); }catch(_e){}
+      }
+    }
+    const to=String(landlordSettings?.emailjs?.testEmail||'').trim()||String(landlordSettings?.email||'').trim();
+    const templateId=String(landlordSettings?.emailjs?.templates?.welcomeTenant||'').trim();
+    if(!isEmailConfigured()){
+      nestiqShowNotif('Save your EmailJS Public Key and Service ID first','warning');
+      return;
+    }
+    if(!templateId){
+      nestiqShowNotif('Paste your Welcome Tenant Template ID, then Save EmailJS Settings','warning');
+      return;
+    }
+    if(!to){
+      nestiqShowNotif('Enter a Test Email Address first','warning');
+      return;
+    }
+    const code='NQ-TEST01';
+    const base=(typeof window.NESTIQ_APP_BASE_URL==='string'&&window.NESTIQ_APP_BASE_URL)?window.NESTIQ_APP_BASE_URL:'https://nestiq-pro.web.app/';
+    const inviteUrl=String(base).replace(/\/*$/,'/')+'?invite='+encodeURIComponent(code);
+    const ok=await sendEmail(templateId, {
+      to_email:to,
+      email:to,
+      user_email:to,
+      to_name:'Test tenant',
+      invitation_code:code,
+      invite_url:inviteUrl,
+      portal_url:String(base).replace(/\/*$/,'/'),
+      property_name:'Test property',
+      landlord_name:landlordSettings.name||'Landlord',
+      expires_date:new Date(Date.now()+30*864e5).toLocaleDateString('en-GB'),
+      subject:'NestIQ portal invite test for '+to,
+      message:'Test invitation code '+code+' — open '+inviteUrl
+    }, {tenantName:'Test tenant',type:'invitation',scope:code});
+    if(!ok) return;
+    renderEmailLogTable();
+    nestiqShowNotif('Test invite sent to '+to+' — if it arrives in THIS inbox, check EmailJS To Email is {{to_email}} so tenant addresses work too.','success');
+  }catch(err){
+    renderEmailLogTable();
+    nestiqShowNotif(`Error: ${err?.message||'Unknown error'}`,'error');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
   }
 }
 
@@ -304,15 +415,9 @@ function renderLanguageSettings(){
 }
 
 function changeAppLanguage(lang){
-  const s=getSession?.();
-  if(s?.role==='landlord'){
-    localStorage.setItem('nestiq-lang','en');
-    showNotif('Landlord view is fixed to English','warning');
-    renderLanguageSettings();
-    applyTranslations?.();
-    return;
-  }
   setLanguage?.(lang);
+  renderLanguageSettings();
+  nestiqShowNotif?.(typeof t==='function'?t('notif.languageChanged'):'Language updated','success');
 }
 
 function toggleGeminiKeyVisibility(){
@@ -329,7 +434,7 @@ function saveAiSettingsFull(){
   geminiApiKey=key;
   landlordSettings.gemini=landlordSettings.gemini||{};
   landlordSettings.gemini.apiKey=key;
-  landlordSettings.gemini.model='gemini-1.5-flash';
+  landlordSettings.gemini.model=landlordSettings.gemini.model||'gemini-2.5-flash';
   landlordSettings.aiFeatures={
     rentSuggest:Boolean(document.getElementById('ai_feat_rent')?.checked),
     maintenanceDx:Boolean(document.getElementById('ai_feat_maint')?.checked),
@@ -339,34 +444,44 @@ function saveAiSettingsFull(){
   };
   saveData();
   updateAiStatusBadge();
-  showNotif('AI settings saved','success');
+  nestiqShowNotif('AI settings saved','success');
 }
 
 async function testGeminiSettings(){
   const out=document.getElementById('aiTestResult');
-  if(out) out.textContent='';
+  if(out) out.textContent='Testing…';
   try{
+    const key=document.getElementById('gemini_api_key')?.value.trim()||'';
+    geminiApiKey=key;
+    if(typeof landlordSettings==='object' && landlordSettings){
+      landlordSettings.gemini=landlordSettings.gemini||{};
+      landlordSettings.gemini.apiKey=key;
+    }
+    if(typeof saveData==='function') saveData();
     if(!isGeminiConfigured()){
+      if(out) out.textContent='Paste your Gemini API key first, then test.';
       aiConfigError();
       return;
     }
-    const raw=await callGemini('Reply with a single short sentence confirming the NestIQ connection.');
+    const raw=await callGemini('Reply with a single short sentence confirming the NestIQ connection.','',{ skipGuard:true });
     if(!raw){
-      if(out) out.textContent='No response from Gemini.';
-      showNotif('AI unavailable, try again','error');
+      if(out) out.textContent='No response from Gemini. Check the key and try again.';
       return;
     }
-    const preview=String(raw).slice(0,100);
-    if(out) out.textContent=preview+(String(raw).length>100?'…':'');
-    showNotif('AI connection OK','success');
+    const preview=String(raw).slice(0,160);
+    if(out) out.textContent=preview+(String(raw).length>160?'…':'');
+    nestiqShowNotif('AI connection OK','success');
   }catch(err){
     const msg=err?.message||'AI unavailable, try again';
     if(out) out.textContent=msg;
-    showNotif(msg,'error');
+    nestiqShowNotif(msg,'error');
   }
 }
 
 function saveLandlordProfileSettings(){
+  const btn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="saveLandlordProfileSettings"]');
+  nestiqSetBtnLoading?.(btn,true,'Saving...');
+  try{
   landlordSettings.name=document.getElementById('landlord_name_input')?.value?.trim()||landlordSettings.name;
   landlordSettings.phone=document.getElementById('landlord_phone_input')?.value?.trim()||landlordSettings.phone;
   landlordSettings.email=document.getElementById('landlord_email_input')?.value?.trim()||landlordSettings.email;
@@ -378,7 +493,10 @@ function saveLandlordProfileSettings(){
   __pendingLandlordLogo=null;
   saveData();
   updateLandlordLogoPreview();
-  showNotif('Profile saved','success');
+  nestiqShowNotif('Profile saved','success');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+  }
 }
 
 function savePortalSettings(){
@@ -390,7 +508,7 @@ function savePortalSettings(){
   landlordSettings.portal.accountType=document.getElementById('portal_account_type')?.value==='Savings'?'Savings':'Cheque';
   landlordSettings.portal.paymentReferenceFormat=document.getElementById('portal_ref_format')?.value?.trim()||'[TenantName]-[Month]-[Year]';
   saveData();
-  showNotif('Portal settings saved','success');
+  nestiqShowNotif('Portal settings saved','success');
 }
 
 function saveMarketContextSettings(){
@@ -405,7 +523,7 @@ function saveMarketContextSettings(){
   };
   saveData();
   normalizeDataModel?.();
-  showNotif('Market context saved','success');
+  nestiqShowNotif('Market context saved','success');
 }
 
 function saveLandlordSettings(){
@@ -425,7 +543,7 @@ function objectsToCsv(rows){
 
 async function exportNestiqAllDataZip(){
   if(typeof JSZip==='undefined'){
-    showNotif('ZIP library not loaded — check your connection','error');
+    nestiqShowNotif('ZIP library not loaded — check your connection','error');
     return;
   }
   try{
@@ -446,9 +564,9 @@ async function exportNestiqAllDataZip(){
     a.download=`nestiq-export-${new Date().toISOString().slice(0,10)}.zip`;
     a.click();
     URL.revokeObjectURL(a.href);
-    showNotif('ZIP export downloaded','success');
+    nestiqShowNotif('ZIP export downloaded','success');
   }catch(_err){
-    showNotif('Export failed','error');
+    nestiqShowNotif('Export failed','error');
   }
 }
 
@@ -472,7 +590,7 @@ function settingsDownloadFullBackup(){
   a.download=`nestiq-backup-${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(a.href);
-  showNotif('Backup downloaded','success');
+  nestiqShowNotif('Backup downloaded','success');
 }
 
 function settingsPickRestoreBackup(){
@@ -519,10 +637,10 @@ function settingsOnRestoreFile(e){
       normalizeDataModel?.();
       saveData();
       initEmailJS?.();
-      showNotif('Backup restored','success');
+      nestiqShowNotif('Backup restored','success');
       renderSettings();
     }catch(_err){
-      showNotif('Invalid backup file','error');
+      nestiqShowNotif('Invalid backup file','error');
     }
     e.target.value='';
   };
@@ -571,13 +689,13 @@ function closeSettingsResetModal(){
 function confirmSettingsFullReset(){
   const inp=document.getElementById('settingsResetConfirmInput')?.value?.trim();
   if(inp!=='RESET'){
-    showNotif('Type RESET to confirm','warning');
+    nestiqShowNotif('Type RESET to confirm','warning');
     return;
   }
   localStorage.clear();
   sessionStorage.clear();
   closeSettingsResetModal();
-  showNotif('All data cleared — reloading…','warning');
+  nestiqShowNotif('All data cleared — reloading…','warning');
   setTimeout(()=>location.reload(),400);
 }
 
@@ -606,9 +724,9 @@ async function renderPwaStatusExtended(){
 async function pwaInstallFromSettings(){
   if(window.nestiqPwa?.promptInstall){
     const ok=await window.nestiqPwa.promptInstall();
-    if(!ok) showNotif('Install prompt not available yet','warning');
+    if(!ok) nestiqShowNotif('Install prompt not available yet','warning');
   }else{
-    showNotif('Install prompt not available','warning');
+    nestiqShowNotif('Install prompt not available','warning');
   }
   renderPwaStatusExtended();
 }
@@ -623,20 +741,20 @@ async function clearPwaCache(){
       const keys=await caches.keys();
       await Promise.all(keys.map(k=>caches.delete(k)));
     }
-    showNotif('Cache cleared','success');
+    nestiqShowNotif('Cache cleared','success');
     renderPwaStatusExtended();
   }catch(_err){
-    showNotif('Failed to clear cache','error');
+    nestiqShowNotif('Failed to clear cache','error');
   }
 }
 
 async function updatePwaApp(){
   try{
     const reg=window.nestiqPwa?.swRegistration;
-    if(reg){ await reg.update(); showNotif('Update check complete','success'); }
-    else showNotif('Service worker not active','warning');
+    if(reg){ await reg.update(); nestiqShowNotif('Update check complete','success'); }
+    else nestiqShowNotif('Service worker not active','warning');
   }catch(_err){
-    showNotif('Update check failed','error');
+    nestiqShowNotif('Update check failed','error');
   }
 }
 
@@ -644,12 +762,140 @@ function clearAllLocalData(){
   if(!confirm('This will clear all local data. Continue?')) return;
   localStorage.clear();
   sessionStorage.clear();
-  showNotif('All local data cleared','warning');
+  nestiqShowNotif('All local data cleared','warning');
   setTimeout(()=>location.reload(),300);
 }
 
 function handleLogout(){
-  logoutSession();
+  if(typeof nestiqLandlordLogout==='function') nestiqLandlordLogout();
+  else if(typeof nestiqConfirmSignOut==='function') nestiqConfirmSignOut({role:'landlord'});
+  else logoutSession();
+}
+
+function saveCaretakerAutoApproveLimit(){
+  const raw=Number(document.getElementById('caretaker_auto_approve_limit')?.value);
+  const limit=Number.isFinite(raw)&&raw>=0?Math.round(raw):1000;
+  landlordSettings.caretakerAutoApproveLimit=limit;
+  try{ window.landlordSettings=landlordSettings; }catch(_e){}
+  saveData?.();
+  nestiqShowNotif?.(`Caretaker auto-approve limit set to R${limit.toLocaleString('en-ZA')}`,'success');
+}
+window.saveCaretakerAutoApproveLimit=saveCaretakerAutoApproveLimit;
+
+function nestiqSetProductReviewStars(n){
+  const v=Math.max(1, Math.min(5, Number(n)||5));
+  window.__nestiqProductReviewRating=v;
+  const hidden=document.getElementById('nestiqProductReviewRating');
+  if(hidden) hidden.value=String(v);
+  document.querySelectorAll('#nestiqProductReviewStarBtns .nestiq-review-star-btn').forEach((btn,i)=>{
+    btn.classList.toggle('filled', i<v);
+  });
+}
+
+function nestiqPaintProductReviewStars(rating){
+  const host=document.getElementById('nestiqProductReviewStarBtns');
+  if(!host) return;
+  const n=Math.max(1, Math.min(5, Number(rating)||5));
+  host.innerHTML=[1,2,3,4,5].map(i=>`<button type="button" class="nestiq-review-star-btn${i<=n?' filled':''}" onclick="nestiqSetProductReviewStars(${i})" aria-label="${i} star${i===1?'':'s'}">★</button>`).join('');
+  nestiqSetProductReviewStars(n);
+}
+
+function nestiqPaintProductReviewStatus(existing){
+  const hint=document.getElementById('nestiqProductReviewHint');
+  const btn=document.getElementById('nestiqProductReviewSubmitBtn');
+  const removeBtn=document.getElementById('nestiqProductReviewRemoveBtn');
+  const live=!!(existing&&existing.published!==false);
+  if(removeBtn) removeBtn.style.display=live?'':'none';
+  if(!existing){
+    if(hint) hint.textContent='Shown next to the sample quotes on the marketing site. You can update or remove it later.';
+    if(btn) btn.textContent='Publish on landing page';
+    return;
+  }
+  if(live){
+    if(hint) hint.textContent='This is already on the landing page. Saving again updates your quote.';
+    if(btn) btn.textContent='Update landing page review';
+  }else{
+    if(hint) hint.textContent='Your quote is saved but hidden. Publish again to show it.';
+    if(btn) btn.textContent='Publish on landing page';
+  }
+}
+
+async function nestiqFillProductReviewForm(){
+  const s=typeof getSession==='function'?getSession():null;
+  if(!s||s.role!=='landlord') return;
+  if(!document.getElementById('nestiqProductReviewBody')) return;
+  const cityEl=document.getElementById('nestiqProductReviewCity');
+  const bodyEl=document.getElementById('nestiqProductReviewBody');
+  const fallbackCity=String(landlordSettings?.marketContext?.city||'').trim();
+  if(cityEl&&!cityEl.value) cityEl.value=fallbackCity;
+  nestiqPaintProductReviewStars(5);
+  nestiqPaintProductReviewStatus(null);
+  let existing=null;
+  try{ existing=await window.nestiqFetchMyProductReview?.(); }catch(_e){}
+  if(existing){
+    if(cityEl) cityEl.value=existing.city||cityEl.value||fallbackCity;
+    if(bodyEl) bodyEl.value=existing.body||'';
+    nestiqPaintProductReviewStars(existing.rating||5);
+  }
+  nestiqPaintProductReviewStatus(existing);
+}
+
+async function nestiqSaveProductReview(){
+  const rating=Number(document.getElementById('nestiqProductReviewRating')?.value||window.__nestiqProductReviewRating||0);
+  const city=String(document.getElementById('nestiqProductReviewCity')?.value||'').trim();
+  const body=String(document.getElementById('nestiqProductReviewBody')?.value||'').trim();
+  const min=Number(window.NESTIQ_PRODUCT_REVIEW_BODY_MIN||20);
+  if(!Number.isFinite(rating)||rating<1||rating>5){
+    nestiqShowNotif?.('Choose a rating from 1 to 5','warning');
+    return;
+  }
+  if(!city){
+    nestiqShowNotif?.('Add your city so it can appear like the other cards','warning');
+    document.getElementById('nestiqProductReviewCity')?.focus();
+    return;
+  }
+  if(body.length<min){
+    nestiqShowNotif?.('Write a short review (at least '+min+' characters)','warning');
+    document.getElementById('nestiqProductReviewBody')?.focus();
+    return;
+  }
+  const btn=document.getElementById('nestiqProductReviewSubmitBtn');
+  nestiqSetBtnLoading?.(btn,true,'Publishing…');
+  let ok=false;
+  try{
+    if(typeof window.nestiqSubmitProductReview!=='function'){
+      throw new Error('Review service is not loaded');
+    }
+    await window.nestiqSubmitProductReview(rating, body, city);
+    ok=true;
+    nestiqShowNotif?.('Your review is on the NestIQ landing page','success');
+  }catch(err){
+    const msg=String(err?.message||'Could not publish review');
+    nestiqShowNotif?.(msg.replace(/^Firebase: /,'').replace(/\s*\([^)]*\)\s*$/,''),'error');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+    if(ok) nestiqPaintProductReviewStatus({ published:true });
+  }
+}
+
+async function nestiqRemoveProductReview(){
+  const btn=document.getElementById('nestiqProductReviewRemoveBtn');
+  nestiqSetBtnLoading?.(btn,true,'Removing…');
+  let ok=false;
+  try{
+    if(typeof window.nestiqUnpublishProductReview!=='function'){
+      throw new Error('Review service is not loaded');
+    }
+    await window.nestiqUnpublishProductReview();
+    ok=true;
+    nestiqShowNotif?.('Your review is no longer on the landing page','success');
+  }catch(err){
+    const msg=String(err?.message||'Could not remove review');
+    nestiqShowNotif?.(msg.replace(/^Firebase: /,'').replace(/\s*\([^)]*\)\s*$/,''),'error');
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+    if(ok) nestiqPaintProductReviewStatus({ published:false });
+  }
 }
 
 window.renderSettings=renderSettings;
@@ -681,6 +927,10 @@ window.pwaInstallFromSettings=pwaInstallFromSettings;
 window.clearPwaCache=clearPwaCache;
 window.updatePwaApp=updatePwaApp;
 window.clearAllLocalData=clearAllLocalData;
+window.nestiqSetProductReviewStars=nestiqSetProductReviewStars;
+window.nestiqFillProductReviewForm=nestiqFillProductReviewForm;
+window.nestiqSaveProductReview=nestiqSaveProductReview;
+window.nestiqRemoveProductReview=nestiqRemoveProductReview;
 
 document.addEventListener('click',e=>{
   const overlay=document.getElementById('settingsResetOverlay');

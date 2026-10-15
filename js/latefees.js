@@ -51,22 +51,31 @@ function lfReferenceDateForMonth(y,m){
 
 function calculateLateFee(tenant,date=new Date()){
   if(!tenant||tenant.status==='vacant') return 0;
+  if(typeof window.nestiqCurrentRentObligation==='function'){
+    const o=window.nestiqCurrentRentObligation(tenant, date);
+    if(!o.payable && o.status!=='overdue') return 0;
+  }
   const pol=getLateFeePolicy();
   const d=new Date(date);
   const y=d.getFullYear(),mo=d.getMonth();
   const ym=lfMonthKey(d);
   if(lfTenantPaidMonth(tenant,ym)) return 0;
   if(lfIsWaivedForMonth(tenant.id,ym)) return 0;
-  const dueDay=Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1)));
-  const dueDate=new Date(y,mo,dueDay);
+  const lease=typeof window.nestiqLeaseLikeFromTenant==='function'?window.nestiqLeaseLikeFromTenant(tenant):null;
+  const dueDate=lease && typeof window.nestiqLeasePeriodDueDate==='function'
+    ? window.nestiqLeasePeriodDueDate(lease, y, mo)
+    : new Date(y,mo,Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1))));
   const graceEnd=new Date(dueDate);
   graceEnd.setDate(graceEnd.getDate()+Number(pol.graceDays));
   const today0=new Date(d.getFullYear(),d.getMonth(),d.getDate());
   const grace0=new Date(graceEnd.getFullYear(),graceEnd.getMonth(),graceEnd.getDate());
   if(today0<=grace0) return 0;
   const daysPastGrace=Math.ceil((today0-grace0)/86400000);
+  const baseRent=lease && typeof window.nestiqLeasePeriodAmount==='function'
+    ? window.nestiqLeasePeriodAmount(lease, y, mo)
+    : Number(tenant.rent||0);
   const base=pol.type==='percentage'
-    ?Math.round(Number(tenant.rent||0)*(Number(pol.percentage)/100))
+    ?Math.round(Number(baseRent||0)*(Number(pol.percentage)/100))
     :Math.round(Number(pol.fixedAmount));
   let additionalFees=0;
   if(pol.compoundEnabled&&pol.compoundDays>0){
@@ -248,9 +257,9 @@ function openLateFeeWaiveModal(tenantId,opts){
     </label>
     <div style="display:flex;gap:10px;margin-top:16px">
       <button type="button" class="btn-primary btn-sm" onclick='confirmLateFeeWaive(${JSON.stringify(tenantId)},${JSON.stringify(ym)})'>Waive Fee</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   window.__lfWaiveOpts=opts;
 }
 
@@ -266,11 +275,11 @@ function confirmLateFeeWaive(tenantId,ym){
     const msg=`Dear ${t.name}, as a gesture of goodwill the late fee of R${fee.toLocaleString()} for ${monthLbl} has been waived. Please ensure your rent of R${Number(t.rent||0).toLocaleString()} is paid immediately. — NestIQ Pro`;
     openWhatsApp(t.phone,msg,{tenantId:t.id,tenantName:t.name,type:'lateFeeWaive'});
   }
-  closeModal();
+  nestiqCloseModalAnimated();
   const o=window.__lfWaiveOpts||{};
   window.__lfWaiveOpts=null;
   if(o.reopenTenant) viewTenant(tenantId);
-  showNotif('Late fee waived','success');
+  nestiqShowNotif('Late fee waived','success');
   renderTenants?.();
   renderRentRoll?.();
   if(document.getElementById('lateFeeTableBody')) nestiqRenderLateFeesPage?.();
@@ -322,7 +331,7 @@ function lateFeeSubmitPaymentWrapper(tenantId){
   const reference=document.getElementById('pay_ref')?.value||'';
   const emailReceipt=Boolean(document.getElementById('pay_email_receipt')?.checked);
   const payDateRaw=document.getElementById('pay_date')?.value?.trim()||'';
-  if(amount<=0){ showNotif('Enter a valid payment amount','error'); return; }
+  if(amount<=0){ nestiqShowNotif('Enter a valid payment amount','error'); return; }
   const extra=window.__nestiqPaymentModalExtra||{};
   window.__nestiqPaymentModalExtra={};
   const fee=calculateLateFee(t,new Date());
@@ -451,7 +460,7 @@ function saveLateFeePolicyFromForm(){
     compoundDays:Number(document.getElementById('lf_compound_days')?.value||7)
   };
   saveData();
-  showNotif('Late fee policy saved','success');
+  nestiqShowNotif('Late fee policy saved','success');
 }
 
 function getLateFeesCollectedForYear(year){
@@ -712,7 +721,7 @@ function nestiqMarkLateFeePaid(feeId){
   row.status='paid';
   row.collectedDate=row.collectedDate||new Date().toISOString().slice(0,10);
   saveData?.();
-  showNotif?.('Late fee marked as paid','success');
+  nestiqShowNotif?.('Late fee marked as paid','success');
   nestiqRenderLateFeesPage();
 }
 
@@ -731,9 +740,9 @@ function nestiqOpenLateFeeWaiveModal(feeId){
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick='nestiqConfirmLateFeeWaive(${idJson})'>Waive Fee</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqConfirmLateFeeWaive(feeId){
@@ -747,7 +756,7 @@ function nestiqConfirmLateFeeWaive(feeId){
   row.waivedReason=reason;
   saveData?.();
   closeModal?.();
-  showNotif?.('Late fee waived','success');
+  nestiqShowNotif?.('Late fee waived','success');
   nestiqRenderLateFeesPage();
 }
 
@@ -768,7 +777,7 @@ function nestiqApplyAllLateFees(){
     applied++;
   });
   saveData?.();
-  showNotif?.(applied?`Applied late fees for ${applied} overdue tenant${applied===1?'':'s'}`:'No overdue late fees to apply right now.','success');
+  nestiqShowNotif?.(applied?`Applied late fees for ${applied} overdue tenant${applied===1?'':'s'}`:'No overdue late fees to apply right now.','success');
   nestiqRenderLateFeesPage();
 }
 
@@ -807,9 +816,9 @@ function nestiqOpenLateFeeSettingsModal(){
     </div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-gold btn-sm" onclick="nestiqSaveLateFeePolicyFromModal()">Save policy</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   lateFeeToggleSettingsFields();
 }
 
@@ -844,7 +853,7 @@ function nestiqExportLateFeesCSV(){
     a.download='nestiq-late-fees.csv';
     a.click();
   }
-  showNotif?.('Late fees CSV exported','success');
+  nestiqShowNotif?.('Late fees CSV exported','success');
 }
 
 function nestiqRenderLateFeesPage(){

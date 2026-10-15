@@ -16,13 +16,24 @@ const expenseCategories=Object.keys(catColors);
 let tenantsData=[];
 let tenantsLoading=true;
 let tenantNextId=1;
+let unitsData=[];
+try{ window.unitsData=unitsData; }catch(_e){}
+let leasesData=[];
+try{ window.leasesData=leasesData; }catch(_e){}
+function nestiqReplaceLeases(rows){
+  if(!Array.isArray(leasesData)) leasesData=[];
+  leasesData.length=0;
+  (rows||[]).forEach(r=>{ if(r) leasesData.push(r); });
+  window.leasesData=leasesData;
+}
+try{ window.nestiqReplaceLeases=nestiqReplaceLeases; }catch(_e){}
 
 let maintenanceData=[];
 let maintNextId=1;
 let vendors=[];
 let vendorNextId=1;
 const maintCols={open:{label:'Open',color:'var(--rust)'},progress:{label:'In Progress',color:'var(--gold)'},done:{label:'Resolved',color:'var(--sage)'}};
-const priorityColors={High:'var(--rust)',Medium:'var(--gold)',Low:'var(--sage)'};
+const priorityColors={Emergency:'var(--rust)',High:'var(--rust)',Medium:'var(--gold)',Low:'var(--sage)'};
 
 const dayNames=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 
@@ -93,7 +104,7 @@ const landlordSettings={
   },
   gemini:{
     apiKey:'',
-    model:'gemini-1.5-flash'
+    model:'gemini-2.5-flash'
   },
   lateFeePolicy:{
     type:'fixed',
@@ -103,7 +114,9 @@ const landlordSettings={
     maximumFee:1000,
     compound:false,
     compoundDays:7
-  }
+  },
+  /** Caretaker may auto-assign contractors at or below this estimated cost (ZAR). */
+  caretakerAutoApproveLimit:1000
 };
 
 // Demo mode is disabled project-wide: clear any leftover flags and never seed.
@@ -174,6 +187,22 @@ const landlordSettings={
         tenantName:'Pieter van der Merwe',tenantEmail:'pieter@email.com',
         amenities:['pool','garden','garage','security','pet-friendly'],publicListing:false}
     );
+    try{
+      const p1=propertiesData.find(p=>p.id==='demo-prop-1'); if(p1) p1.totalUnits=3;
+      const p2=propertiesData.find(p=>p.id==='demo-prop-2'); if(p2) p2.totalUnits=2;
+      const p3=propertiesData.find(p=>p.id==='demo-prop-3'); if(p3) p3.totalUnits=1;
+      const p4=propertiesData.find(p=>p.id==='demo-prop-4'); if(p4) p4.totalUnits=2;
+    }catch(_e){}
+    unitsData.push(
+      { id:'unit-dp1-1', propertyId:'demo-prop-1', unitNumber:'A01', tenantId:'demo-t-1', tenantName:'Thabo Nkosi', rent:8500, status:'occupied', leaseEnd:'2026-02-28' },
+      { id:'unit-dp1-2', propertyId:'demo-prop-1', unitNumber:'A02', tenantId:'demo-t-4', tenantName:'Nomsa Khumalo', rent:8500, status:'occupied', leaseEnd:'2025-05-31' },
+      { id:'unit-dp1-3', propertyId:'demo-prop-1', unitNumber:'A03', tenantId:null, tenantName:null, rent:8500, status:'vacant' },
+      { id:'unit-dp2-1', propertyId:'demo-prop-2', unitNumber:'Unit 1', tenantId:'demo-t-2', tenantName:'Sarah Dlamini', rent:14500, status:'occupied' },
+      { id:'unit-dp2-2', propertyId:'demo-prop-2', unitNumber:'Unit 2', tenantId:'demo-t-5', tenantName:'Ahmed Patel', rent:14500, status:'occupied' },
+      { id:'unit-dp3-1', propertyId:'demo-prop-3', unitNumber:'Studio A', tenantId:null, tenantName:null, rent:7200, status:'vacant' },
+      { id:'unit-dp4-1', propertyId:'demo-prop-4', unitNumber:'Main House', tenantId:'demo-t-3', tenantName:'Pieter van der Merwe', rent:18000, status:'occupied' },
+      { id:'unit-dp4-2', propertyId:'demo-prop-4', unitNumber:'Garden Flat', tenantId:'demo-t-6', tenantName:'Lerato Molefe', rent:18000, status:'occupied' }
+    );
 
     // Tenants
     tenantsData.push(
@@ -181,37 +210,37 @@ const landlordSettings={
         name:'Thabo Nkosi',email:'thabo@email.com',phone:'0821234567',
         idNumber:'9001015800085',leaseStart:'2024-03-01',leaseEnd:'2026-02-28',
         rent:8500,deposit:17000,status:'paid',lastPaymentDate:today,
-        property:'Riverside Gardens Unit 3',unit:'Unit 3',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Riverside Gardens Unit 3',unit:'A01',unitId:'unit-dp1-1',unitNumber:'A01',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:true,daysOverdue:0},
       {id:'demo-t-2',landlordId:'demo-landlord',propertyId:'demo-prop-2',
         name:'Sarah Dlamini',email:'sarah@email.com',phone:'0839876543',
         idNumber:'9205120900083',leaseStart:'2023-08-01',leaseEnd:'2025-07-31',
         rent:14500,deposit:29000,status:'overdue',lastPaymentDate:null,
-        property:'Sunset View Townhouse',unit:'Unit',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Sunset View Townhouse',unit:'Unit 1',unitId:'unit-dp2-1',unitNumber:'Unit 1',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:true,daysOverdue:12},
       {id:'demo-t-3',landlordId:'demo-landlord',propertyId:'demo-prop-4',
         name:'Pieter van der Merwe',email:'pieter@email.com',phone:'0765559876',
         idNumber:'8803085200087',leaseStart:'2024-01-01',leaseEnd:'2025-12-31',
         rent:18000,deposit:36000,status:'due-soon',lastPaymentDate:null,
-        property:'Durban North House',unit:'House',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Durban North House',unit:'Main House',unitId:'unit-dp4-1',unitNumber:'Main House',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:false,daysOverdue:0},
       {id:'demo-t-4',landlordId:'demo-landlord',propertyId:'demo-prop-1',
         name:'Nomsa Khumalo',email:'nomsa@email.com',phone:'0714445678',
         idNumber:'9508250600081',leaseStart:'2024-06-01',leaseEnd:'2025-05-31',
         rent:8500,deposit:17000,status:'paid',lastPaymentDate:today,
-        property:'Riverside Gardens Unit 3',unit:'Unit',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Riverside Gardens Unit 3',unit:'A02',unitId:'unit-dp1-2',unitNumber:'A02',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:false,daysOverdue:0},
       {id:'demo-t-5',landlordId:'demo-landlord',propertyId:'demo-prop-2',
         name:'Ahmed Patel',email:'ahmed@email.com',phone:'0823336789',
         idNumber:'8712301800086',leaseStart:'2023-08-01',leaseEnd:'2025-07-31',
         rent:14500,deposit:29000,status:'paid',lastPaymentDate:today,
-        property:'Sunset View Townhouse',unit:'Unit',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Sunset View Townhouse',unit:'Unit 2',unitId:'unit-dp2-2',unitNumber:'Unit 2',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:true,daysOverdue:0},
       {id:'demo-t-6',landlordId:'demo-landlord',propertyId:'demo-prop-4',
         name:'Lerato Molefe',email:'lerato@email.com',phone:'0796667890',
         idNumber:'9311155400082',leaseStart:'2024-01-01',leaseEnd:'2025-12-31',
         rent:18000,deposit:36000,status:'overdue',lastPaymentDate:null,
-        property:'Durban North House',unit:'House',monthlyDueDate:1,payments:[],avatar:'👤',
+        property:'Durban North House',unit:'Garden Flat',unitId:'unit-dp4-2',unitNumber:'Garden Flat',monthlyDueDate:1,payments:[],avatar:'👤',
         hasPortalAccess:false,daysOverdue:7}
     );
 
@@ -393,6 +422,7 @@ const NESTIQ_LS_PAYMENTS='nestiq-payments';
 const NESTIQ_LS_EXPENSES='nestiq-expenses';
 const NESTIQ_LS_NOTICES='nestiq-notices';
 const NESTIQ_LS_APPLICATIONS='nestiq-applications';
+const NESTIQ_LS_UNITS='nestiq-units';
 const NESTIQ_LS_DEMO_SEEDED='nestiq-demo-seeded';
 
 function nestiqIsLocalDemoMode(){
@@ -419,6 +449,7 @@ function saveDataFromLocalStorage(){
   try{ localStorage.setItem(NESTIQ_LS_EXPENSES, JSON.stringify(expenses||[])); }catch(_e){}
   try{ localStorage.setItem(NESTIQ_LS_APPLICATIONS, JSON.stringify(applications||[])); }catch(_e){}
   try{ localStorage.setItem(NESTIQ_LS_NOTICES, JSON.stringify(notices||[])); }catch(_e){}
+  try{ localStorage.setItem(NESTIQ_LS_UNITS, JSON.stringify(unitsData||[])); }catch(_e){}
   localStorage.setItem('nestiq-propertyPhotos', JSON.stringify(propertyPhotos));
   localStorage.setItem('nestiq-photos', JSON.stringify(propertyPhotos));
   localStorage.setItem('nestiq-maintenancePhotos', JSON.stringify(maintenancePhotos));
@@ -482,6 +513,15 @@ function loadDataFromLocalStorage(){
         if(notRaw){
           const notList=JSON.parse(notRaw);
           if(Array.isArray(notList)) notices=notList;
+        }
+        const uRaw=localStorage.getItem(NESTIQ_LS_UNITS);
+        if(uRaw){
+          const uList=JSON.parse(uRaw);
+          if(Array.isArray(uList)){
+            if(!Array.isArray(unitsData)) unitsData=[];
+            unitsData.length=0;
+            uList.forEach(u=>unitsData.push(u));
+          }
         }
       }
     }catch(_e){}
@@ -589,7 +629,9 @@ function normalizeDataModel(){
       ...t,
       email:emailLc,
       propertyId: t.propertyId != null && t.propertyId !== '' ? t.propertyId : (property?.id ?? null),
+      unitId: t.unitId != null && t.unitId !== '' ? String(t.unitId) : null,
       monthlyDueDate: Number.isFinite(Number(t.monthlyDueDate)) ? Number(t.monthlyDueDate) : 1,
+      prorateFirstMonth: t.prorateFirstMonth===true || t.prorateFirstMonth==='true',
       leaseStart: t.leaseStart || '2025-01-01',
       leaseEnd: leaseEndIso,
       payments: (tenantPayments.length ? tenantPayments : fromGlobal).map((p,idx)=>({
@@ -603,7 +645,12 @@ function normalizeDataModel(){
       })),
       unitPassword: normalizeUnitPassword(t.unit),
       deposit: typeof nestiqNormalizeTenantDeposit==='function'
-        ? nestiqNormalizeTenantDeposit(t.deposit, t.rent)
+        ? nestiqNormalizeTenantDeposit(
+            (t.deposit && typeof t.deposit==='object')
+              ? t.deposit
+              : { amount: t.depositAmount, collected: t.depositCollected===true },
+            t.rent
+          )
         : (Number.isFinite(Number(t.deposit)) ? Number(t.deposit) : Number(t.rent||0)*2),
       leaseType: t.leaseType || 'Annual',
       parkingBay: t.parkingBay || '',
@@ -627,11 +674,20 @@ function normalizeDataModel(){
     const property=propertiesData.find(p=>String(p.id)===String(m.propertyId)) || propertiesData.find(p=>p.name===m.property) || (tenant ? propertiesData.find(p=>String(p.id)===String(tenant.propertyId)) : null);
     const est=Number(m.estimatedCost);
     const act=Number(m.actualCost);
+    const createdRaw=m.createdAt;
+    const createdDate=createdRaw&&typeof createdRaw.toDate==='function'
+      ? createdRaw.toDate()
+      : new Date(createdRaw||'');
+    const safeDate=String(createdDate)!=='Invalid Date'
+      ? createdDate.toLocaleDateString('en-ZA')
+      : new Date().toLocaleDateString('en-ZA');
     return {
       ...m,
       tenantId: m.tenantId!=null&&m.tenantId!=='' ? m.tenantId : (tenant?.id??null),
       propertyId: m.propertyId!=null&&m.propertyId!=='' ? m.propertyId : (property?.id??null),
+      property:String(m.property||property?.name||''),
       tenantName:m.tenantName || tenant?.name || '',
+      priority:String(m.priority||m.urgency||''),
       estimatedCost:Number.isFinite(est)?est:0,
       actualCost:Number.isFinite(act)?act:0,
       vendorName:String(m.vendorName||''),
@@ -642,8 +698,11 @@ function normalizeDataModel(){
       quotedDate:String(m.quotedDate||''),
       completedDate:String(m.completedDate||''),
       warrantyPeriod:String(m.warrantyPeriod||''),
-      vendorId:Number.isFinite(Number(m.vendorId))?Number(m.vendorId):null,
-      issueCategory:String(m.issueCategory||'Other'),
+      vendorId:(m.vendorId!=null&&m.vendorId!=='')?String(m.vendorId):null,
+      issueCategory:String(m.issueCategory||m.issueType||'Other'),
+      date:String(m.date||safeDate),
+      notes:String(m.notes||''),
+      status:String(m.status)==='assigned'?'open':(m.status||'open'),
       vendorRating:Number.isFinite(Number(m.vendorRating))&&Number(m.vendorRating)>=1&&Number(m.vendorRating)<=5?Number(m.vendorRating):null,
       vendorRatingNotes:String(m.vendorRatingNotes||''),
       ratedDate:String(m.ratedDate||'')
@@ -656,7 +715,8 @@ function normalizeDataModel(){
   if(!Array.isArray(inspections)) inspections=[];
   if(!landlordSettings.gemini || typeof landlordSettings.gemini!=='object') landlordSettings.gemini={};
   landlordSettings.gemini.apiKey=String(landlordSettings.gemini.apiKey||geminiApiKey||'');
-  landlordSettings.gemini.model=String(landlordSettings.gemini.model||'gemini-1.5-flash');
+  landlordSettings.gemini.model=String(landlordSettings.gemini.model||'gemini-2.5-flash');
+  if(/^gemini-1\.5|^gemini-2\.0/.test(landlordSettings.gemini.model)) landlordSettings.gemini.model='gemini-2.5-flash';
   geminiApiKey=landlordSettings.gemini.apiKey;
   if(!landlordSettings.emailjs || typeof landlordSettings.emailjs!=='object') landlordSettings.emailjs={};
   landlordSettings.emailjs.publicKey=String(landlordSettings.emailjs.publicKey||'');
@@ -686,6 +746,11 @@ function normalizeDataModel(){
     const o={...p};
     o.lat=Number.isFinite(Number(o.lat)) ? Number(o.lat) : null;
     o.lng=Number.isFinite(Number(o.lng)) ? Number(o.lng) : null;
+    o.numberOfUnits=Number.isFinite(Number(o.numberOfUnits))&&Number(o.numberOfUnits)>=1
+      ? Number(o.numberOfUnits)
+      : (Number.isFinite(Number(o.totalUnits))&&Number(o.totalUnits)>=1?Number(o.totalUnits):1);
+    o.archived=o.archived===true||o.deactivated===true;
+    o.caretakerId=o.caretakerId!=null&&String(o.caretakerId).trim()!==''?String(o.caretakerId):null;
     return typeof nestiqNormalizePropertyValuation==='function'?nestiqNormalizePropertyValuation(o):o;
   });
   if(!propertyPhotos || typeof propertyPhotos!=='object') propertyPhotos={};
@@ -725,7 +790,9 @@ function normalizeDataModel(){
     jobsCompleted:Math.max(0,Math.round(Number(v.jobsCompleted)||0)),
     totalCostBilled:Math.max(0,Number(v.totalCostBilled)||0),
     createdAt:String(v.createdAt||new Date().toISOString().slice(0,10)),
-    lastUsed:String(v.lastUsed||'')
+    lastUsed:String(v.lastUsed||''),
+    uid:v.uid||null,
+    accountStatus:(['none','invited','active'].includes(v.accountStatus)?v.accountStatus:'none')
   })).filter(v=>v.id>0);
   if(!vendorNextId||vendorNextId<1) vendorNextId=1;
   const maxVid=vendors.reduce((s,v)=>Math.max(s,v.id),0);
@@ -776,6 +843,8 @@ function normalizeDataModel(){
     maxAmount:lfMax,
     compoundEnabled:lfCompound
   };
+  const autoLimit=Number(landlordSettings.caretakerAutoApproveLimit);
+  landlordSettings.caretakerAutoApproveLimit=Number.isFinite(autoLimit)&&autoLimit>=0?autoLimit:1000;
   if(!Array.isArray(recurringExpenses)) recurringExpenses=[];
   recurringExpenses=recurringExpenses.map(r=>{
     const freq=['monthly','quarterly','annual'].includes(String(r.frequency))?String(r.frequency):'monthly';
@@ -853,6 +922,8 @@ function normalizeDataModel(){
   normalizeStoredApplications();
   try{ window.applications=applications; }catch(_e){}
   nestiqSyncAllPayments();
+  if(!Array.isArray(unitsData)) unitsData=[];
+  try{ window.unitsData=unitsData; }catch(_e){}
   nestiqBindWindowDataArrays();
 }
 
@@ -869,6 +940,8 @@ function nestiqBindWindowDataArrays(){
     window.propertiesLoading=propertiesLoading;
     window.tenantsData=tenantsData;
     window.tenantsLoading=tenantsLoading;
+    window.unitsData=unitsData;
+    window.leasesData=leasesData;
     window.expenses=expenses;
     window.expensesLoading=expensesLoading;
     window.maintenanceData=maintenanceData;
@@ -888,9 +961,19 @@ function nestiqBindWindowDataArrays(){
 window.nestiqSyncAllPayments=nestiqSyncAllPayments;
 window.nestiqBindWindowDataArrays=nestiqBindWindowDataArrays;
 
+function nestiqReplaceMessages(rows){
+  if(!Array.isArray(messages)) messages=[];
+  messages.length=0;
+  (rows||[]).forEach(r=>{ if(r) messages.push(r); });
+  window.messages=messages;
+  try{ window.updateMessageBadge?.(); }catch(_e){}
+  return messages;
+}
+window.nestiqReplaceMessages=nestiqReplaceMessages;
+
 function normalizeStoredApplications(){
   if(!Array.isArray(applications)) applications=[];
-  const okStatus=new Set(['pending','reviewing','approved','declined','waitlisted']);
+  const okStatus=new Set(['pending','reviewing','info_required','approved','declined','waitlisted']);
   const okCredit=new Set(['excellent','good','fair','poor','unknown']);
   const okEmployment=new Set(['permanent','contract','self-employed','unemployed','retired','student']);
   applications=applications.filter(a=>a&&typeof a==='object').map(a=>{
@@ -907,6 +990,11 @@ function normalizeStoredApplications(){
       propertyName:String(a.propertyName||''),
       propertyAddress:String(a.propertyAddress||''),
       listingMonthlyRent:Number(a.listingMonthlyRent)||0,
+      listingDeposit:Number(a.listingDeposit)||0,
+      unitId:a.unitId!=null&&a.unitId!==''?String(a.unitId):'',
+      unitLabel:String(a.unitLabel||a.unit||''),
+      preferredMoveInDate:String(a.preferredMoveInDate||''),
+      desiredLeaseMonths:String(a.desiredLeaseMonths||''),
       availableFrom:String(a.availableFrom||''),
       bedroomsListed:Math.max(0,Math.round(Number(a.bedroomsListed)||0)),
       firstName:String(a.firstName||''),
@@ -970,6 +1058,16 @@ function normalizeStoredApplications(){
       processedBy:String(a.processedBy||''),
       declineReasons:Array.isArray(a.declineReasons)?a.declineReasons.map(String):[],
       declineNotes:String(a.declineNotes||''),
+      shareDeclineReason:Boolean(a.shareDeclineReason),
+      infoRequestMessage:String(a.infoRequestMessage||''),
+      infoRequestedAt:String(a.infoRequestedAt||''),
+      infoResponseNote:String(a.infoResponseNote||''),
+      infoRespondedAt:String(a.infoRespondedAt||''),
+      infoResponseDocuments:Array.isArray(a.infoResponseDocuments)?a.infoResponseDocuments.map(d=>({
+        name:String(d?.name||'Document'),
+        url:String(d?.url||''),
+        uploadedAt:String(d?.uploadedAt||'')
+      })).filter(d=>d.url):[],
       createdAt:String(a.createdAt||''),
       applicationSource:a.applicationSource==='walkin'?'walkin':'public'
     };

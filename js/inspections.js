@@ -6,6 +6,31 @@ let inspectionActiveTab='scheduled';
 let activeInspectionId=null;
 let inspectionAutoSaveTimer=null;
 
+function nestiqInspectionSession(){
+  try{
+    return window.__nestiqSession || JSON.parse(sessionStorage.getItem('nestiq-session')||'null');
+  }catch(_e){ return null; }
+}
+
+function nestiqVisibleInspectionProperties(){
+  const s=nestiqInspectionSession();
+  if(s?.role==='caretaker'){
+    const allowed=new Set((Array.isArray(s.assignedPropertyIds)?s.assignedPropertyIds:[]).map(String));
+    return (window.caretakerProperties||[]).filter(p=>allowed.has(String(p.id||p.propertyId||'')));
+  }
+  return propertiesData;
+}
+
+async function nestiqPersistInspection(insp){
+  const s=nestiqInspectionSession();
+  const lid=s?.landlordId || (typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null);
+  const db=window.nestiqDb;
+  if(db && lid && window.nestiqFs?.inspections){
+    await window.nestiqFs.inspections(db, lid).doc(String(insp.id)).set({ ...insp, propertyId:insp.propertyId!=null?String(insp.propertyId):null, landlordId:lid },{ merge:true });
+  }
+  if(s?.role!=='caretaker') saveData();
+}
+
 const ROOM_TEMPLATES=[
   'Entrance / Hallway','Living Room / Lounge','Kitchen','Master Bedroom','Bedroom 2','Bedroom 3',
   'Main Bathroom','En-Suite Bathroom','Guest Toilet','Garage / Parking','Garden / Outdoor Area','Laundry Room'
@@ -17,8 +42,20 @@ const GARAGE_ITEMS=['Garage Door','Remote','Floor','Storage Space'];
 
 function fmtZAR(v){ return `R${Number(v||0).toLocaleString('en-ZA',{maximumFractionDigits:0})}`; }
 function inspectionById(id){ return (inspections||[]).find(i=>Number(i.id)===Number(id))||null; }
-function tenantForPropertyId(propertyId){ return tenantsData.find(t=>Number(t.propertyId)===Number(propertyId) && t.status!=='vacant')||null; }
-function propertyById(propertyId){ return propertiesData.find(p=>Number(p.id)===Number(propertyId))||null; }
+function tenantForPropertyId(propertyId){
+  const s=nestiqInspectionSession();
+  const src=s?.role==='caretaker' ? (window.caretakerTenants||[]) : tenantsData;
+  return src.find(t=>{
+    const pid=String(t.propertyId||'');
+    const st=String(t.status||'').toLowerCase();
+    return pid===String(propertyId) && st!=='vacant' && st!=='moved-out' && st!=='inactive';
+  })||null;
+}
+function propertyById(propertyId){
+  const s=nestiqInspectionSession();
+  const src=s?.role==='caretaker' ? (window.caretakerProperties||[]) : propertiesData;
+  return src.find(p=>String(p.id||p.propertyId)===String(propertyId))||null;
+}
 
 function templateItemsForRoom(roomName){
   const lower=String(roomName||'').toLowerCase();
@@ -111,7 +148,11 @@ function renderInspectionsPage(){
   formWrap.style.display='none';
   list.style.gridTemplateColumns='repeat(auto-fill,minmax(300px,1fr))';
   list.style.gap='12px';
-  const items=(inspections||[]).filter(i=>inspectionActiveTab==='completed'?i.status==='completed':i.status!=='completed').sort((a,b)=>String(b.date).localeCompare(String(a.date)));
+  const visibleProps=new Set(nestiqVisibleInspectionProperties().map(p=>String(p.id||p.propertyId||'')));
+  const items=(inspections||[])
+    .filter(i=>!visibleProps.size || visibleProps.has(String(i.propertyId||'')))
+    .filter(i=>inspectionActiveTab==='completed'?i.status==='completed':i.status!=='completed')
+    .sort((a,b)=>String(b.date).localeCompare(String(a.date)));
   if(!items.length){
     list.innerHTML='<div style="color:var(--muted);font-size:.85rem">No inspections found for this tab.</div>';
     return;
@@ -139,7 +180,9 @@ function renderInspectionsPage(){
 }
 
 function openNewInspectionModal(){
-  const propertyOptions=propertiesData.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  const sess=nestiqInspectionSession();
+  const byDefault=sess?.role==='caretaker'?(sess.name||'Caretaker'):(landlordSettings.name||'Landlord');
+  const propertyOptions=nestiqVisibleInspectionProperties().map(p=>`<option value="${p.id||p.propertyId}">${p.name}</option>`).join('');
   const roomChecks=ROOM_TEMPLATES.map((r,idx)=>`<label style="display:flex;gap:8px;align-items:center;font-size:.8rem"><input type="checkbox" class="insp-room-check" value="${r}" ${idx<8?'checked':''}>${r}</label>`).join('');
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">New Inspection</h2>
@@ -148,7 +191,7 @@ function openNewInspectionModal(){
     <div class="form-group" style="margin-top:8px"><label>Tenant</label><input id="insp_tenant" class="form-input" disabled></div>
     <div class="form-group" style="margin-top:8px"><label>Inspection Type</label><select id="insp_type" class="form-input"><option value="move-in">Move-In</option><option value="move-out">Move-Out</option><option value="routine">Routine</option><option value="annual">Annual</option></select></div>
     <div class="form-group" style="margin-top:8px"><label>Date</label><input id="insp_date" type="date" class="form-input" value="${new Date().toISOString().slice(0,10)}"></div>
-    <div class="form-group" style="margin-top:8px"><label>Conducted By</label><input id="insp_by" class="form-input" value="${landlordSettings.name||'Landlord'}"></div>
+    <div class="form-group" style="margin-top:8px"><label>Conducted By</label><input id="insp_by" class="form-input" value="${String(byDefault).replace(/"/g,'&quot;')}"></div>
     <div class="form-group" style="margin-top:8px">
       <label>Rooms to include</label>
       <div style="display:flex;gap:8px;margin:6px 0 8px"><button class="btn-outline btn-sm" type="button" onclick="selectAllInspectionRooms(true)">Select All</button><button class="btn-outline btn-sm" type="button" onclick="selectAllInspectionRooms(false)">Deselect All</button></div>
@@ -156,15 +199,15 @@ function openNewInspectionModal(){
       <div style="display:flex;gap:8px;margin-top:8px"><input id="insp_custom_room" class="form-input" placeholder="Custom room name"><button class="btn-outline btn-sm" type="button" onclick="addInspectionCustomRoom()">Add</button></div>
       <div id="insp_custom_rooms" style="font-size:.78rem;color:var(--muted);margin-top:6px"></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn-primary btn-sm" onclick="startInspectionFromModal()">Start Inspection</button><button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn-primary btn-sm" onclick="startInspectionFromModal()">Start Inspection</button><button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button></div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   window.__inspCustomRooms=[];
   onInspectionPropertyChanged();
 }
 
 function onInspectionPropertyChanged(){
-  const pid=Number(document.getElementById('insp_property')?.value||0);
+  const pid=String(document.getElementById('insp_property')?.value||'');
   const tenant=tenantForPropertyId(pid);
   const tEl=document.getElementById('insp_tenant');
   if(tEl) tEl.value=tenant?`${tenant.name} (${tenant.unit})`:'No active tenant';
@@ -186,9 +229,9 @@ function addInspectionCustomRoom(){
 }
 
 function startInspectionFromModal(){
-  const propertyId=Number(document.getElementById('insp_property')?.value||0);
+  const propertyId=String(document.getElementById('insp_property')?.value||'');
   const property=propertyById(propertyId);
-  if(!property){ showNotif('Select a property','error'); return; }
+  if(!property){ nestiqShowNotif('Select a property','error'); return; }
   const tenant=tenantForPropertyId(propertyId);
   const type=document.getElementById('insp_type')?.value||'routine';
   const date=document.getElementById('insp_date')?.value||new Date().toISOString().slice(0,10);
@@ -196,13 +239,13 @@ function startInspectionFromModal(){
   const checked=[...document.querySelectorAll('.insp-room-check:checked')].map(x=>x.value);
   const custom=window.__inspCustomRooms||[];
   const rooms=buildRoomsFromNames([...checked,...custom]);
-  if(!rooms.length){ showNotif('Select at least one room','warning'); return; }
+  if(!rooms.length){ nestiqShowNotif('Select at least one room','warning'); return; }
   const nowIso=new Date().toISOString();
   const insp={
     id:Date.now(),
-    propertyId:property.id,
+    propertyId:property.id||property.propertyId,
     propertyName:property.name,
-    tenantId:tenant?.id||null,
+    tenantId:tenant?.id||tenant?.tenantId||null,
     tenantName:tenant?.name||'',
     type,
     date,
@@ -218,9 +261,20 @@ function startInspectionFromModal(){
     currentRoomIndex:0
   };
   inspections.unshift(insp);
-  saveData();
-  closeModal();
+  if(Array.isArray(window.caretakerInspections) && nestiqInspectionSession()?.role==='caretaker'){
+    window.caretakerInspections.unshift(insp);
+  }
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
+  if(nestiqInspectionSession()?.role==='caretaker'){
+    window.nestiqNotifyLandlordStaffAction?.(`${nestiqInspectionSession()?.name||'Caretaker'} started an inspection for ${insp.propertyName||'a property'}`,'inspections');
+  }
+  nestiqCloseModalAnimated();
   activeInspectionId=insp.id;
+  if(nestiqInspectionSession()?.role==='caretaker'){
+    window.nestiqSwitchCaretakerTab?.('inspections');
+    renderInspectionsPage();
+    return;
+  }
   renderInspectionsPage();
 }
 
@@ -232,6 +286,13 @@ function continueInspection(id){
 function backToInspectionsList(){
   activeInspectionId=null;
   if(inspectionAutoSaveTimer){ clearInterval(inspectionAutoSaveTimer); inspectionAutoSaveTimer=null; }
+  if(nestiqInspectionSession()?.role==='caretaker'){
+    const wrap=document.getElementById('inspectionFormWrap');
+    if(wrap){ wrap.style.display='none'; wrap.innerHTML=''; }
+    window.renderCaretakerDashboard?.();
+    window.nestiqSwitchCaretakerTab?.('inspections');
+    return;
+  }
   renderInspectionsPage();
 }
 
@@ -240,7 +301,7 @@ function setItemCondition(inspId, roomId, itemId, cond){
   const room=insp.rooms.find(r=>String(r.id)===String(roomId)); if(!room) return;
   const item=room.items.find(i=>String(i.id)===String(itemId)); if(!item) return;
   item.condition=cond;
-  saveData();
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
   renderInspectionForm(inspId);
 }
 
@@ -249,7 +310,7 @@ function setItemNotes(inspId, roomId, itemId, val){
   const room=insp.rooms.find(r=>String(r.id)===String(roomId)); if(!room) return;
   const item=room.items.find(i=>String(i.id)===String(itemId)); if(!item) return;
   item.notes=val;
-  saveData();
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
 }
 
 function uploadInspectionItemPhoto(inspId, roomId, itemId){
@@ -259,7 +320,7 @@ function uploadInspectionItemPhoto(inspId, roomId, itemId){
       const room=insp.rooms.find(r=>String(r.id)===String(roomId)); if(!room) return;
       const item=room.items.find(i=>String(i.id)===String(itemId)); if(!item) return;
       item.photo=b64;
-      saveData();
+      nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
       renderInspectionForm(inspId);
     });
   });
@@ -273,14 +334,14 @@ function addCustomItemToRoom(inspId, roomId){
   const room=insp.rooms.find(r=>String(r.id)===String(roomId)); if(!room) return;
   room.items.push({id:Date.now()+Math.random(),name,condition:'',notes:'',photo:null});
   input.value='';
-  saveData();
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
   renderInspectionForm(inspId);
 }
 
 function setInspectionRoomIndex(inspId, delta){
   const insp=inspectionById(inspId); if(!insp) return;
   insp.currentRoomIndex=Math.max(0,Math.min((insp.rooms.length-1), Number(insp.currentRoomIndex||0)+delta));
-  saveData();
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
   renderInspectionForm(inspId);
 }
 
@@ -289,21 +350,31 @@ function saveInspectionProgress(inspId){
   const notes=document.getElementById('insp_overall_notes')?.value||insp.notes||'';
   insp.notes=notes;
   insp.overallCondition=calcInspectionOverall(insp);
-  saveData();
-  showNotif('Inspection progress saved','success');
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
+  nestiqShowNotif('Inspection progress saved','success');
 }
 
 function completeInspection(inspId){
   const insp=inspectionById(inspId); if(!insp) return;
   const allRated=insp.rooms.every(r=>(r.items||[]).every(i=>Boolean(i.condition)));
-  if(!allRated){ showNotif('Condition rating is required for every item before completion','error'); return; }
+  if(!allRated){ nestiqShowNotif('Condition rating is required for every item before completion','error'); return; }
   insp.notes=document.getElementById('insp_overall_notes')?.value||insp.notes||'';
   insp.overallCondition=calcInspectionOverall(insp);
   insp.status='completed';
   insp.completedAt=new Date().toISOString();
-  saveData();
-  showNotif('Inspection completed','success');
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
+  if(nestiqInspectionSession()?.role==='caretaker'){
+    window.nestiqNotifyLandlordStaffAction?.(`${nestiqInspectionSession()?.name||'Caretaker'} completed an inspection for ${insp.propertyName||'a property'}`,'inspections');
+  }
+  nestiqShowNotif('Inspection completed','success');
   activeInspectionId=null;
+  if(nestiqInspectionSession()?.role==='caretaker'){
+    const wrap=document.getElementById('inspectionFormWrap');
+    if(wrap){ wrap.style.display='none'; wrap.innerHTML=''; }
+    window.renderCaretakerDashboard?.();
+    window.nestiqSwitchCaretakerTab?.('inspections');
+    return;
+  }
   renderInspectionsPage();
 }
 
@@ -373,7 +444,7 @@ function renderInspectionForm(inspId){
 function jumpInspectionRoom(inspId, roomIndex){
   const insp=inspectionById(inspId); if(!insp) return;
   insp.currentRoomIndex=roomIndex;
-  saveData();
+  nestiqPersistInspection(insp).catch(err=>console.warn('NestIQ: persist inspection', err));
   renderInspectionForm(inspId);
 }
 
@@ -402,7 +473,7 @@ function openInspectionReport(id){
       ${canCompare?`<button class="btn-primary btn-sm" onclick="openMoveOutComparison(${id})">Compare with Move-In</button>`:''}
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function printInspectionReport(id){
@@ -430,7 +501,7 @@ function inspectionReportHtml(insp){
 
 function downloadInspectionPdf(id){
   const insp=inspectionById(id); if(!insp) return;
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4'});
@@ -454,9 +525,9 @@ function downloadInspectionPdf(id){
     doc.text('Landlord: _______________ Date: ________',14,y);
     doc.text('Tenant: _______________ Date: ________',110,y);
     if(typeof finalizePdf==='function') finalizePdf(doc,`inspection-${id}.pdf`);
-    else { doc.save(`inspection-${id}.pdf`); showNotif('PDF ready','success');}
+    else { doc.save(`inspection-${id}.pdf`); nestiqShowNotif('PDF ready','success');}
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 
@@ -472,7 +543,7 @@ function itemConditionScore(cond){
 function openMoveOutComparison(moveOutId){
   const moveOut=inspectionById(moveOutId); if(!moveOut) return;
   const moveIn=findMoveInForProperty(moveOut.propertyId);
-  if(!moveIn){ showNotif('No move-in inspection found for comparison','warning'); return; }
+  if(!moveIn){ nestiqShowNotif('No move-in inspection found for comparison','warning'); return; }
   const worsened=[];
   const rows=(moveOut.rooms||[]).map(rOut=>{
     const rIn=(moveIn.rooms||[]).find(r=>r.name===rOut.name);
@@ -503,7 +574,7 @@ function openMoveOutComparison(moveOutId){
       </div>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   updateDamageTotals(moveOut.tenantId||0);
 }
 
@@ -535,16 +606,16 @@ function updateDamageTotals(tenantId){
 
 function deductDamageFromDeposit(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t){ showNotif('Tenant not found','warning'); return; }
+  if(!t){ nestiqShowNotif('Tenant not found','warning'); return; }
   const total=(window.__damageAssessment||[]).reduce((s,r)=>s+Number(r.cost||0),0);
   const dep=typeof nestiqTenantDepositTotalValue==='function'?nestiqTenantDepositTotalValue(t):Number(t.deposit&&typeof t.deposit==='object'?(Number(t.deposit.amount||0)+Number(t.deposit.interestEarned||0)):t.deposit||0);
   const refund=Math.max(0,dep-total);
-  showNotif(`Damage assessed: ${fmtZAR(total)}. Refund due: ${fmtZAR(refund)}`,'success');
+  nestiqShowNotif(`Damage assessed: ${fmtZAR(total)}. Refund due: ${fmtZAR(refund)}`,'success');
 }
 
 function downloadDamageReportPdf(moveOutId){
   const moveOut=inspectionById(moveOutId); if(!moveOut) return;
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4'});
@@ -559,9 +630,9 @@ function downloadDamageReportPdf(moveOutId){
     const total=rows.reduce((s,r)=>s+Number(r.cost||0),0);
     y+=4; doc.setFont('helvetica','bold'); doc.text(`Total Damage Cost: ${fmtZAR(total)}`,14,y);
     if(typeof finalizePdf==='function') finalizePdf(doc,`damage-report-${moveOutId}.pdf`);
-    else { doc.save(`damage-report-${moveOutId}.pdf`); showNotif('PDF ready','success'); }
+    else { doc.save(`damage-report-${moveOutId}.pdf`); nestiqShowNotif('PDF ready','success'); }
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 

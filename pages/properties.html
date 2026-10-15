@@ -1,10 +1,10 @@
 <div class="page" id="page-properties" style="padding-top:70px">
   <div class="search-section">
-    <h2 style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:20px">Find Your Properties</h2>
+    <h2 class="nq-reveal" style="font-family:'Playfair Display',serif;font-size:1.6rem;font-weight:700;text-align:center;margin-bottom:20px">Find Your Properties</h2>
     <div class="search-bar-wrap">
       <span style="font-size:1.1rem;color:var(--muted)">🔍</span>
       <input class="search-input" id="propSearch" placeholder="Search by name, address, city..." oninput="filterProperties()">
-      <button class="btn-primary btn-sm" onclick="openModal('addProperty')">+ Add Property</button>
+      <button class="btn-primary btn-sm" onclick="openModal('addProperty');nestiqOpenModalAnimated()">+ Add Property</button>
     </div>
     <div class="search-filters">
       <button class="filter-chip active" onclick="setFilter('all',this)">All Properties</button>
@@ -13,10 +13,18 @@
       <button class="filter-chip" onclick="setFilter('due',this)">Rent Due</button>
       <button class="filter-chip" onclick="setFilter('apartment',this)">Apartments</button>
       <button class="filter-chip" onclick="setFilter('house',this)">Houses</button>
+      <button class="filter-chip" onclick="setFilter('bachelor',this)">Bachelor</button>
+      <button class="filter-chip" onclick="setFilter('backroom',this)">Backroom</button>
+      <button type="button" class="filter-chip" id="propFilterArchived" onclick="nestiqToggleShowArchived(this)">Show archived</button>
+    </div>
+    <div class="prop-view-toggle" id="propViewToggle">
+      <button type="button" class="prop-view-btn active" data-view="grid" onclick="nestiqSetPropertiesView('grid')">Grid View</button>
+      <button type="button" class="prop-view-btn" data-view="units" onclick="nestiqSetPropertiesView('units')">Units View</button>
     </div>
   </div>
-  <section class="section reveal" style="padding-top:32px">
+  <section class="section reveal revealed visible" style="padding-top:32px">
     <div class="props-grid" id="propertiesGrid"></div>
+    <div id="propertiesUnitsView" style="display:none"></div>
     <div class="no-results" id="noResults">😕 No properties match your search.</div>
   </section>
   <div id="nestiqLightbox" class="nestiq-lightbox" aria-hidden="true"></div>

@@ -1,7 +1,7 @@
 <div class="page" id="page-roi" style="padding-top:70px">
   <section class="section">
     <div class="eyebrow section-center" style="justify-content:center">Investment Analysis</div>
-    <h2 class="section-title section-center reveal">ROI Calculator</h2>
+    <h2 class="section-title section-center reveal nq-reveal">ROI Calculator</h2>
     <p class="section-sub reveal">Enter your property details to instantly calculate returns, yield and cash flow projections.</p>
     <div class="roi-layout">
       <div class="roi-form">
@@ -135,7 +135,7 @@
     <div class="roi-amort-card">
       <button class="btn-outline btn-sm" type="button" onclick="toggleBondAmortization()">View Full Amortization Schedule</button>
       <div id="bondAmortWrap" style="display:none;margin-top:14px">
-        <div style="overflow:auto;max-height:360px;border:1px solid var(--border);border-radius:12px">
+        <div class="nq-reveal" style="overflow:auto;max-height:360px;border:1px solid var(--border);border-radius:12px">
           <table class="bond-amort-table">
             <thead>
               <tr>
@@ -149,7 +149,7 @@
             <tbody id="bond_amort_tbody"></tbody>
           </table>
         </div>
-        <div class="chart-wrap" style="margin-top:14px;height:280px">
+        <div class="chart-wrap nq-reveal" style="margin-top:14px;height:280px">
           <canvas id="bondAmortChart"></canvas>
         </div>
       </div>
@@ -171,7 +171,7 @@
           <div class="form-group">
             <label>Current Monthly Rent (R)</label>
             <div class="input-prefix"><span class="input-prefix-label">R</span><input class="form-input" id="cpi_current_rent" type="number" value="12500" oninput="calcCpiRentIncrease()"></div>
-            <div style="margin-top:8px"><button class="btn-outline btn-sm" type="button" onclick="runCpiAiSuggestRent()">AI Suggest Rent</button></div>
+            <div style="margin-top:8px"><button class="btn-outline btn-sm" type="button" onclick="runCpiAiSuggestRent()" title="AI Powered" data-nq-tip="AI Powered">AI Suggest Rent</button></div>
           </div>
           <div class="form-group">
             <label>Effective Date</label>

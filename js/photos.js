@@ -1,3 +1,45 @@
+function nestiqUsablePhotoSrc(v){
+  if(v==null||v===false) return '';
+  if(typeof v==='object'){
+    v=v.url||v.downloadURL||v.photoUrl||v.photoURL||v.src||v.base64||v.imageUrl||'';
+  }
+  const s=String(v).trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
+  if(!s||s==='null'||s==='undefined'||s==='[object Object]') return '';
+  if(/^https?:\/\//i.test(s)||s.startsWith('data:image/')||s.startsWith('blob:')) return s;
+  return '';
+}
+window.nestiqUsablePhotoSrc=nestiqUsablePhotoSrc;
+
+function nestiqPropertyPhotoImgError(img){
+  if(!img) return;
+  img.onerror=null;
+  const area=img.closest('.prop-img-area, .nestiq-detail-main, .nestiq-slide, .listing-detail-hero');
+  img.remove();
+  if(!area) return;
+  if(area.querySelector('img')) return;
+  if(area.classList.contains('prop-img-area')){
+    area.classList.add('prop-img-area--empty');
+    if(!area.querySelector('.prop-photo-fallback')){
+      const span=document.createElement('span');
+      span.className='prop-photo-fallback';
+      span.setAttribute('aria-hidden','true');
+      span.textContent='🏠';
+      area.appendChild(span);
+    }
+    return;
+  }
+  if(area.classList.contains('nestiq-detail-main')||area.classList.contains('listing-detail-hero')){
+    area.classList.add('nestiq-detail-main--empty');
+    if(!area.querySelector('.prop-photo-fallback')){
+      const span=document.createElement('span');
+      span.className='prop-photo-fallback';
+      span.textContent='Photo unavailable';
+      area.appendChild(span);
+    }
+  }
+}
+window.nestiqPropertyPhotoImgError=nestiqPropertyPhotoImgError;
+
 let __newPropertyPhotoBase64='';
 let __newMaintenancePhotoBase64='';
 let __tenantMaintPhotoBase64='';
@@ -14,10 +56,10 @@ function compressImage(file, maxWidth=800, quality=0.75, callback){
   }
   try{
     const reader=new FileReader();
-    reader.onerror=()=>showNotif('Failed to read image file','error');
+    reader.onerror=()=>nestiqShowNotif('Failed to read image file','error');
     reader.onload=(e)=>{
       const img=new Image();
-      img.onerror=()=>showNotif('Invalid image file','error');
+      img.onerror=()=>nestiqShowNotif('Invalid image file','error');
       img.onload=()=>{
         const canvas=document.createElement('canvas');
         let w=img.width;
@@ -30,7 +72,7 @@ function compressImage(file, maxWidth=800, quality=0.75, callback){
         canvas.width=w;
         canvas.height=h;
         const ctx=canvas.getContext('2d');
-        if(!ctx){ showNotif('Image processing failed','error'); return; }
+        if(!ctx){ nestiqShowNotif('Image processing failed','error'); return; }
         ctx.drawImage(img,0,0,w,h);
         const base64=canvas.toDataURL('image/jpeg', quality);
         callback(base64);
@@ -39,7 +81,7 @@ function compressImage(file, maxWidth=800, quality=0.75, callback){
     };
     reader.readAsDataURL(file);
   }catch(_err){
-    showNotif('Image compression failed','error');
+    nestiqShowNotif('Image compression failed','error');
   }
 }
 
@@ -75,11 +117,11 @@ async function nestiqMaybeUploadPhoto(storagePath,dataUrl){
       const code=err&&err.code;
       const msg=err&&err.message;
       console.warn('NestIQ Storage upload failed',code||'',msg||err);
-      if(typeof showNotif==='function'){
+      if(typeof nestiqShowNotif==='function'){
         const hint=code==='storage/unauthorized'
           ? 'Storage blocked this upload. Deploy updated storage.rules (property owner must match landlordId) or check Firebase Console → Storage → Rules.'
           : (msg||'Check the browser console for details.');
-        showNotif('Photo upload failed: '+hint,'error');
+        nestiqShowNotif('Photo upload failed: '+hint,'error');
       }
     }
   }
@@ -94,7 +136,7 @@ function checkStorageUsageWarn(){
       if(typeof v==='string') total+=v.length;
     }
     if(total>4000000){
-      showNotif('Storage is getting full. Consider removing old photos to free up space.','warning');
+      nestiqShowNotif('Storage is getting full. Consider removing old photos to free up space.','warning');
     }
   }catch(_err){}
 }
@@ -103,15 +145,20 @@ function isValidImageType(file){
   return ['image/jpeg','image/png','image/webp'].includes(String(file?.type||''));
 }
 
-function pickImageFile(accept='image/jpeg,image/png,image/webp', cb){
+function pickImageFile(accept='image/jpeg,image/png,image/webp', cb, maxBytes){
+  const limit=Number.isFinite(Number(maxBytes))&&Number(maxBytes)>0?Number(maxBytes):(5*1024*1024);
   const input=document.createElement('input');
   input.type='file';
   input.accept=accept;
   input.onchange=()=>{
     const file=input.files?.[0];
     if(!file) return;
-    if(!isValidImageType(file)){ showNotif('Please choose a JPG, PNG, or WebP image','error'); return; }
-    if(file.size>2*1024*1024){ showNotif('Image is larger than 2MB. Please choose a smaller file.','error'); return; }
+    if(!isValidImageType(file)){ nestiqShowNotif('Please choose a JPG, PNG, or WebP image','error'); return; }
+    if(file.size>limit){
+      const mb=Math.round(limit/1024/1024);
+      nestiqShowNotif(`Image is larger than ${mb}MB. Please choose a smaller file.`,'error');
+      return;
+    }
     cb(file);
   };
   input.click();
@@ -131,7 +178,7 @@ function uploadAreaHtml(opts){
       <div>
         <div style="font-size:1.4rem">📷</div>
         <div style="font-size:0.85rem;font-weight:600">${opts.title||'Click to upload photo'}</div>
-        <div style="font-size:0.74rem;color:var(--muted)">${opts.sub||'JPG, PNG or WebP - max 2MB'}</div>
+        <div style="font-size:0.74rem;color:var(--muted)">${opts.sub||'JPG, PNG or WebP - max 5MB'}</div>
       </div>
     </div>
   `;
@@ -152,7 +199,7 @@ function setPropertyUploadPreview(base64, holderId='newPropertyUploadWrap'){
   const wrap=document.getElementById(holderId);
   if(!wrap) return;
   const kb=estimateBase64Size(base64);
-  if(kb>500) showNotif('This image is large and may affect performance. Consider using a smaller photo.','warning');
+  if(kb>500) nestiqShowNotif('This image is large and may affect performance. Consider using a smaller photo.','warning');
   wrap.innerHTML=uploadPreviewHtml({
     id:'newPropPreview',
     base64,
@@ -165,11 +212,13 @@ function setPropertyUploadPreview(base64, holderId='newPropertyUploadWrap'){
 function pickNewPropertyPhoto(){
   pickImageFile('image/jpeg,image/png,image/webp',(file)=>{
     setUploadAreaLoading('newPropertyUploadWrap');
-    compressImage(file,800,0.75,(b64)=>{
+    // Slightly stronger compression so Storage/Firestore fallbacks stay reliable
+    compressImage(file,1000,0.72,(b64)=>{
       __newPropertyPhotoBase64=b64;
+      window.__newPropertyPhotoBase64=b64;
       setPropertyUploadPreview(b64);
     });
-  });
+  }, 5*1024*1024);
 }
 
 function changePropertyPhoto(propertyId){
@@ -202,12 +251,12 @@ function changePropertyPhoto(propertyId){
         }
       }
       if(!persisted && String(url).startsWith('data:')){
-        showNotif('Photo could not be saved to cloud storage. It may disappear after refresh until Storage upload works. Check Storage rules and deploy them.','warning');
+        nestiqShowNotif('Photo could not be saved to cloud storage. It may disappear after refresh until Storage upload works. Check Storage rules and deploy them.','warning');
       }
       saveData();
       renderProperties?.();
       if(window.currentPage==='listings') window.nestiqRenderListingsPage?.();
-      showNotif('Property photo updated','success');
+      nestiqShowNotif('Property photo updated','success');
       if(document.getElementById('modalOverlay')?.classList.contains('open')){
         viewProperty?.(propertyId);
       }
@@ -230,7 +279,7 @@ function removePropertyPhoto(propertyId){
   renderProperties?.();
   if(window.currentPage==='listings') window.nestiqRenderListingsPage?.();
   viewProperty?.(propertyId);
-  showNotif('Property photo removed','success');
+  nestiqShowNotif('Property photo removed','success');
 }
 
 function pickMaintenancePhoto(mode='landlord'){
@@ -239,7 +288,7 @@ function pickMaintenancePhoto(mode='landlord'){
     setUploadAreaLoading(holderId);
     compressImage(file,600,0.7,(b64)=>{
       const kb=estimateBase64Size(b64);
-      if(kb>500) showNotif('This image is large and may affect performance. Consider using a smaller photo.','warning');
+      if(kb>500) nestiqShowNotif('This image is large and may affect performance. Consider using a smaller photo.','warning');
       if(mode==='tenant') __tenantMaintPhotoBase64=b64;
       else if(mode==='portal') __portalMaintPhotoBase64=b64;
       else __newMaintenancePhotoBase64=b64;
@@ -269,13 +318,15 @@ function clearPendingMaintenancePhoto(mode='landlord'){
 
 /* ─── Amenity definitions & slideshow ─── */
 const NESTIQ_AMENITY_DEFS=[
+  {id:'wifi',emoji:'📶',label:'WiFi'},
+  {id:'fibre',emoji:'🛜',label:'Fibre ready'},
+  {id:'parking',emoji:'🅿️',label:'Parking'},
+  {id:'garage',emoji:'🚗',label:'Garage'},
   {id:'security',emoji:'🔒',label:'Security gate'},
   {id:'cctv',emoji:'📷',label:'CCTV'},
   {id:'pool',emoji:'🏊',label:'Swimming pool'},
   {id:'laundry',emoji:'🧺',label:'Laundry'},
   {id:'garden',emoji:'🌳',label:'Garden'},
-  {id:'garage',emoji:'🚗',label:'Garage'},
-  {id:'fibre',emoji:'🛜',label:'Fibre ready'},
   {id:'ac',emoji:'❄️',label:'Air conditioning'},
   {id:'fireplace',emoji:'🔥',label:'Fireplace'},
   {id:'pets',emoji:'🐾',label:'Pet friendly'},
@@ -284,6 +335,7 @@ const NESTIQ_AMENITY_DEFS=[
   {id:'gym',emoji:'🏋️',label:'Gym'},
   {id:'cleaning',emoji:'🧹',label:'Cleaning included'}
 ];
+const NESTIQ_PHOTO_CATEGORIES=['Exterior','Living room','Kitchen','Bedroom','Bathroom','Parking','Garden','Security','Other'];
 const NESTIQ_AMENITY_BY_ID=Object.fromEntries(NESTIQ_AMENITY_DEFS.map(a=>[a.id,a]));
 
 window.__nestiqSlideshows=window.__nestiqSlideshows||[];
@@ -298,8 +350,9 @@ function nestiqNormalizeAmenityPhotos(arr){
   if(!Array.isArray(arr)) return [];
   return arr.map((p,i)=>({
     id:p.id!=null?p.id:nestiqAmenityNextId(),
-    base64:String(p.base64||p.url||''),
+    base64:nestiqUsablePhotoSrc(p.base64||p.url||p.src||p.photoUrl),
     caption:String(p.caption||''),
+    category:String(p.category||''),
     order:Number.isFinite(Number(p.order))?Number(p.order):i
   })).filter(p=>p.base64).sort((a,b)=>a.order-b.order);
 }
@@ -320,7 +373,7 @@ function nestiqGetSlideshowPhotos(p){
   const out=[];
   const seen=new Set();
   const add=(src,caption)=>{
-    const s=String(src||'').trim();
+    const s=nestiqUsablePhotoSrc(src);
     if(!s||seen.has(s)) return;
     seen.add(s);
     out.push({base64:s,caption:String(caption||'')});
@@ -358,14 +411,58 @@ function nestiqDestroyAllSlideshows(){
   window.__nestiqSlideshows=[];
 }
 
+function nestiqSafeCssBgUrl(u){
+  return String(u||'').trim().replace(/'/g,'%27').replace(/[\r\n"]/g,'');
+}
+
+function nestiqPropImgAreaBgAttr(src){
+  const u=nestiqUsablePhotoSrc(src);
+  if(!u||!/^https?:\/\//i.test(u)) return '';
+  return ` style="background-image:url('${nestiqSafeCssBgUrl(u)}')"`;
+}
+
+function nestiqPropCoverImgHtml(src){
+  const u=nestiqUsablePhotoSrc(src);
+  if(!u) return '';
+  const enc=typeof nestiqEscAttr==='function'?nestiqEscAttr(u):String(u).replace(/"/g,'&quot;');
+  return `<img class="prop-photo loaded" src="${enc}" alt="" decoding="async" fetchpriority="high" referrerpolicy="no-referrer" onerror="nestiqPropertyPhotoImgError(this)">`;
+}
+
+function nestiqWarmPropertyPhotoUrls(list){
+  const seen=Object.create(null);
+  const add=raw=>{
+    const u=nestiqUsablePhotoSrc(raw);
+    if(!u||seen[u]||!/^https?:\/\//i.test(u)) return;
+    seen[u]=1;
+    const im=new Image();
+    im.decoding='async';
+    im.referrerPolicy='no-referrer';
+    im.src=u;
+  };
+  (Array.isArray(list)?list:[]).forEach(p=>{
+    add(typeof nestiqPropertyCardPhotoUrl==='function'?nestiqPropertyCardPhotoUrl(p):(p&&(p.photoUrl||p.photoURL)));
+    nestiqGetSlideshowPhotos(p).slice(0,4).forEach(ph=>add(ph&&ph.base64));
+  });
+}
+window.nestiqWarmPropertyPhotoUrls=nestiqWarmPropertyPhotoUrls;
+
 function nestiqInitAllSlideshows(){
   nestiqDestroyAllSlideshows();
+  const pending=window.__nestiqPendingSlideshows||{};
   document.querySelectorAll('[data-nestiq-slideshow]').forEach(el=>{
-    const raw=el.getAttribute('data-photos');
     let photos=[];
-    try{ photos=JSON.parse(decodeURIComponent(raw||'%5B%5D')); }catch(_e){ photos=[]; }
+    const ssKey=el.getAttribute('data-ss-key');
+    if(ssKey && Array.isArray(pending[ssKey]) && pending[ssKey].length){
+      photos=pending[ssKey];
+      el.__nestiqPhotos=photos;
+    }else if(Array.isArray(el.__nestiqPhotos) && el.__nestiqPhotos.length){
+      photos=el.__nestiqPhotos;
+    }else{
+      const raw=el.getAttribute('data-photos');
+      try{ photos=JSON.parse(decodeURIComponent(raw||'%5B%5D')); }catch(_e){ photos=[]; }
+    }
     if(!photos.length) return;
-    const ss=new NestiqSlideshow(el,photos,{delay:4000});
+    const ss=new NestiqSlideshow(el,photos,{delay:8000, startOffset:(window.__nestiqSlideshows.length%6)*900});
     window.__nestiqSlideshows.push(ss);
   });
 }
@@ -376,7 +473,9 @@ class NestiqSlideshow{
     this.photos=photos||[];
     this.current=0;
     this.interval=null;
-    this.delay=options.delay||4000;
+    this._offsetTimer=null;
+    this.delay=Math.max(6500, Number(options.delay)||8000);
+    this._startOffset=Math.max(0, Number(options.startOffset)||0);
     this.touchStartX=0;
     this.render();
     if(this.photos.length>1) this.startAuto();
@@ -394,9 +493,14 @@ class NestiqSlideshow{
     }
     this.photos.forEach((ph,i)=>{
       const slide=document.createElement('div');
-      slide.className='nestiq-slide'+(i===0?' active':'');
-      slide.innerHTML=`<img src="${ph.base64}" alt="${String(ph.caption||'').replace(/"/g,'&quot;')}">${ph.caption?`<div class="nestiq-slide-caption">${ph.caption}</div>`:''}`;
+      slide.className='nestiq-slide'+(i===0?' active nestiq-slide-instant':'');
+      const src=String(ph.base64||'').replace(/"/g,'&quot;');
+      slide.innerHTML=`<img class="loaded" src="${src}" alt="${String(ph.caption||'').replace(/"/g,'&quot;')}" decoding="async" referrerpolicy="no-referrer" onerror="nestiqPropertyPhotoImgError(this)">${ph.caption?`<div class="nestiq-slide-caption">${ph.caption}</div>`:''}`;
       c.appendChild(slide);
+    });
+    requestAnimationFrame(()=>{
+      c.querySelectorAll('.nestiq-slide-instant').forEach(el=>el.classList.remove('nestiq-slide-instant'));
+      c.classList.add('nestiq-ss-ready');
     });
     if(this.photos.length>1){
       const prev=document.createElement('button');
@@ -404,20 +508,21 @@ class NestiqSlideshow{
       prev.className='nestiq-slide-arrow prev';
       prev.innerHTML='‹';
       prev.setAttribute('aria-label','Previous photo');
-      prev.onclick=(e)=>{ e.stopPropagation(); this.prev(); };
+      prev.onclick=(e)=>{ e.stopPropagation(); this.prev(true); };
       const next=document.createElement('button');
       next.type='button';
       next.className='nestiq-slide-arrow next';
       next.innerHTML='›';
       next.setAttribute('aria-label','Next photo');
-      next.onclick=(e)=>{ e.stopPropagation(); this.next(); };
+      next.onclick=(e)=>{ e.stopPropagation(); this.next(true); };
       const dots=document.createElement('div');
       dots.className='nestiq-slide-dots';
       this.photos.forEach((_,i)=>{
         const dot=document.createElement('button');
         dot.type='button';
         dot.className='nestiq-slide-dot'+(i===0?' active':'');
-        dot.onclick=(e)=>{ e.stopPropagation(); this.goTo(i); };
+        dot.setAttribute('aria-label','Photo '+(i+1));
+        dot.onclick=(e)=>{ e.stopPropagation(); this.goTo(i, true); };
         dots.appendChild(dot);
       });
       c.appendChild(prev);
@@ -431,27 +536,40 @@ class NestiqSlideshow{
     };
   }
 
-  goTo(index){
+  goTo(index, fromUser){
     if(!this.photos.length) return;
     const slides=this.container.querySelectorAll('.nestiq-slide');
     const dots=this.container.querySelectorAll('.nestiq-slide-dot');
+    const next=((index%this.photos.length)+this.photos.length)%this.photos.length;
+    if(next===this.current) return;
     slides[this.current]?.classList.remove('active');
     dots[this.current]?.classList.remove('active');
-    this.current=((index%this.photos.length)+this.photos.length)%this.photos.length;
+    this.current=next;
     slides[this.current]?.classList.add('active');
     dots[this.current]?.classList.add('active');
+    if(fromUser) this.startAuto();
   }
 
-  next(){ this.goTo(this.current+1); }
-  prev(){ this.goTo(this.current-1); }
+  next(fromUser){ this.goTo(this.current+1, fromUser); }
+  prev(fromUser){ this.goTo(this.current-1, fromUser); }
 
   startAuto(){
     this.stopAuto();
     if(this.photos.length<=1) return;
-    this.interval=setInterval(()=>this.next(),this.delay);
+    const wait=this.delay+(this._startOffset||0);
+    this._startOffset=0;
+    this._offsetTimer=setTimeout(()=>{
+      this._offsetTimer=null;
+      this.next();
+      this.interval=setInterval(()=>this.next(), this.delay);
+    }, wait);
   }
 
-  stopAuto(){ clearInterval(this.interval); this.interval=null; }
+  stopAuto(){
+    if(this._offsetTimer){ clearTimeout(this._offsetTimer); this._offsetTimer=null; }
+    clearInterval(this.interval);
+    this.interval=null;
+  }
 
   destroy(){ this.stopAuto(); if(this.container) this.container.innerHTML=''; }
 
@@ -547,14 +665,17 @@ function nestiqAmenityUploadSectionHtml(opts={}){
   const gridId=opts.gridId||'nestiqAmenityGrid';
   const countId=opts.countId||'nestiqAmenityCount';
   const inputId=opts.inputId||'nestiqAmenityInput';
+  const title=opts.title||'Property Photos';
+  const sub=opts.sub||'General photos of the whole property. Optional category per photo.';
+  const maxLabel=opts.maxLabel||'20';
   return `
     <div class="form-group" style="margin-top:14px">
-      <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:4px">Amenity Photos</label>
-      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">Show prospective tenants what makes this property special.</p>
+      <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:4px">${title}</label>
+      <p style="font-size:0.78rem;color:var(--muted);margin:0 0 10px">${sub}</p>
       <div id="${dropId}" class="nestiq-amenity-drop-zone" tabindex="0">Drag photos here or click to browse</div>
       <input type="file" id="${inputId}" accept="image/jpeg,image/png,image/webp" multiple hidden>
       <div id="${gridId}" class="nestiq-amenity-upload-grid"></div>
-      <div id="${countId}" style="font-size:0.75rem;color:var(--muted);margin-top:8px">0 / 12 photos added</div>
+      <div id="${countId}" style="font-size:0.75rem;color:var(--muted);margin-top:8px">0 / ${maxLabel} photos added</div>
     </div>`;
 }
 
@@ -573,14 +694,22 @@ function nestiqRenderAmenityGrid(key,gridId,countId){
   const grid=document.getElementById(gridId);
   const countEl=document.getElementById(countId);
   if(!grid) return;
+  const catOpts=['<option value="">Category (optional)</option>'].concat((typeof NESTIQ_PHOTO_CATEGORIES!=='undefined'?NESTIQ_PHOTO_CATEGORIES:[]).map(c=>`<option value="${c}">${c}</option>`)).join('');
   grid.innerHTML=photos.map((p,i)=>`
     <div class="nestiq-amenity-thumb-wrap" draggable="true" data-amenity-id="${p.id}" data-order="${i}">
       <span class="nestiq-amenity-drag" style="position:absolute;top:4px;left:4px;background:rgba(0,0,0,0.45);color:#fff;border-radius:4px;padding:0 4px;font-size:0.65rem;cursor:grab;z-index:2">⠿</span>
       <img src="${p.base64}" alt="">
       <input class="nestiq-amenity-thumb-caption" type="text" placeholder="Caption" value="${String(p.caption||'').replace(/"/g,'&quot;')}" data-amenity-id="${p.id}">
+      <select class="nestiq-amenity-thumb-category form-input" data-amenity-id="${p.id}" style="font-size:0.72rem;padding:4px 6px;margin-top:4px">${catOpts}</select>
       <button type="button" class="nestiq-amenity-thumb-delete" data-amenity-id="${p.id}" aria-label="Remove">✕</button>
     </div>`).join('');
-  if(countEl) countEl.textContent=`${photos.length} / 12 photos added`;
+  if(countEl) countEl.textContent=`${photos.length} / 20 photos added`;
+  grid.querySelectorAll('.nestiq-amenity-thumb-category').forEach(sel=>{
+    const id=Number(sel.dataset.amenityId);
+    const ph=photos.find(x=>x.id===id);
+    if(ph&&ph.category) sel.value=ph.category;
+    sel.onchange=()=>{ if(ph) ph.category=sel.value; };
+  });
   grid.querySelectorAll('.nestiq-amenity-thumb-caption').forEach(inp=>{
     inp.oninput=()=>{
       const id=Number(inp.dataset.amenityId);
@@ -629,6 +758,7 @@ function nestiqInitAmenityDropZone(opts){
   const gridId=opts.gridId||'nestiqAmenityGrid';
   const countId=opts.countId||'nestiqAmenityCount';
   const inputId=opts.inputId||'nestiqAmenityInput';
+  const maxPhotos=Number(opts.maxPhotos)||20;
   const drop=document.getElementById(dropId);
   const input=document.getElementById(inputId);
   if(!drop||!input) return;
@@ -640,49 +770,72 @@ function nestiqInitAmenityDropZone(opts){
   drop.ondrop=e=>{
     e.preventDefault();
     drop.classList.remove('drag-over');
-    nestiqAddAmenityFiles(key,e.dataTransfer.files,gridId,countId);
+    nestiqAddAmenityFiles(key,e.dataTransfer.files,gridId,countId,maxPhotos);
   };
   input.onchange=()=>{
-    nestiqAddAmenityFiles(key,input.files,gridId,countId);
+    nestiqAddAmenityFiles(key,input.files,gridId,countId,maxPhotos);
     input.value='';
   };
   if(opts.initialPhotos) nestiqSetAmenityDraft(key,opts.initialPhotos);
   nestiqRenderAmenityGrid(key,gridId,countId);
 }
 
-function nestiqAddAmenityFiles(key,fileList,gridId,countId){
+function nestiqAddAmenityFiles(key,fileList,gridId,countId,maxPhotos=20){
   const files=Array.from(fileList||[]);
   if(!files.length) return;
   const photos=[...nestiqGetAmenityDraft(key)];
-  const room=12-photos.length;
-  if(room<=0){ showNotif('Maximum 12 amenity photos per property','warning'); return; }
+  const room=maxPhotos-photos.length;
+  if(room<=0){ nestiqShowNotif(`Maximum ${maxPhotos} property photos`,'warning'); return; }
   let added=0;
   const processNext=(idx)=>{
-    if(idx>=files.length||photos.length>=12){
+    if(idx>=files.length||photos.length>=maxPhotos){
       nestiqSetAmenityDraft(key,photos);
       nestiqRenderAmenityGrid(key,gridId,countId);
-      if(added) showNotif(`${added} photo${added>1?'s':''} added`,'success');
+      if(added) nestiqShowNotif(`${added} photo${added>1?'s':''} added`,'success');
       return;
     }
     const file=files[idx];
     if(!isValidImageType(file)){
-      showNotif(`${file.name}: use JPG, PNG, or WebP`,'warning');
+      nestiqShowNotif(`${file.name}: use JPG, PNG, or WebP`,'warning');
       processNext(idx+1);
       return;
     }
     if(file.size>5*1024*1024){
-      showNotif(`${file.name} exceeds 5MB`,'warning');
+      nestiqShowNotif(`${file.name} exceeds 5MB`,'warning');
       processNext(idx+1);
       return;
     }
     compressImage(file,900,0.78,(b64)=>{
-      photos.push({id:nestiqAmenityNextId(),base64:b64,caption:'',order:photos.length});
+      photos.push({id:nestiqAmenityNextId(),base64:b64,caption:'',category:'',order:photos.length});
       added++;
       processNext(idx+1);
     });
   };
   processNext(0);
 }
+
+async function nestiqPersistAmenityPhotos(propertyId, list){
+  const photos=nestiqNormalizeAmenityPhotos(list);
+  const mapped=await Promise.all(photos.map(async (a,i)=>{
+    let src=String(a.base64||'').trim();
+    if(src.startsWith('data:') && typeof nestiqMaybeUploadPhoto==='function'){
+      try{
+        const up=await nestiqMaybeUploadPhoto(`properties/${propertyId}/amenities/${a.id||i}.jpg`,src);
+        if(up) src=up;
+      }catch(_e){}
+    }
+    if(!src) return null;
+    return {
+      id:a.id!=null?a.id:nestiqAmenityNextId(),
+      base64:src,
+      caption:String(a.caption||''),
+      category:String(a.category||''),
+      order:Number.isFinite(Number(a.order))?Number(a.order):i
+    };
+  }));
+  return mapped.filter(Boolean);
+}
+window.nestiqPersistAmenityPhotos=nestiqPersistAmenityPhotos;
 
 function nestiqDetailGalleryHtml(propertyId,photos,opts={}){
   const showEdit=opts.showEdit!==false;
@@ -691,15 +844,15 @@ function nestiqDetailGalleryHtml(propertyId,photos,opts={}){
     return `<div style="margin-top:16px;padding:24px;text-align:center;background:var(--paper);border-radius:14px;border:1px solid var(--border);color:var(--muted)">No photos yet</div>
       ${showEdit?`<button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="openEditPropertyModal(decodeURIComponent('${idArg}'),'photos')">Edit Photos</button>`:''}`;
   }
-  const thumbs=photos.map((ph,i)=>`<img class="nestiq-detail-thumb${i===0?' active':''}" src="${ph.base64}" data-idx="${i}" style="width:72px;height:54px;object-fit:cover;border-radius:8px;border:2px solid transparent;cursor:pointer;flex-shrink:0" alt="">`).join('');
+  const thumbs=photos.map((ph,i)=>`<img class="nestiq-detail-thumb${i===0?' active':''}" src="${typeof nestiqEscAttr==='function'?nestiqEscAttr(ph.base64):String(ph.base64).replace(/"/g,'&quot;')}" data-idx="${i}" alt="" onerror="nestiqPropertyPhotoImgError(this)">`).join('');
   return `
-    <div style="margin-top:16px">
+    <div class="nestiq-detail-gallery" style="margin-top:16px">
       <div style="font-weight:600;margin-bottom:8px;font-size:0.9rem">Photo Gallery</div>
-      <div id="nestiqDetailMain" style="position:relative;width:100%;max-width:600px;height:300px;border-radius:14px;overflow:hidden;border:1px solid var(--border)">
-        <img id="nestiqDetailMainImg" src="${photos[0].base64}" style="width:100%;height:100%;object-fit:cover;display:block;transition:opacity 0.35s ease" alt="">
-        <div id="nestiqDetailMainCap" style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:linear-gradient(transparent,rgba(0,0,0,0.65));color:#fff;font-size:0.75rem">${photos[0].caption||''}</div>
+      <div id="nestiqDetailMain" class="nestiq-detail-main">
+        <img id="nestiqDetailMainImg" src="${typeof nestiqEscAttr==='function'?nestiqEscAttr(photos[0].base64):String(photos[0].base64).replace(/"/g,'&quot;')}" alt="" onerror="nestiqPropertyPhotoImgError(this)">
+        <div id="nestiqDetailMainCap" class="nestiq-detail-main-cap">${photos[0].caption||''}</div>
       </div>
-      <div id="nestiqDetailThumbs" style="display:flex;gap:8px;margin-top:10px;overflow-x:auto;padding-bottom:4px;max-width:600px">${thumbs}</div>
+      <div id="nestiqDetailThumbs" class="nestiq-detail-thumbs">${thumbs}</div>
       ${showEdit?`<button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="openEditPropertyModal(decodeURIComponent('${idArg}'),'photos')">Edit Photos</button>`:''}
     </div>`;
 }
@@ -720,10 +873,7 @@ function nestiqInitDetailGallery(photos){
       },180);
       document.querySelectorAll('#nestiqDetailThumbs .nestiq-detail-thumb').forEach(t=>t.classList.remove('active'));
       th.classList.add('active');
-      th.style.borderColor='var(--gold)';
-      document.querySelectorAll('#nestiqDetailThumbs .nestiq-detail-thumb:not(.active)').forEach(t=>{ t.style.borderColor='transparent'; });
     };
-    if(th.classList.contains('active')) th.style.borderColor='var(--gold)';
   });
 }
 
@@ -732,20 +882,21 @@ function nestiqPropertyCardImageHtml(p,idArg,badgeHtml=''){
   const main=typeof nestiqPropertyCardPhotoUrl==='function'?nestiqPropertyCardPhotoUrl(p):'';
   const icon=String(p?.icon||'🏠');
   const badge=badgeHtml||'';
-  const camBtns=`<button class="prop-camera-btn" style="left:auto;right:10px;bottom:10px;border-radius:999px;padding:8px 10px;z-index:11" onclick="event.stopPropagation();changePropertyPhoto(decodeURIComponent('${idArg}'))">📷</button>
-      <button class="prop-camera-btn" style="left:10px;bottom:10px;border-radius:999px;padding:8px 10px;opacity:1;transform:none;z-index:11" onclick="event.stopPropagation();openPropertyQrModal(decodeURIComponent('${idArg}'))">🔳</button>`;
+  const camBtns=`<button class="prop-camera-btn" style="left:auto;right:12px" onclick="event.stopPropagation();changePropertyPhoto(decodeURIComponent('${idArg}'))" aria-label="Change photo">📷</button>
+      <button class="prop-camera-btn" onclick="event.stopPropagation();openPropertyQrModal(decodeURIComponent('${idArg}'))" aria-label="Property QR code">🔳</button>`;
+  const countHtml=gallery.length>1?`<div class="prop-photo-count">${gallery.length} photos</div>`:'';
+  const cover=gallery[0]?.base64||main||'';
+  const bg=nestiqPropImgAreaBgAttr(cover);
+  const coverImg=nestiqPropCoverImgHtml(cover);
   // Prefer a slideshow only when there is more than one photo; keep main cover otherwise.
   if(gallery.length>1){
-    const enc=nestiqEncodeSlideshowPhotos(gallery);
-    return `<div class="prop-img-area" style="padding:0;height:auto">${camBtns}${badge}<div data-nestiq-slideshow data-photos="${enc}" style="width:100%"></div></div>`;
+    const ssKey=`prop-ss-${idArg}`;
+    window.__nestiqPendingSlideshows=window.__nestiqPendingSlideshows||{};
+    window.__nestiqPendingSlideshows[ssKey]=gallery;
+    return `<div class="prop-img-area"${bg}>${camBtns}${badge}${countHtml}${coverImg}<div data-nestiq-slideshow data-ss-key="${ssKey}"></div></div>`;
   }
-  if(main){
-    const u=typeof nestiqCssUrlForBackground==='function'?nestiqCssUrlForBackground(main):main;
-    return `<div class="prop-img-area" style="background-image:url('${u}');background-size:cover;background-position:center">${camBtns}${badge}</div>`;
-  }
-  if(gallery.length===1){
-    const enc=nestiqEncodeSlideshowPhotos(gallery);
-    return `<div class="prop-img-area" style="padding:0;height:auto">${camBtns}${badge}<div data-nestiq-slideshow data-photos="${enc}" style="width:100%"></div></div>`;
+  if(cover){
+    return `<div class="prop-img-area"${bg}>${camBtns}${badge}${coverImg}</div>`;
   }
   return `<div class="prop-img-area">${icon}${camBtns}${badge}</div>`;
 }
@@ -758,7 +909,7 @@ function openPhotoLightbox(base64, title='Photo', sub=''){
     </div>
     ${sub?`<div style="font-size:0.8rem;color:var(--muted);margin-top:8px;text-align:center">${sub}</div>`:''}
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function openImageModal(base64, title='Photo'){
@@ -785,6 +936,9 @@ window.nestiqOpenLightbox=nestiqOpenLightbox;
 window.nestiqCloseLightbox=nestiqCloseLightbox;
 window.nestiqInitAllSlideshows=nestiqInitAllSlideshows;
 window.nestiqDestroyAllSlideshows=nestiqDestroyAllSlideshows;
+window.nestiqPropImgAreaBgAttr=nestiqPropImgAreaBgAttr;
+window.nestiqPropCoverImgHtml=nestiqPropCoverImgHtml;
+window.nestiqWarmPropertyPhotoUrls=nestiqWarmPropertyPhotoUrls;
 window.nestiqAmenityUploadSectionHtml=nestiqAmenityUploadSectionHtml;
 window.nestiqInitAmenityDropZone=nestiqInitAmenityDropZone;
 window.nestiqGetAmenityDraft=nestiqGetAmenityDraft;

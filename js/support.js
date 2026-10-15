@@ -93,7 +93,7 @@
     if(s === 'in progress' || s === 'in_progress') return '<span class="sup-badge sup-badge-blue">In Progress</span>';
     if(s === 'resolved') return '<span class="sup-badge sup-badge-green">Resolved</span>';
     if(s === 'closed') return '<span class="sup-badge sup-badge-gray">Closed</span>';
-    return '<span class="sup-badge sup-badge-amber">Open</span>';
+    return '<span class="sup-badge sup-badge-amber"><span class="sup-open-dot nq-pulse-gold" aria-hidden="true"></span>Open</span>';
   }
 
   function categoryBadge(c){

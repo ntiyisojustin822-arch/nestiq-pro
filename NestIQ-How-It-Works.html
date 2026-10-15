@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NestIQ — How It Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --ink: #0e1117;
+    --ink-soft: #2a303c;
+    --gold: #c9a84c;
+    --gold-deep: #9a7b2f;
+    --cream: #f6f1e8;
+    --paper: #fffcf7;
+    --line: #e6dfd2;
+    --muted: #6d675e;
+    --card: #ffffff;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: "DM Sans", "Segoe UI", sans-serif;
+    color: var(--ink);
+    background: #fff;
+    font-size: 10.6pt;
+    line-height: 1.58;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  @page {
+    size: A4;
+    margin: 16mm 16mm 18mm 16mm;
+    @bottom-left {
+      content: "NestIQ   ·   How it works";
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+      font-size: 8pt;
+      letter-spacing: 0.08em;
+      color: #8d877c;
+    }
+    @bottom-right {
+      content: counter(page);
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 10pt;
+      color: #9a7b2f;
+    }
+  }
+  @page :first {
+    margin: 0;
+    @bottom-left { content: none; }
+    @bottom-right { content: none; }
+  }
+
+  h1, h2, h3, .serif { font-family: "Playfair Display", Georgia, serif; font-weight: 600; }
+  p { margin: 0 0 0.72em; }
+  strong { font-weight: 650; }
+
+  .cover {
+    height: 297mm;
+    background:
+      radial-gradient(ellipse 80% 50% at 100% 0%, rgba(201,168,76,0.22), transparent 55%),
+      radial-gradient(ellipse 60% 40% at 0% 100%, rgba(201,168,76,0.12), transparent 50%),
+      #0e1117;
+    color: #f6f1e8;
+    padding: 22mm 20mm 18mm;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+  .cover-rule {
+    width: 42mm;
+    height: 2px;
+    background: var(--gold);
+    margin-bottom: 10mm;
+  }
+  .mark {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--gold);
+  }
+  .mark-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 0 4px rgba(201,168,76,0.18);
+  }
+  .cover h1 {
+    font-size: 54pt;
+    line-height: 0.95;
+    font-weight: 600;
+    margin: 18mm 0 8mm;
+    letter-spacing: -0.02em;
+    max-width: 150mm;
+  }
+  .cover h1 em {
+    font-style: italic;
+    color: var(--gold);
+    font-weight: 500;
+  }
+  .cover-lead {
+    font-size: 13pt;
+    line-height: 1.5;
+    max-width: 125mm;
+    color: rgba(246,241,232,0.82);
+    margin: 0;
+  }
+  .cover-spacer { flex: 1; }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    gap: 8mm;
+    border-top: 1px solid rgba(246,241,232,0.16);
+    padding-top: 7mm;
+  }
+  .cover-meta .k {
+    font-size: 7.5pt;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 4px;
+  }
+  .cover-meta .v {
+    font-size: 10.5pt;
+    color: rgba(246,241,232,0.9);
+    line-height: 1.4;
+  }
+  .cover-year {
+    position: absolute;
+    right: 18mm;
+    top: 24mm;
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 12pt;
+    letter-spacing: 0.2em;
+    color: rgba(201,168,76,0.7);
+  }
+
+  .chapter { page-break-before: always; }
+  .chapter.first { page-break-before: auto; }
+
+  .kicker {
+    font-size: 8pt;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    font-weight: 700;
+    margin: 0 0 4px;
+  }
+  h2.chap {
+    font-size: 26pt;
+    line-height: 1.08;
+    margin: 0 0 4mm;
+    letter-spacing: -0.015em;
+  }
+  h2.chap em { font-style: italic; font-weight: 500; color: var(--gold-deep); }
+  .deck {
+    font-size: 12pt;
+    line-height: 1.45;
+    color: var(--ink-soft);
+    margin: 0 0 7mm;
+    max-width: 160mm;
+  }
+  h3 {
+    font-size: 14.5pt;
+    margin: 6.5mm 0 2.5mm;
+    line-height: 1.2;
+  }
+  h4 {
+    font-family: "DM Sans", sans-serif;
+    font-size: 10.5pt;
+    font-weight: 700;
+    margin: 0 0 1.5mm;
+    letter-spacing: 0.01em;
+  }
+
+  .toc { margin-top: 2mm; }
+  .toc a {
+    display: grid;
+    grid-template-columns: 12mm 1fr auto;
+    gap: 4mm;
+    align-items: baseline;
+    text-decoration: none;
+    color: inherit;
+    padding: 3.2mm 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .toc .n {
+    font-family: "Playfair Display", Georgia, serif;
+    color: var(--gold-deep);
+    font-size: 12pt;
+  }
+  .toc .t { font-size: 11.5pt; }
+  .toc .d { color: var(--muted); font-size: 9pt; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4mm; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 3.5mm; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 4mm;
+    padding: 4.2mm 4.4mm 3.8mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .card.cream { background: var(--cream); border-color: transparent; }
+  .card.ink {
+    background: var(--ink);
+    color: #f6f1e8;
+    border-color: var(--ink);
+  }
+  .card.ink p { color: rgba(246,241,232,0.82); }
+  .card .num {
+    font-family: "Playfair Display", Georgia, serif;
+    color: var(--gold);
+    font-size: 16pt;
+    line-height: 1;
+    margin-bottom: 2mm;
+  }
+  .card p:last-child { margin-bottom: 0; }
+  .card p { font-size: 9.6pt; }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 3mm;
+    margin: 3mm 0 5mm;
+  }
+  .step {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .step .bubble {
+    width: 8mm;
+    height: 8mm;
+    border-radius: 50%;
+    background: var(--ink);
+    color: var(--gold);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 11pt;
+    margin-bottom: 2.5mm;
+  }
+  .step p { font-size: 9.4pt; color: var(--ink-soft); margin: 1mm 0 0; }
+
+  .quote {
+    margin: 5mm 0;
+    padding: 4mm 0 4mm 5mm;
+    border-left: 2px solid var(--gold);
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .quote p {
+    font-family: "Playfair Display", Georgia, serif;
+    font-style: italic;
+    font-size: 14.5pt;
+    line-height: 1.35;
+    margin: 0;
+    color: var(--ink);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 2mm 0 5mm;
+    font-size: 9.5pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  th {
+    text-align: left;
+    font-size: 8pt;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--gold-deep);
+    font-weight: 700;
+    padding: 2.4mm 2.5mm;
+    border-bottom: 1.5px solid var(--ink);
+  }
+  td {
+    padding: 2.6mm 2.5mm;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.plan {
+    font-family: "DM Sans", "Segoe UI", sans-serif;
+    font-weight: 700;
+    font-size: 10.5pt;
+  }
+
+  ul.clean { margin: 0 0 4mm; padding: 0; list-style: none; }
+  ul.clean li {
+    position: relative;
+    padding: 0 0 1.6mm 4.5mm;
+    break-inside: avoid;
+  }
+  ul.clean li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.55em;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--gold);
+  }
+
+  .band {
+    display: grid;
+    grid-template-columns: 36mm 1fr;
+    gap: 4mm;
+    margin: 0 0 2.8mm;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+  .band .side {
+    background: var(--ink);
+    color: var(--gold);
+    border-radius: 3.5mm;
+    padding: 4mm 3.5mm;
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 13pt;
+    line-height: 1.15;
+  }
+  .note {
+    background: var(--cream);
+    border-radius: 3.5mm;
+    padding: 3.8mm 4.2mm;
+    font-size: 9.6pt;
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin: 3mm 0 5mm;
+  }
+  .note strong { color: var(--gold-deep); }
+
+  .flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2mm;
+    margin: 2mm 0 5mm;
+  }
+  .pill {
+    background: var(--cream);
+    border-radius: 999px;
+    padding: 1.6mm 3.4mm;
+    font-size: 9pt;
+    font-weight: 600;
+  }
+  .pill span { color: var(--gold-deep); margin-right: 1.5mm; }
+
+  .split {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 6mm;
+    align-items: start;
+  }
+
+  .end {
+    margin-top: 8mm;
+    padding-top: 5mm;
+    border-top: 1px solid var(--line);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    break-inside: avoid;
+  }
+  .end .brand {
+    font-family: "Playfair Display", Georgia, serif;
+    font-size: 16pt;
+  }
+  .end .brand span { color: var(--gold-deep); }
+  .end p { margin: 0; color: var(--muted); font-size: 9pt; max-width: 90mm; text-align: right; }
+
+  .back {
+    page-break-before: always;
+    min-height: 248mm;
+    display: flex;
+    flex-direction: column;
+  }
+  .back .quote { margin-top: 6mm; }
+  .back .quote p { font-size: 20pt; line-height: 1.3; max-width: 155mm; }
+  .back-grid { margin-top: 8mm; }
+  .back .end { margin-top: auto; }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="cover-year">2026</div>
+  <div class="mark"><span class="mark-dot"></span> NestIQ</div>
+  <div class="cover-rule"></div>
+  <h1>How the<br>platform <em>works.</em></h1>
+  <p class="cover-lead">A clear guide to NestIQ for landlords, tenants, caretakers, contractors, and the people who run the platform. Written for South African rental portfolios.</p>
+  <div class="cover-spacer"></div>
+  <div class="cover-meta">
+    <div>
+      <div class="k">This document</div>
+      <div class="v">Product guide<br>Roles, journeys, and daily work</div>
+    </div>
+    <div>
+      <div class="k">Built for</div>
+      <div class="v">Landlords and the people around each property</div>
+    </div>
+    <div>
+      <div class="k">Currency</div>
+      <div class="v">South African rand<br>Plans billed in ZAR</div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter first">
+  <p class="kicker">Contents</p>
+  <h2 class="chap">Inside this guide</h2>
+  <p class="deck">Each chapter follows one part of the product, in the order a property actually moves through NestIQ.</p>
+  <nav class="toc">
+    <a href="#intro"><span class="n">01</span><span class="t">What NestIQ is</span><span class="d">The idea</span></a>
+    <a href="#people"><span class="n">02</span><span class="t">The people</span><span class="d">Five roles</span></a>
+    <a href="#tenancy"><span class="n">03</span><span class="t">From vacancy to keys</span><span class="d">The core journey</span></a>
+    <a href="#landlord"><span class="n">04</span><span class="t">The landlord</span><span class="d">Portfolio desk</span></a>
+    <a href="#tenant"><span class="n">05</span><span class="t">The tenant</span><span class="d">Self-service portal</span></a>
+    <a href="#caretaker"><span class="n">06</span><span class="t">The caretaker</span><span class="d">On-site staff</span></a>
+    <a href="#contractor"><span class="n">07</span><span class="t">The contractor</span><span class="d">Jobs and vendors</span></a>
+    <a href="#admin"><span class="n">08</span><span class="t">The administrator</span><span class="d">The platform</span></a>
+    <a href="#money"><span class="n">09</span><span class="t">Money</span><span class="d">Rent, fees, tax</span></a>
+    <a href="#care"><span class="n">10</span><span class="t">Looking after the property</span><span class="d">Maintenance and care</span></a>
+    <a href="#tools"><span class="n">11</span><span class="t">Everyday tools</span><span class="d">AI, language, reports</span></a>
+    <a href="#plans"><span class="n">12</span><span class="t">Plans and a clean start</span><span class="d">Pricing and setup</span></a>
+  </nav>
+  <p style="margin-top:10mm;color:#6d675e;font-size:10pt">Read it straight through, or open the chapter for the role you use. Amounts are in South African rand.</p>
+</section>
+
+<section class="chapter" id="intro">
+  <p class="kicker">01  ·  Introduction</p>
+  <h2 class="chap">One desk for the <em>whole portfolio.</em></h2>
+  <p class="deck">NestIQ is a property management platform for South African landlords. It keeps properties, people, rent, leases, and maintenance in one place, and gives each person only the view they need.</p>
+
+  <p>A landlord signs in and sees the portfolio: which units are occupied, who has paid, which leases are ending, and which repairs are still open. A tenant signs in and sees their own home: rent status, the lease, documents, messages, and a way to report a problem. A caretaker sees the properties they have been assigned. A contractor sees the jobs sent to them. A NestIQ administrator sees the platform itself — accounts, billing, support, and announcements.</p>
+
+  <p>Nothing has to be installed from an app store. NestIQ runs in the browser on a phone or a computer. The interface can be read in English, Afrikaans, isiZulu, isiXhosa, and Sesotho, and it can be switched between a light theme, a dark theme, and several colour themes.</p>
+
+  <div class="quote">
+    <p>Every person around a property gets a door of their own. The landlord keeps the keys to the building.</p>
+  </div>
+
+  <div class="grid-3">
+    <div class="card cream">
+      <div class="num">01</div>
+      <h4>Portfolio</h4>
+      <p>Properties, units, photos, occupancy, and a map of where everything sits.</p>
+    </div>
+    <div class="card cream">
+      <div class="num">02</div>
+      <h4>People</h4>
+      <p>Applicants, tenants, caretakers, and contractors, each with a role and a limit on what they can see.</p>
+    </div>
+    <div class="card cream">
+      <div class="num">03</div>
+      <h4>Money &amp; care</h4>
+      <p>Rent, deposits, late fees, expenses, leases, inspections, and maintenance from request to completion.</p>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="people">
+  <p class="kicker">02  ·  Roles</p>
+  <h2 class="chap">Five doors, <em>one building.</em></h2>
+  <p class="deck">NestIQ is organised by role. Signing in as the wrong kind of person does not open the wrong rooms. A tenant cannot wander into the landlord’s books, and a contractor cannot see a job that was never assigned to them.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <h4>Landlord</h4>
+      <p>The owner or manager of the portfolio. Creates the account, adds properties and units, publishes vacancies, approves applications, sets leases, tracks rent, invites staff, and reads the financial reports.</p>
+    </div>
+    <div class="card">
+      <h4>Tenant</h4>
+      <p>Starts as an applicant. Creates a free account, browses listings, and applies for a vacant unit. After approval, the same account becomes their home portal: lease, payments, maintenance, documents, and messages.</p>
+    </div>
+    <div class="card">
+      <h4>Caretaker</h4>
+      <p>On-site staff invited by the landlord with a code. Works only on assigned properties: tenants at those properties, maintenance, inspections, and messages with the landlord.</p>
+    </div>
+    <div class="card">
+      <h4>Contractor</h4>
+      <p>A vendor who has been given a portal login. Sees the jobs assigned to them, updates the work, writes what was done, and records an invoice total when the job is finished.</p>
+    </div>
+  </div>
+  <div class="card ink" style="margin-top:4mm">
+    <h4 style="color:#c9a84c">Administrator</h4>
+    <p>Runs NestIQ as a product. Sees landlords, tenants, and staff across the platform, subscription billing, maintenance volume, support tickets, the changelog, announcements, and accounts that need a closer look. This is a NestIQ operator, separate from a landlord’s own team.</p>
+  </div>
+
+  <h3>How someone joins</h3>
+  <table>
+    <thead>
+      <tr><th>Person</th><th>How they enter</th><th>What they land on</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Landlord</td><td>Signs up, verifies email, and walks through a short setup.</td><td>The portfolio dashboard.</td></tr>
+      <tr><td>Tenant</td><td>Creates a free account and applies from Browse listings. There is no manual “add tenant” form.</td><td>My Portal, then the lease once approved.</td></tr>
+      <tr><td>Caretaker</td><td>Receives a staff invitation from a property, opens the staff portal, and signs up with the same email.</td><td>The caretaker dashboard for assigned properties.</td></tr>
+      <tr><td>Contractor</td><td>Is invited from the landlord’s vendor list with a staff code.</td><td>The contractor dashboard and their jobs.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section class="chapter" id="tenancy">
+  <p class="kicker">03  ·  The core journey</p>
+  <h2 class="chap">From a vacant unit <em>to a signed lease.</em></h2>
+  <p class="deck">Tenants are not typed in by hand. A vacancy is published, a person applies, and the landlord decides. That single path keeps the record clean from the first click.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="bubble">1</div>
+      <h4>List</h4>
+      <p>The landlord marks a unit vacant. It appears in Available listings with rent, type, and location.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">2</div>
+      <h4>Apply</h4>
+      <p>A prospective tenant searches by suburb or city, saves favourites, and submits an application from their account.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">3</div>
+      <h4>Decide</h4>
+      <p>The landlord reviews the application, the documents, and — if they choose — an AI screening note, then approves or declines.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">4</div>
+      <h4>Occupy</h4>
+      <p>Approval creates the tenant profile. They sign the lease in the portal and the unit shows as occupied.</p>
+    </div>
+  </div>
+
+  <h3>What happens after the keys</h3>
+  <p>The lease carries the monthly rent, the deposit, the start and end dates, and the day rent falls due. NestIQ then keeps the month moving on its own rhythm.</p>
+  <ul class="clean">
+    <li>The rent calendar marks what is due and what is overdue for each tenant.</li>
+    <li>Reminders can go out by email or WhatsApp, and every call, message, letter, or visit can be logged against the tenant.</li>
+    <li>The tenant sees Paid, Rent due, or Overdue, together with the history of what has already been recorded.</li>
+    <li>A repair request raised in the portal lands on the landlord’s maintenance board, and can be handed to a caretaker or a contractor.</li>
+    <li>As the end date approaches, the lease appears in renewals and on the dashboard’s expiration list.</li>
+    <li>When someone is preparing to leave, the tenant portal can show a move-out checklist.</li>
+  </ul>
+
+  <div class="note"><strong>Banking details travel with the rent.</strong> During setup the landlord saves the bank name, account number, branch code, account type, and a payment reference such as tenant name, month, and year. Those details appear on reminders and receipts so the tenant knows how to pay the landlord directly. NestIQ keeps the ledger of what is due and what has been recorded. The in-app card and EFT steps confirm that record inside the product. Rent itself moves between the tenant and the landlord. NestIQ’s own subscription is a separate charge, billed through PayFast.</div>
+</section>
+
+<section class="chapter" id="landlord">
+  <p class="kicker">04  ·  Landlord</p>
+  <h2 class="chap">The morning <em>the portfolio opens.</em></h2>
+  <p class="deck">After email verification, a new landlord receives fourteen days of Pro at no charge, with no card required to begin. A short wizard asks for the profile, the first property, a reminder of how tenants join, and the banking details used on receipts.</p>
+
+  <h3>The home screen</h3>
+  <p>The signed-in home is a working desk, not a brochure. It greets the landlord by name and lays out the things that usually need a decision today.</p>
+  <div class="grid-2">
+    <div class="card cream">
+      <h4>At a glance</h4>
+      <p>Portfolio stats, a grid of properties, open maintenance, recent transactions, a maintenance overview, a chart of rent collected through the year, and leases that are coming to an end.</p>
+    </div>
+    <div class="card cream">
+      <h4>Waiting on you</h4>
+      <p>Badges mark unread tenant messages, new applications, and open maintenance. A bell collects notifications and communication follow-ups that are due.</p>
+    </div>
+  </div>
+
+  <h3>Properties and units</h3>
+  <p>Each property stores a name, address, city, type, bedrooms, rent, and status. Types cover apartments, houses, townhouses, bachelor apartments, and backrooms or garden flats. The list can be searched and filtered by occupied, vacant, rent due, or type, then switched between a card grid and a units view. Photos open in a lightbox. One building can mix occupied and vacant homes, and the vacant units are what public listings offer to applicants. Archived properties can be shown again when needed.</p>
+
+  <h3>The rest of the landlord menu</h3>
+  <div class="band">
+    <div class="side">People</div>
+    <div>
+      <p style="margin:0">Tenants holds profiles, messages, and the link back to each lease. Applications is the queue of people waiting for a yes or a no, with a count on the navigation badge. Vendors is the address book of trades, and the place a contractor invitation is sent.</p>
+    </div>
+  </div>
+  <div class="band">
+    <div class="side">Operations</div>
+    <div>
+      <p style="margin:0">Maintenance is the job board. Inspections records condition checks. The rent calendar places due dates, overdue amounts, and lease ends on one month view. Leases is where agreements are followed through to renewal.</p>
+    </div>
+  </div>
+  <div class="band">
+    <div class="side">Finance</div>
+    <div>
+      <p style="margin:0">Analytics, deposits, late fees, and the rent roll. The roll exports as a confidential PDF. Settings, billing, help, and the changelog live under Account.</p>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="tenant">
+  <p class="kicker">05  ·  Tenant</p>
+  <h2 class="chap">A portal that fits <em>in a pocket.</em></h2>
+  <p class="deck">Tenants never download an app. They create a free NestIQ account, browse listings, and — once approved — sign in to the same account and find their home already waiting.</p>
+
+  <h3>Before they move in</h3>
+  <p>Available listings can be searched by suburb or city, sorted by newest or by price, and filtered by property type. A heart saves a favourite. Applying uses the account they already created, and the decision is tracked under Applications in My Portal, with a badge when something has changed.</p>
+
+  <h3>After they are approved</h3>
+  <p>The portal opens with a greeting and a home view of the tenancy: the property, the unit, rent status, the lease card, and the next things that need attention. The side navigation stays the same on a phone or a desktop.</p>
+
+  <div class="grid-3">
+    <div class="card">
+      <h4>Payments</h4>
+      <p>Paid, due, or overdue, with the amount, the history, a small chart, and any late fees. Pay rent opens a short confirmation so the ledger can be updated.</p>
+    </div>
+    <div class="card">
+      <h4>Maintenance</h4>
+      <p>A leaking tap, a faulty geyser, a broken lock — submitted here, with status the tenant can follow from open to resolved.</p>
+    </div>
+    <div class="card">
+      <h4>Documents</h4>
+      <p>The lease and anything else the landlord has shared. New files are badged until the tenant has opened them.</p>
+    </div>
+  </div>
+  <div class="grid-2" style="margin-top:3.5mm">
+    <div class="card cream">
+      <h4>Messages and notices</h4>
+      <p>A direct thread with the landlord, plus notices posted to the tenancy. Unread items show as a count on the tab.</p>
+    </div>
+    <div class="card cream">
+      <h4>Profile and the home itself</h4>
+      <p>Contact details, property information, utility readings the landlord has recorded, a mini calendar of dates that matter, and a move-out checklist when the lease is ending.</p>
+    </div>
+  </div>
+
+  <div class="quote">
+    <p>The tenant sees their own lease, their own balance, and their own repairs. The rest of the portfolio stays with the landlord.</p>
+  </div>
+
+  <p>Tenants can also open listings and the property map while signed in, so they can keep looking if they are between homes. They are kept out of landlord pages such as the rent roll, expenses, and other tenants’ records.</p>
+</section>
+
+<section class="chapter" id="caretaker">
+  <p class="kicker">06  ·  Caretaker</p>
+  <h2 class="chap">The person <em>on the property.</em></h2>
+  <p class="deck">A caretaker is invited from a specific property. The invitation carries a code, a link, and the landlord’s name. They choose the staff portal, enter the code, and sign up with the email the invitation was sent to.</p>
+
+  <p>Once inside, the caretaker dashboard is deliberately smaller than the landlord’s. The work is the building in front of them.</p>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="num">Home</div>
+      <p>A welcome, the tenants at assigned properties, and the latest maintenance so the day starts with what is already in motion.</p>
+    </div>
+    <div class="card">
+      <div class="num">Properties</div>
+      <p>Only the properties the landlord assigned. If nothing has been assigned yet, the portal says so plainly.</p>
+    </div>
+    <div class="card">
+      <div class="num">Maintenance</div>
+      <p>Requests grouped into tabs such as new work and work in progress, with cancelled items available when they need to be seen. The caretaker moves jobs along for those properties.</p>
+    </div>
+    <div class="card">
+      <div class="num">Inspections</div>
+      <p>Condition checks for the assigned stock, so a move-in, a routine visit, or a move-out can be recorded without opening the landlord’s full books.</p>
+    </div>
+  </div>
+
+  <p style="margin-top:4mm">Messages sit beside the work, with a badge for anything unread. Profile shows the caretaker’s name, email, and how many properties they cover, and sign-out is always one tap away. If a caretaker’s account is suspended by a NestIQ administrator, the portal locks while the landlord’s staff record remains in place.</p>
+  <div class="note"><strong>What stays with the landlord.</strong> Rent rolls, deposits, late fees, and tenants at other properties never appear in this portal. The caretaker works the building they were invited to, and the books stay on the landlord’s desk.</div>
+</section>
+
+<section class="chapter" id="contractor">
+  <p class="kicker">07  ·  Contractor</p>
+  <h2 class="chap">A job, a note, <em>a finished visit.</em></h2>
+  <p class="deck">Contractors begin as vendors. The landlord keeps a vendor list — plumbers, electricians, and the other trades — and invites the ones who should work inside NestIQ. The invitation is the same staff-code pattern used for caretakers, with the contractor role on it.</p>
+
+  <div class="split">
+    <div>
+      <h3>What the contractor sees</h3>
+      <ul class="clean">
+        <li><strong>Home</strong> summarises active jobs so the next visit is obvious.</li>
+        <li><strong>My Jobs</strong> lists work currently assigned. Opening a job shows the problem, the property, and room to record the work.</li>
+        <li><strong>Completed</strong> keeps finished jobs, including what was done and the invoice total when one was entered.</li>
+        <li><strong>Profile</strong> holds the contractor’s own details and sign-out.</li>
+      </ul>
+      <p>A contractor does not see the rent roll, other vendors’ jobs, or tenants who have nothing to do with their visit. The landlord remains the person who assigns the work and closes the loop with the tenant.</p>
+    </div>
+    <div class="card ink">
+      <h4 style="color:#c9a84c">On the job card</h4>
+      <p>The description of the problem, the work carried out, completion notes, and an invoice total in rand. The landlord’s maintenance board picks up the same status, so the tenant’s “open” request and the contractor’s “done” visit are one record.</p>
+    </div>
+  </div>
+  <div class="note"><strong>From the vendor list to a visit.</strong> The landlord keeps the trade on Vendors, sends the staff code, and assigns the request. The contractor updates that same request until it is resolved, and the tenant watches the status change in their own portal.</div>
+</section>
+
+<section class="chapter" id="admin">
+  <p class="kicker">08  ·  Administrator</p>
+  <h2 class="chap">The platform, <em>seen from above.</em></h2>
+  <p class="deck">The admin console is for the NestIQ operator. It signs in with a designated admin account and looks across every landlord, not into a single portfolio as if it were their own.</p>
+
+  <table>
+    <thead>
+      <tr><th>Area</th><th>What it is for</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Overview</td><td>Platform totals, new landlord signups, subscription revenue, recent activity, and a health panel.</td></tr>
+      <tr><td>Landlords</td><td>Search, filter by plan and status, sort, open an account, and suspend in bulk when needed.</td></tr>
+      <tr><td>Tenants</td><td>A platform-wide list, separate from any one landlord’s tenant page.</td></tr>
+      <tr><td>Staff</td><td>Caretakers and contractors who accepted an invitation. Shows who invited them and which properties they can open. Suspend locks the portal.</td></tr>
+      <tr><td>Applications</td><td>Visibility of applications moving through the product.</td></tr>
+      <tr><td>Billing</td><td>Subscription activity behind Pro and Enterprise.</td></tr>
+      <tr><td>Maintenance</td><td>A cross-portfolio view of repair volume.</td></tr>
+      <tr><td>Support tickets</td><td>Help requests, with a badge for tickets still open.</td></tr>
+      <tr><td>Changelog &amp; announcements</td><td>What has shipped, and messages the product can broadcast.</td></tr>
+      <tr><td>Needs review</td><td>Accounts or items flagged for a closer look.</td></tr>
+    </tbody>
+  </table>
+
+  <p>Admin actions can be written to an activity log, so a suspension or a support change has a trail. Landlords still manage their own buildings. The administrator manages the service those buildings run on.</p>
+</section>
+
+<section class="chapter" id="money">
+  <p class="kicker">09  ·  Finance</p>
+  <h2 class="chap">Rent, deposits, <em>and the books.</em></h2>
+  <p class="deck">NestIQ is the ledger and the reminder system. It shows what should have arrived, what has been recorded, and what the portfolio is earning after costs.</p>
+
+  <h3>The monthly rhythm</h3>
+  <div class="flow">
+    <div class="pill"><span>1</span>Due date on the lease</div>
+    <div class="pill"><span>2</span>Calendar and dashboard</div>
+    <div class="pill"><span>3</span>Reminder by email or WhatsApp</div>
+    <div class="pill"><span>4</span>Payment recorded</div>
+    <div class="pill"><span>5</span>Receipt and rent roll</div>
+  </div>
+  <p>Each tenant has a monthly amount taken from the active lease. The rent roll lays the portfolio out as a sheet: property, unit, tenant, and the month. It can be printed or saved as a PDF marked confidential for the landlord. Analytics turns the same numbers into charts — revenue, occupancy, and the shape of the year.</p>
+
+  <h3>When rent is late</h3>
+  <p>Late Fee Management holds the landlord’s policy and a ledger of fees that are outstanding, paid, or waived. Fees can be applied across overdue accounts in one action, and a late-fee notice can be sent and logged with the rest of the communication history. The tenant sees those fees on their payments tab.</p>
+
+  <h3>Deposits</h3>
+  <p>Deposit Management follows the life of a security deposit: collection, interest, deductions, refunds, and claims, with the Rental Housing Act in mind. The page summarises compliance and can be searched by tenant or property. Whether a deposit has been collected is also visible from the lease, so a new tenancy is not left half-finished.</p>
+
+  <div class="grid-2">
+    <div class="card cream">
+      <h4>Expenses and tax</h4>
+      <p>The expense tracker records costs against the portfolio. The tax summary turns income and those costs into a report a landlord can take to their own adviser at year end. NestIQ prepares the summary. It does not file a return.</p>
+    </div>
+    <div class="card cream">
+      <h4>Reconciliation, yield, value</h4>
+      <p>Bank reconciliation lines the NestIQ ledger up with what the bank shows. The ROI calculator works out gross yield, net yield, cash flow, and return. Portfolio valuation keeps a view of what the buildings are worth alongside what they earn.</p>
+    </div>
+  </div>
+
+  <div class="note"><strong>Two kinds of payment.</strong> Tenant rent is arranged with the landlord and recorded in NestIQ, using the banking details saved in setup. The landlord’s NestIQ subscription — Pro or Enterprise — is billed in rand by card or EFT through PayFast. Receipts for that subscription sit on the billing page. Cancelling keeps access until the end of the period already paid.</div>
+</section>
+
+<section class="chapter" id="care">
+  <p class="kicker">10  ·  Care of the property</p>
+  <h2 class="chap">From a request <em>to a resolved job.</em></h2>
+  <p class="deck">Maintenance is shared on purpose. The tenant reports it, the landlord owns it, the caretaker can move it, and the contractor does the work.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="bubble">1</div>
+      <h4>Report</h4>
+      <p>The tenant submits the issue from the portal. Priority can be high, medium, or low.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">2</div>
+      <h4>Triage</h4>
+      <p>It lands on the landlord board as open, with a badge in the navigation. AI can draft an assessment of the issue.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">3</div>
+      <h4>Assign</h4>
+      <p>The landlord attaches a vendor. A contractor with a portal login then sees it under My Jobs. A caretaker sees it for their properties.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">4</div>
+      <h4>Close</h4>
+      <p>The job moves through in progress to resolved. Completion notes and an invoice total stay on the record, and the tenant can see the status change.</p>
+    </div>
+  </div>
+
+  <h3>Inspections, documents, and the paper trail</h3>
+  <p>Inspections capture the condition of a unit at the moments that matter — moving in, a routine visit, moving out — and caretakers can record them for properties they are assigned to. Documents uploaded by the landlord appear in the tenant’s Documents tab. Notices are posted into the same portal, so a formal message is not trapped in a chat thread.</p>
+  <p>Communications keeps a log of how the landlord has actually reached someone: WhatsApp, email, phone, SMS, an in-person visit, a notice, or a letter. Automated messages — rent reminders, receipts, overdue notices, lease-expiry notes, maintenance updates, and a welcome — can be logged as they go out, and follow-ups that are due surface on the home screen and on the notification bell.</p>
+
+  <h3>Leases coming to an end</h3>
+  <p>The Leases page and the dashboard expiration list show who is approaching the end of a term. Renewal is a decision the landlord makes with that date in view, rather than a surprise in the last week. QR codes can be generated for sharing a NestIQ link on paper or on a noticeboard.</p>
+
+  <p>Tenants can also leave a review of a property. Those reviews are stored against the property, so a listing can carry a rating that came from someone who lived there.</p>
+</section>
+
+<section class="chapter" id="tools">
+  <p class="kicker">11  ·  Everyday tools</p>
+  <h2 class="chap">The quiet features <em>around the work.</em></h2>
+  <p class="deck">Once the tenancy is running, a set of smaller tools keeps the portfolio understandable: where the buildings are, what the numbers say, and what a careful second opinion would suggest.</p>
+
+  <h3>Assistance from Gemini</h3>
+  <p>AI features are optional. The landlord adds their own Gemini API key in Settings and can switch individual tools on or off. When a tool runs, the screen says the reply is powered by Gemini. The set covers:</p>
+  <ul class="clean">
+    <li><strong>Rent suggestions</strong> for pricing a unit.</li>
+    <li><strong>Rent-increase advice</strong> when a renewal is coming.</li>
+    <li><strong>Tenant screening notes</strong> while an application is open.</li>
+    <li><strong>Lease clause drafts</strong> to start an agreement.</li>
+    <li><strong>Maintenance assessments</strong> when a request arrives.</li>
+    <li><strong>Portfolio analysis</strong> across the buildings as a whole.</li>
+  </ul>
+  <p>These are drafts and signals for the landlord to accept, edit, or ignore. They do not approve a tenant or change a rent figure on their own.</p>
+
+  <div class="grid-3">
+    <div class="card cream">
+      <h4>Map</h4>
+      <p>Properties plotted so a portfolio spread across a city can be seen geographically, not only as a list.</p>
+    </div>
+    <div class="card cream">
+      <h4>Calendar</h4>
+      <p>Rent due, overdue amounts, and lease ends on one month, each event tied back to the tenant.</p>
+    </div>
+    <div class="card cream">
+      <h4>Reports</h4>
+      <p>Rent roll, tax summary, and portfolio reports exported as PDFs the landlord can file or send on.</p>
+    </div>
+  </div>
+
+  <h3>Language, theme, and reach</h3>
+  <p>The product speaks English, Afrikaans, isiZulu, isiXhosa, and Sesotho. A landlord can restyle the interface — gold, ocean, forest, sunset, midnight, or classic — and switch to dark mode. Notifications collect the events that matter: a payment recorded, a property added, a notice posted, a document generated. Help articles cover getting started, billing, email delivery, and the usual sign-in problems, and the public changelog records what has shipped alongside a roadmap people can vote on.</p>
+
+  <div class="note"><strong>Email delivery.</strong> Automated mail — welcome, trial reminders, rent, leases, and maintenance — is sent through the landlord’s own EmailJS account. Settings stores the public key, the service, and a template for each kind of message, so the wording stays under the landlord’s control.</div>
+</section>
+
+<section class="chapter" id="plans">
+  <p class="kicker">12  ·  Plans and setup</p>
+  <h2 class="chap">Start small. <em>Grow the portfolio.</em></h2>
+  <p class="deck">Pricing is in South African rand. A new landlord begins on a fourteen-day Pro trial. When the trial ends, the account settles on Starter unless it is upgraded. A banner appears when three days or fewer remain.</p>
+
+  <table>
+    <thead>
+      <tr><th>Plan</th><th>Price</th><th>What it covers</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="plan">Starter</td>
+        <td>Free</td>
+        <td>Up to 2 properties and 5 tenants, basic rent tracking, the tenant portal, and community support. Free to keep.</td>
+      </tr>
+      <tr>
+        <td class="plan">Pro</td>
+        <td>R299 per month, or R239 per month billed annually</td>
+        <td>Unlimited properties and tenants, AI tools, financial reports and exports, EmailJS notifications, WhatsApp reminders, and priority support. The usual plan for a working portfolio.</td>
+      </tr>
+      <tr>
+        <td class="plan">Enterprise</td>
+        <td>R799 per month, or R639 per month billed annually</td>
+        <td>Everything in Pro, plus multiple team members, custom branding, a dedicated account manager, and API access.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>A clean first week</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="bubble">1</div>
+      <h4>Create the account</h4>
+      <p>Sign up as a landlord and verify the email before expecting full access.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">2</div>
+      <h4>Add the first property</h4>
+      <p>Name, address, city, type, bedrooms, rent, and whether it is occupied or vacant.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">3</div>
+      <h4>Publish a vacancy</h4>
+      <p>Vacant units appear in listings. Applicants apply themselves. Approve them under Applications.</p>
+    </div>
+    <div class="step">
+      <div class="bubble">4</div>
+      <h4>Invite the people on site</h4>
+      <p>Caretakers from the property, contractors from Vendors. Save bank details so receipts are complete.</p>
+    </div>
+  </div>
+
+  <h3>How the product is held together</h3>
+  <p>NestIQ is a web application. Sign-in, the database, and file storage run on Firebase, with security rules that follow the role: a landlord reads their portfolio, a tenant reads their tenancy, a caretaker reads assigned properties, a contractor reads assigned jobs. Cloud functions handle scheduled email, PayFast subscription events, and submitted reviews. The interface is a single app with a page for each job, so a phone and a desktop share the same account.</p>
+  <p>Landlord email must be verified before full use. Each role is pinned to its own dashboard, so a stale link cannot drop a tenant into the landlord home. Data is stored with industry-standard encryption. NestIQ does not sell it. Only the landlord and the people they have admitted — tenants, caretakers, contractors — reach the records that belong to them.</p>
+
+</section>
+
+<section class="back">
+  <p class="kicker">Close</p>
+  <h2 class="chap">The portfolio, <em>in one sentence.</em></h2>
+  <div class="quote">
+    <p>List the vacancy. Let them apply. Approve with care. Then let the portal carry the rent, the repairs, and the lease.</p>
+  </div>
+  <div class="grid-3 back-grid">
+    <div class="card cream">
+      <h4>Landlord</h4>
+      <p>Owns the properties, the decisions, and the books.</p>
+    </div>
+    <div class="card cream">
+      <h4>Tenant</h4>
+      <p>Applies from listings, then lives in their own portal.</p>
+    </div>
+    <div class="card cream">
+      <h4>Staff</h4>
+      <p>Caretakers on site, contractors on the jobs they are given.</p>
+    </div>
+  </div>
+  <div class="end">
+    <div>
+      <div class="brand">Nest<span>IQ</span></div>
+      <p style="text-align:left;margin-top:1mm">Property management, simplified.</p>
+    </div>
+    <p>A product guide for landlords, tenants, caretakers, contractors, and administrators. South Africa, 2026.</p>
+  </div>
+</section>
+
+</body>
+</html>

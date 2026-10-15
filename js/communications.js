@@ -151,7 +151,7 @@ function nestiqFollowUpsDueCount(){
 
 function openLogCommunicationModal(tenantId){
   const t=tenantsData?.find(x=>Number(x.id)===Number(tenantId));
-  if(!t){ showNotif('Tenant not found','error'); return; }
+  if(!t){ nestiqShowNotif('Tenant not found','error'); return; }
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">Log communication — ${nestiqCommEscape(t.name)}</h2>
     <p class="modal-sub">${nestiqCommEscape(t.unit||'')} · ${nestiqCommEscape(t.property||'')}</p>
@@ -177,16 +177,16 @@ function openLogCommunicationModal(tenantId){
     <div class="form-group" id="comm_log_fu_date_wrap" style="display:none"><label>Follow-up date</label><input class="form-input" id="comm_log_fu_date" type="date"></div>
     <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveManualCommunication(${t.id})">Save</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqSaveManualCommunication(tenantId){
   const t=tenantsData?.find(x=>Number(x.id)===Number(tenantId));
   if(!t) return;
   const sub=document.getElementById('comm_log_subject')?.value?.trim()||'';
-  if(!sub){ showNotif('Subject is required','error'); return; }
+  if(!sub){ nestiqShowNotif('Subject is required','error'); return; }
   const dir=document.querySelector('input[name="comm_log_dir"]:checked')?.value||'outgoing';
   const fu=document.getElementById('comm_log_fu')?.checked;
   const fud=document.getElementById('comm_log_fu_date')?.value||'';
@@ -205,8 +205,8 @@ function nestiqSaveManualCommunication(tenantId){
     followUpDate:fu&&/^\d{4}-\d{2}-\d{2}$/.test(fud)?fud:'',
     followUpCompleted:false
   });
-  closeModal();
-  showNotif('Communication logged','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Communication logged','success');
   nestiqRenderTenantCommsTimeline(Number(tenantId),`vtenant_com_${tenantId}`);
 }
 
@@ -358,7 +358,7 @@ function nestiqCompleteFollowUp(commId){
 
 function openCommunicationReportModal(){
   const s=typeof getSession==='function'?getSession():null;
-  if(s?.role!=='landlord'){ showNotif('Landlords only','warning'); return; }
+  if(s?.role!=='landlord'){ nestiqShowNotif('Landlords only','warning'); return; }
   const tenantOpts=(tenantsData||[]).map(t=>`<option value="${t.id}">${nestiqCommEscape(t.name)}</option>`).join('');
   const today=nestiqCommTodayYmd();
   const fd=new Date();
@@ -383,11 +383,10 @@ function openCommunicationReportModal(){
     </div>
     <div style="display:flex;gap:10px;margin-top:12px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqRenderCommunicationReportTable()">Apply filters</button>
-      <button type="button" class="btn-outline btn-sm" onclick="nestiqExportCommunicationCSV()">Export CSV</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Close</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button>
     </div>
     <div id="comm_rep_out" style="margin-top:16px;max-height:360px;overflow:auto;border:1px solid var(--border);border-radius:10px"></div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   nestiqRenderCommunicationReportTable();
 }
 
@@ -437,7 +436,7 @@ function nestiqExportCommunicationCSV(){
     c.date,(c.time||'').slice(0,5),c.tenantName,c.propertyId,c.type,c.direction,c.subject,c.content,c.outcome,c.followUpRequired,c.followUpDate
   ].map(esc).join(','))];
   downloadCSV(lines.join('\n'),'nestiq-communications.csv');
-  showNotif('CSV exported','success');
+  nestiqShowNotif('CSV exported','success');
 }
 
 window.nestiqAutoLogWhatsApp=nestiqAutoLogWhatsApp;

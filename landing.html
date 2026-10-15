@@ -8,17 +8,18 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/animations.css" />
+  <link rel="stylesheet" href="./css/animations.css?v=calm-ui1" />
+  <script src="./js/icons.js?v=icons1"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            gold: '#C46A3A',
+            gold: '#c9a84c',
             ink: '#0E1117',
-            cream: '#F5F0E8',
-            rust: '#A63D2F',
+            cream: '#f7f4ef',
+            rust: '#c46a3a',
             paper: '#FFFFFF',
           },
           fontFamily: {
@@ -31,32 +32,61 @@
   </script>
   <style>
     :root {
-      --gold: #C46A3A;
+      --gold: #c9a84c;
       --ink: #0E1117;
-      --cream: #F5F0E8;
-      --rust: #A63D2F;
+      --cream: #f7f4ef;
+      --rust: #c46a3a;
       --paper: #FFFFFF;
       --border: rgba(14, 17, 23, 0.1);
+      --ease: cubic-bezier(.22,1,.36,1);
     }
     html { scroll-behavior: smooth; }
+    .nestiq-icon { display: block; flex-shrink: 0; }
+    .nq-ico { display: inline-flex; align-items: center; justify-content: center; line-height: 0; color: inherit; }
     body {
       font-family: 'DM Sans', system-ui, sans-serif;
       color: var(--ink);
-      background: var(--paper);
+      background: var(--cream);
       overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      letter-spacing: -0.011em;
     }
     .font-display { font-family: 'Playfair Display', serif; }
 
-    /* Animated hero background */
-    .hero-bg {
-      background: linear-gradient(135deg, #F5F0E8 0%, #fff 40%, rgba(196, 106, 58, 0.12) 70%, #F5F0E8 100%);
-      background-size: 200% 200%;
-      animation: heroShift 14s ease-in-out infinite alternate;
+    /* Calm hero — no looping gradient */
+    .hero-section {
+      background:
+        radial-gradient(ellipse 70% 80% at 78% 18%, rgba(201,168,76,0.16) 0%, transparent 55%),
+        radial-gradient(ellipse 50% 60% at 12% 88%, rgba(196,106,58,0.12) 0%, transparent 50%),
+        linear-gradient(165deg, #0E1117 0%, #161b24 48%, #1a1512 100%);
+      min-height: 92vh;
+      display: flex;
+      align-items: center;
+      position: relative;
+      overflow: hidden;
     }
-    @keyframes heroShift {
-      0% { background-position: 0% 50%; }
-      100% { background-position: 100% 50%; }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(201,168,76,0.055) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(201,168,76,0.055) 1px, transparent 1px);
+      background-size: 48px 48px;
+      pointer-events: none;
     }
+    .hero-section::after {
+      content: '';
+      position: absolute;
+      top: -30%;
+      right: -15%;
+      width: 600px;
+      height: 600px;
+      background: radial-gradient(circle, rgba(201,168,76,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .hero-section .hero-inner { position: relative; z-index: 1; width: 100%; }
 
     /* Nav */
     #siteNav {
@@ -87,15 +117,15 @@
 
     .btn-gold {
       background: var(--gold);
-      color: #fff;
+      color: #0E1117;
       border: 2px solid var(--gold);
-      transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+      transition: transform 0.2s var(--ease), box-shadow 0.2s ease, background 0.2s ease;
     }
     .btn-gold:hover {
-      background: #b35f34;
-      border-color: #b35f34;
+      background: #d4b45c;
+      border-color: #d4b45c;
       transform: translateY(-1px);
-      box-shadow: 0 8px 24px rgba(196, 106, 58, 0.35);
+      box-shadow: 0 8px 24px rgba(201, 168, 76, 0.35);
     }
     .btn-outline {
       background: transparent;
@@ -137,6 +167,7 @@
     #mobileMenu.open { max-height: 420px; }
 
     /* Dashboard mockup */
+    .hero-mockup { transition: transform 0.2s ease; }
     .mock-window {
       border-radius: 16px;
       border: 1px solid var(--border);
@@ -181,6 +212,12 @@
       justify-content: center;
       flex-shrink: 0;
     }
+    @media (max-width: 768px) {
+      .feature-card:hover { transform: translateY(-2px); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-section, .hero-section::before, .hero-section::after, .pricing-card-pro { animation: none !important; }
+    }
     @media (max-width: 767px) {
       .steps-row { flex-direction: column; align-items: stretch; }
       .step-line-h { display: none; }
@@ -191,6 +228,32 @@
         margin: 0 auto;
       }
     }
+
+    /* Feature cards */
+    .feature-card {
+      transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+      border: 1px solid rgba(196,106,58,0.12);
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(196,106,58,0.06), transparent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .feature-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      box-shadow: 0 20px 48px rgba(196,106,58,0.14), 0 4px 16px rgba(0,0,0,0.08);
+      border-color: rgba(196,106,58,0.35);
+    }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-card .feature-icon {
+      transition: transform 0.3s cubic-bezier(.34,1.56,.64,1);
+    }
+    .feature-card:hover .feature-icon { transform: scale(1.2) rotate(5deg); }
 
     /* Pricing */
     .pricing-card {
@@ -205,18 +268,48 @@
       box-shadow: 0 16px 48px rgba(196, 106, 58, 0.2);
       position: relative;
     }
+    .pricing-card-pro {
+      position: relative;
+      isolation: isolate;
+      animation: nq-border-glow 3s ease-in-out infinite;
+    }
+    .pricing-card-pro::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.16) 50%, transparent 65%);
+      background-size: 220% 100%;
+      background-position: 100% 0;
+      opacity: 0;
+      transition: background-position 0.65s ease, opacity 0.25s ease;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .pricing-card-pro:hover::after {
+      opacity: 1;
+      background-position: 0% 0;
+    }
+    .pricing-card-pro > * {
+      position: relative;
+      z-index: 1;
+    }
     .popular-badge {
       position: absolute;
-      top: -12px;
+      top: 14px;
       left: 50%;
       transform: translateX(-50%);
       background: var(--gold);
       color: #fff;
       font-size: 0.72rem;
       font-weight: 700;
-      padding: 4px 14px;
+      letter-spacing: 0.02em;
+      padding: 5px 14px;
       border-radius: 999px;
       white-space: nowrap;
+      line-height: 1.2;
+      z-index: 2;
+      box-shadow: 0 4px 12px rgba(196, 106, 58, 0.35);
     }
     .billing-toggle button.active {
       background: var(--gold);
@@ -279,6 +372,7 @@
 
     /* Testimonial stars */
     .star { color: var(--gold); }
+    .star-empty { color: rgba(14, 17, 23, 0.18); }
 
     /* Prevent app dashboard nav rules from affecting marketing header */
     header#siteNav nav {
@@ -301,7 +395,7 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
       <div class="flex items-center justify-between h-16 md:h-[72px]">
         <a href="#" class="font-display text-xl md:text-2xl font-bold text-gold flex items-center gap-2 shrink-0">
-          <span aria-hidden="true">🏠</span> NestIQ
+          <span class="nq-ico" data-nq-icon="house" data-nq-size="22" aria-hidden="true"></span> NestIQ
         </a>
 
         <nav class="hidden md:flex items-center gap-8" aria-label="Main">
@@ -339,14 +433,14 @@
   <main class="pt-16 md:pt-[72px]">
 
     <!-- 2. Hero -->
-    <section id="hero" class="hero-bg relative overflow-hidden">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24 lg:py-28">
+    <section id="hero" class="hero-section">
+      <div class="hero-inner max-w-6xl mx-auto px-4 sm:px-6 py-16 md:py-24 lg:py-28">
         <div class="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           <div>
-            <h1 class="font-display text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-tight text-ink hero-headline">
+            <h1 class="font-display text-4xl sm:text-5xl lg:text-[3.25rem] font-bold leading-tight text-white hero-headline">
               Property Management, Simplified for South African Landlords
             </h1>
-            <p class="mt-5 text-lg text-ink/70 max-w-xl leading-relaxed hero-sub">
+            <p class="mt-5 text-lg text-white/70 max-w-xl leading-relaxed hero-sub">
               Collect rent, manage tenants, handle maintenance, and grow your portfolio — all from one beautiful dashboard.
             </p>
             <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-4 hero-cta">
@@ -356,11 +450,11 @@
               <a href="index.html#auth-signin" class="btn-outline-light inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
                 Sign In
               </a>
-              <a href="#how-it-works" class="btn-outline inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
+              <a href="#how-it-works" class="btn-outline-light inline-flex items-center justify-center gap-2 text-base font-semibold px-8 py-4 rounded-full">
                 <span aria-hidden="true">▶</span> See How It Works
               </a>
             </div>
-            <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-x-6 gap-y-2 text-sm text-ink/75">
+            <div class="mt-8 flex flex-col sm:flex-row flex-wrap gap-x-6 gap-y-2 text-sm text-white/75">
               <span>✅ Free 14-day trial</span>
               <span>✅ No credit card required</span>
               <span>✅ Cancel anytime</span>
@@ -415,23 +509,23 @@
     <section class="bg-ink text-white py-10 md:py-12 reveal">
       <div class="max-w-6xl mx-auto px-4 sm:px-6">
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-6 text-center">
-          <div class="stats-bar-item reveal na-delay-1">
-            <p class="text-2xl md:text-3xl mb-1">🏘️</p>
+          <div class="stats-bar-item reveal na-delay-1 nq-d1">
+            <p class="text-gold mb-2 flex justify-center"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="28"></span></p>
             <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="2400" data-suffix="+">0</span></p>
             <p class="text-sm text-white/65 mt-1">Properties Managed</p>
           </div>
-          <div class="stats-bar-item reveal na-delay-2">
-            <p class="text-2xl md:text-3xl mb-1">👥</p>
+          <div class="stats-bar-item reveal na-delay-2 nq-d2">
+            <p class="text-gold mb-2 flex justify-center"><span class="nq-ico" data-nq-icon="users" data-nq-size="28"></span></p>
             <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="8100" data-suffix="+">0</span></p>
             <p class="text-sm text-white/65 mt-1">Tenants Onboarded</p>
           </div>
-          <div class="stats-bar-item reveal na-delay-3">
-            <p class="text-2xl md:text-3xl mb-1">💰</p>
+          <div class="stats-bar-item reveal na-delay-3 nq-d3">
+            <p class="text-gold mb-2 flex justify-center"><span class="nq-ico" data-nq-icon="banknote" data-nq-size="28"></span></p>
             <p class="font-display text-2xl md:text-3xl font-bold"><span data-count-to="42" data-prefix="R " data-suffix="M+">0</span></p>
             <p class="text-sm text-white/65 mt-1">Rent Collected</p>
           </div>
-          <div class="stats-bar-item reveal na-delay-4">
-            <p class="text-2xl md:text-3xl mb-1">⭐</p>
+          <div class="stats-bar-item reveal na-delay-4 nq-d4">
+            <p class="text-gold mb-2 flex justify-center"><span class="nq-ico" data-nq-icon="sparkles" data-nq-size="28"></span></p>
             <p class="font-display text-2xl md:text-3xl font-bold">4.9/5</p>
             <p class="text-sm text-white/65 mt-1">Landlord Rating</p>
           </div>
@@ -446,33 +540,33 @@
           Everything You Need to Run Your Rental Portfolio
         </h2>
         <div class="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-1">
-            <p class="text-3xl mb-3">🏠</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-1 nq-reveal nq-d1">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">Property Management</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Add and track all your properties in one place. Monitor occupancy, lease dates, and rental income at a glance.</p>
           </article>
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-2">
-            <p class="text-3xl mb-3">👥</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-2 nq-reveal nq-d2">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="users" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">Tenant Portal</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Give tenants their own self-service portal. They can view rent status, submit maintenance requests, and access documents.</p>
           </article>
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-3">
-            <p class="text-3xl mb-3">💳</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-3 nq-reveal nq-d3">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="credit-card" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">Rent Tracking</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Never miss a payment again. Track who has paid, who is overdue, and send WhatsApp reminders in one click.</p>
           </article>
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-4">
-            <p class="text-3xl mb-3">🔧</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-4 nq-reveal nq-d4">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="wrench" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">Maintenance Management</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Tenants submit requests directly through their portal. Track every job from open to resolved.</p>
           </article>
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-5">
-            <p class="text-3xl mb-3">🤖</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-5 nq-reveal nq-d5">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="sparkles" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">AI-Powered Tools</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Get AI rent price suggestions, tenant screening scores, and lease clause recommendations powered by Gemini.</p>
           </article>
-          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-6">
-            <p class="text-3xl mb-3">📊</p>
+          <article class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm hover:shadow-md transition-shadow feature-card reveal na-delay-6 nq-reveal nq-d6">
+            <p class="feature-icon text-gold mb-3"><span class="nq-ico" data-nq-icon="chart-column" data-nq-size="32"></span></p>
             <h3 class="font-bold text-lg text-ink">Financial Reports</h3>
             <p class="mt-2 text-ink/70 text-sm leading-relaxed">Generate income statements, expense reports, and tax summaries for your full portfolio in seconds.</p>
           </article>
@@ -485,25 +579,25 @@
       <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
         <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Up and Running in Minutes</h2>
         <div class="mt-14 steps-row flex flex-col md:flex-row md:items-start gap-0 md:gap-2">
-          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-1">
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-1 nq-reveal-left nq-d1">
             <div class="step-circle">1</div>
             <div class="step-line-v md:hidden"></div>
             <p class="mt-4 font-semibold text-ink">Create your account</p>
           </div>
           <div class="step-line step-line-h hidden md:block"></div>
-          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-2">
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-2 nq-reveal-left nq-d2">
             <div class="step-circle">2</div>
             <div class="step-line-v md:hidden"></div>
             <p class="mt-4 font-semibold text-ink">Add your properties</p>
           </div>
           <div class="step-line step-line-h hidden md:block"></div>
-          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-3">
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-3 nq-reveal-left nq-d3">
             <div class="step-circle">3</div>
             <div class="step-line-v md:hidden"></div>
             <p class="mt-4 font-semibold text-ink">Invite your tenants</p>
           </div>
           <div class="step-line step-line-h hidden md:block"></div>
-          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-4">
+          <div class="flex md:flex-col items-center md:items-center text-center flex-1 px-2 reveal-left na-delay-4 nq-reveal-left nq-d4">
             <div class="step-circle">4</div>
             <p class="mt-4 font-semibold text-ink">Manage everything from your dashboard</p>
           </div>
@@ -526,7 +620,7 @@
 
         <div class="mt-10 grid md:grid-cols-3 gap-6 lg:gap-8 items-stretch">
           <!-- Starter -->
-          <div class="pricing-card p-8 flex flex-col reveal na-delay-1">
+          <div class="pricing-card p-8 flex flex-col reveal na-delay-1 nq-reveal nq-d1">
             <h3 class="font-display text-2xl font-bold">Starter</h3>
             <p class="mt-2 text-ink/60 text-sm">Free</p>
             <p class="mt-4 font-display text-4xl font-bold text-ink">R0</p>
@@ -541,9 +635,9 @@
           </div>
 
           <!-- Pro -->
-          <div class="pricing-card popular p-8 flex flex-col md:-mt-2 md:mb-2 reveal na-delay-2">
+          <div class="pricing-card popular pricing-card-pro px-8 pb-8 pt-12 flex flex-col md:-mt-2 md:mb-2 reveal na-delay-2 nq-reveal nq-d2">
             <span class="popular-badge">⭐ Most Popular</span>
-            <h3 class="font-display text-2xl font-bold mt-2">Pro</h3>
+            <h3 class="font-display text-2xl font-bold">Pro</h3>
             <p class="mt-2 text-ink/60 text-sm">
               <span class="price-monthly">R299<span class="text-base font-normal">/month</span></span>
               <span class="price-annual">R239<span class="text-base font-normal">/month</span> <span class="save-badge">Save 20%</span></span>
@@ -562,7 +656,7 @@
           </div>
 
           <!-- Enterprise -->
-          <div class="pricing-card p-8 flex flex-col reveal na-delay-3">
+          <div class="pricing-card p-8 flex flex-col reveal na-delay-3 nq-reveal nq-d3">
             <h3 class="font-display text-2xl font-bold">Enterprise</h3>
             <p class="mt-2 text-ink/60 text-sm">
               <span class="price-monthly">R799<span class="text-base font-normal">/month</span></span>
@@ -639,8 +733,8 @@
     <section class="py-16 md:py-24 bg-cream/40">
       <div class="max-w-6xl mx-auto px-4 sm:px-6 reveal">
         <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Loved by Landlords Across South Africa</h2>
-        <div class="mt-12 grid md:grid-cols-3 gap-6">
-          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-1">
+        <div class="mt-12 grid md:grid-cols-3 gap-6" id="nestiqProductReviewGrid">
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-1 nq-reveal nq-d1">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">TM</div>
               <div class="star text-sm" aria-label="5 stars">★★★★★</div>
@@ -648,7 +742,7 @@
             <p class="mt-4 text-ink/75 text-sm leading-relaxed">"NestIQ completely transformed how I manage my 6 properties. The tenant portal alone saves me hours every month."</p>
             <footer class="mt-4 font-semibold text-sm text-ink">Thabo M., Johannesburg</footer>
           </blockquote>
-          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-2">
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-2 nq-reveal nq-d2">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">SK</div>
               <div class="star text-sm" aria-label="5 stars">★★★★★</div>
@@ -656,7 +750,7 @@
             <p class="mt-4 text-ink/75 text-sm leading-relaxed">"The WhatsApp rent reminders are a game changer. My overdue payments dropped by 80% in the first month."</p>
             <footer class="mt-4 font-semibold text-sm text-ink">Sarah K., Cape Town</footer>
           </blockquote>
-          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-3">
+          <blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal na-delay-3 nq-reveal nq-d3">
             <div class="flex items-center gap-3">
               <div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">PV</div>
               <div class="star text-sm" aria-label="5 stars">★★★★★</div>
@@ -673,27 +767,27 @@
       <div class="max-w-3xl mx-auto px-4 sm:px-6 reveal">
         <h2 class="font-display text-3xl md:text-4xl font-bold text-center text-ink">Frequently Asked Questions</h2>
         <div class="mt-10" id="faqList">
-          <div class="faq-item reveal na-delay-1">
+          <div class="faq-item reveal na-delay-1 nq-reveal nq-d1">
             <button type="button" class="faq-q" aria-expanded="false">Is NestIQ really free to start?<span class="faq-icon">+</span></button>
             <div class="faq-a">Yes. The Starter plan is free forever for up to 2 properties and 5 tenants. You can upgrade to Pro anytime when your portfolio grows — no credit card required to sign up.</div>
           </div>
-          <div class="faq-item reveal na-delay-2">
+          <div class="faq-item reveal na-delay-2 nq-reveal nq-d2">
             <button type="button" class="faq-q" aria-expanded="false">Do my tenants need to download an app?<span class="faq-icon">+</span></button>
-            <div class="faq-a">No. The tenant portal works in any mobile or desktop browser. Tenants sign in with an invitation code or email link — nothing to install from an app store.</div>
+            <div class="faq-a">No. The tenant portal works in any mobile or desktop browser. Applicants create a free NestIQ account and apply from Browse listings — nothing to install from an app store.</div>
           </div>
-          <div class="faq-item reveal na-delay-3">
-            <button type="button" class="faq-q" aria-expanded="false">Can I import my existing tenant data?<span class="faq-icon">+</span></button>
-            <div class="faq-a">You can add tenants manually or bulk-import from spreadsheets. Our team can help Enterprise customers migrate from other tools on request.</div>
+          <div class="faq-item reveal na-delay-3 nq-reveal nq-d3">
+            <button type="button" class="faq-q" aria-expanded="false">How do tenants join NestIQ?<span class="faq-icon">+</span></button>
+            <div class="faq-a">Prospective tenants apply from Browse listings. After you approve, their profile appears under Tenants. Caretakers and contractors still join with a staff invitation code.</div>
           </div>
-          <div class="faq-item reveal na-delay-4">
+          <div class="faq-item reveal na-delay-4 nq-reveal nq-d4">
             <button type="button" class="faq-q" aria-expanded="false">Is my data safe and private?<span class="faq-icon">+</span></button>
             <div class="faq-a">Your data is stored securely with industry-standard encryption. Only you and your invited tenants can access their respective information. We never sell your data.</div>
           </div>
-          <div class="faq-item reveal na-delay-5">
+          <div class="faq-item reveal na-delay-5 nq-reveal nq-d5">
             <button type="button" class="faq-q" aria-expanded="false">What payment methods do you accept?<span class="faq-icon">+</span></button>
             <div class="faq-a">We accept card payments and EFT for Pro and Enterprise subscriptions. Rent collection from tenants is tracked in NestIQ; payments are made directly between tenant and landlord as you arrange.</div>
           </div>
-          <div class="faq-item reveal na-delay-6">
+          <div class="faq-item reveal na-delay-6 nq-reveal nq-d6">
             <button type="button" class="faq-q" aria-expanded="false">Can I cancel my subscription anytime?<span class="faq-icon">+</span></button>
             <div class="faq-a">Absolutely. There are no long-term contracts. Cancel from your account settings and you will retain access until the end of your billing period.</div>
           </div>
@@ -719,14 +813,8 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6">
       <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-10">
         <div>
-          <p class="font-display text-2xl font-bold text-gold flex items-center gap-2"><span>🏠</span> NestIQ</p>
+          <p class="font-display text-2xl font-bold text-gold flex items-center gap-2"><span class="nq-ico" data-nq-icon="house" data-nq-size="22"></span> NestIQ</p>
           <p class="mt-3 text-sm text-white/60">Property management, simplified.</p>
-          <div class="flex gap-3 mt-5" aria-label="Social links">
-            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="Facebook">f</a>
-            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="Instagram">ig</a>
-            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="LinkedIn">in</a>
-            <a href="#" class="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-sm hover:bg-gold transition-colors" title="X">𝕏</a>
-          </div>
         </div>
         <div>
           <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Product</p>
@@ -740,19 +828,17 @@
         <div>
           <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Company</p>
           <ul class="space-y-2 text-sm text-white/70">
-            <li><a href="#" class="hover:text-gold">About</a></li>
-            <li><a href="#" class="hover:text-gold">Blog</a></li>
-            <li><a href="#" class="hover:text-gold">Careers</a></li>
-            <li><a href="#" class="hover:text-gold">Press</a></li>
+            <li><a href="landing.html" class="hover:text-gold">About</a></li>
+            <li><a href="mailto:hello@nestiq.co.za" class="hover:text-gold">Contact</a></li>
           </ul>
         </div>
         <div>
           <p class="font-semibold text-sm uppercase tracking-wide text-white/40 mb-4">Support</p>
           <ul class="space-y-2 text-sm text-white/70">
-            <li><a href="#" class="hover:text-gold">Help Centre</a></li>
+            <li><a href="support.html" class="hover:text-gold">Help Centre</a></li>
             <li><a href="mailto:hello@nestiq.co.za" class="hover:text-gold">Contact Us</a></li>
-            <li><a href="#" class="hover:text-gold">Privacy Policy</a></li>
-            <li><a href="#" class="hover:text-gold">Terms of Service</a></li>
+            <li><a href="legal.html#privacy" class="hover:text-gold">Privacy Policy</a></li>
+            <li><a href="legal.html#terms" class="hover:text-gold">Terms of Service</a></li>
           </ul>
         </div>
       </div>
@@ -762,7 +848,6 @@
     </div>
   </footer>
 
-  <script src="./js/animations.js"></script>
   <script src="./js/auth.js?v=demo-off1"></script>
   <script>
     (function () {
@@ -781,7 +866,8 @@
         var h = a.getAttribute('href') || '';
         try {
           if (/auth-signup|flow=signup|#signup/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'signup');
-          if (/auth-signin|flow=signin|flow=login|#signin/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'signin');
+          else if (/auth-signin|flow=signin|flow=login|#signin/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'signin');
+          else if (/#welcome|#choose|flow=choose/i.test(h)) sessionStorage.setItem('nestiq-auth-flow', 'choose');
         } catch (_e) {}
       }, true);
 
@@ -837,14 +923,14 @@
           var io = new IntersectionObserver(function (entries) {
             entries.forEach(function (e) {
               if (e.isIntersecting) {
-                e.target.classList.add('visible');
+                e.target.classList.add('visible', 'nq-revealed');
                 io.unobserve(e.target);
               }
             });
           }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
           revealEls.forEach(function (el) { io.observe(el); });
         } else {
-          revealEls.forEach(function (el) { el.classList.add('visible'); });
+          revealEls.forEach(function (el) { el.classList.add('visible', 'nq-revealed'); });
         }
       }
 
@@ -869,6 +955,97 @@
       window.addEventListener('scroll', setActiveNav, { passive: true });
       setActiveNav();
     })();
+  </script>
+  <script src="./js/firebase-config.js?v=product-review1"></script>
+  <script src="./js/animations.js"></script>
+  <script>
+  (function() {
+    const hero = document.querySelector('.hero-section');
+    const mockup = document.querySelector('.hero-mockup');
+    if (!hero || !mockup) return;
+    let ticking = false;
+    window.addEventListener('scroll', () => {
+      if (ticking) return;
+      requestAnimationFrame(() => {
+        const scrolled = window.scrollY;
+        if (scrolled < window.innerHeight) {
+          mockup.style.transform = `translateY(${scrolled * 0.12}px)`;
+          hero.style.backgroundPositionY = `${scrolled * 0.4}px`;
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }, { passive: true });
+  })();
+  </script>
+  <script>
+  (function(){
+    var grid=document.getElementById('nestiqProductReviewGrid');
+    if(!grid) return;
+    var projectId=(window.NESTIQ_FIREBASE_CONFIG&&window.NESTIQ_FIREBASE_CONFIG.projectId)||'nestiq-pro';
+    function esc(s){
+      return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+    }
+    function fieldVal(fields, key){
+      var f=fields&&fields[key];
+      if(!f) return '';
+      if(f.stringValue!=null) return f.stringValue;
+      if(f.integerValue!=null) return f.integerValue;
+      if(f.doubleValue!=null) return f.doubleValue;
+      if(f.timestampValue) return f.timestampValue;
+      if(f.booleanValue!=null) return f.booleanValue;
+      return '';
+    }
+    function starsHtml(rating){
+      var n=Math.max(1, Math.min(5, parseInt(rating,10)||0));
+      var out='';
+      for(var i=1;i<=5;i++){
+        out+=i<=n?'<span class="star">★</span>':'<span class="star-empty">★</span>';
+      }
+      return out;
+    }
+    function cardHtml(r){
+      var body=String(r.body||'').trim();
+      if(body.charAt(0)!=='"') body='"'+body+'"';
+      var who=esc(r.displayName||'Landlord')+(r.city?', '+esc(r.city):'');
+      return '<blockquote class="bg-white rounded-2xl p-6 border border-black/5 shadow-sm reveal nq-reveal">'+
+        '<div class="flex items-center gap-3">'+
+          '<div class="w-12 h-12 rounded-full bg-gold/20 text-gold font-bold flex items-center justify-center">'+esc(r.initials||'LL')+'</div>'+
+          '<div class="star text-sm" aria-label="'+esc(String(r.rating||5))+' stars">'+starsHtml(r.rating)+'</div>'+
+        '</div>'+
+        '<p class="mt-4 text-ink/75 text-sm leading-relaxed">'+esc(body)+'</p>'+
+        '<footer class="mt-4 font-semibold text-sm text-ink">'+who+'</footer>'+
+      '</blockquote>';
+    }
+    var apiKey=(window.NESTIQ_FIREBASE_CONFIG&&window.NESTIQ_FIREBASE_CONFIG.apiKey)||'';
+    var listUrl='https://firestore.googleapis.com/v1/projects/'+encodeURIComponent(projectId)+'/databases/(default)/documents/productReviews?pageSize=50';
+    if(apiKey) listUrl+='&key='+encodeURIComponent(apiKey);
+    fetch(listUrl)
+      .then(function(res){ return res.ok?res.json():Promise.reject(); })
+      .then(function(data){
+        var docs=Array.isArray(data.documents)?data.documents:[];
+        var rows=docs.map(function(doc){
+          var f=doc.fields||{};
+          return {
+            displayName:fieldVal(f,'displayName'),
+            initials:String(fieldVal(f,'initials')||'LL').slice(0,3).toUpperCase(),
+            city:fieldVal(f,'city'),
+            rating:Number(fieldVal(f,'rating')||0),
+            body:fieldVal(f,'body'),
+            published:fieldVal(f,'published')!==false,
+            createdAt:fieldVal(f,'createdAt')
+          };
+        }).filter(function(r){ return r.published && String(r.body||'').trim().length>=20; })
+          .sort(function(a,b){ return String(b.createdAt||'').localeCompare(String(a.createdAt||'')); })
+          .slice(0,18);
+        if(!rows.length) return;
+        var wrap=document.createElement('div');
+        wrap.innerHTML=rows.map(cardHtml).join('');
+        while(wrap.firstChild) grid.appendChild(wrap.firstChild);
+        if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
+      })
+      .catch(function(){});
+  })();
   </script>
 </body>
 </html>

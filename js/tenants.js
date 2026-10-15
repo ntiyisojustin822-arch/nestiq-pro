@@ -1,11 +1,43 @@
 function computeTenantPaymentStatus(tenant){
   if(!tenant||typeof tenant!=='object') return 'vacant';
   if(tenant.status==='vacant') return 'vacant';
+  if(typeof window.nestiqCurrentRentObligation==='function'){
+    const o=window.nestiqCurrentRentObligation(tenant);
+    if(o.status==='vacant') return 'vacant';
+    if(o.status==='pending-lease'||o.status==='upcoming') return 'pending-lease';
+    if(o.status==='paid') return 'paid';
+    if(o.status==='overdue') return 'overdue';
+    if(o.status==='due') return 'due';
+  }
+  const raw=tenant.leaseStart;
+  if(raw){
+    try{
+      const iso=typeof raw==='string'&&/^\d{4}-\d{2}-\d{2}/.test(raw)?raw.slice(0,10)+'T12:00:00':raw;
+      const start=raw.toDate?raw.toDate():(raw.seconds?new Date(raw.seconds*1000):new Date(iso));
+      if(String(start)!=='Invalid Date'){
+        start.setHours(0,0,0,0);
+        const today=new Date(); today.setHours(0,0,0,0);
+        if(start.getTime()>today.getTime()) return 'pending-lease';
+      }
+    }catch(_e){}
+  }
+  if(typeof nestiqTenantLeaseStartsInFuture==='function' && nestiqTenantLeaseStartsInFuture(tenant)){
+    return 'pending-lease';
+  }
+  const ls=String(tenant.leaseStatus||'').toLowerCase();
+  if(ls && ls!=='active' && ls!=='expired') return tenant.status==='vacant'?'vacant':'pending-lease';
   const now=new Date();
   const ym=now.toISOString().slice(0,7);
   const dueDay=Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1)));
   const dueDate=new Date(now.getFullYear(), now.getMonth(), dueDay);
-  const hasPaid=(tenant.payments||[]).some(p=>String(p.date||'').slice(0,7)===ym) || (paymentsData||[]).some(p=>String(p.tenantId)===String(tenant.id) && String(p.date||'').slice(0,7)===ym);
+  const hasPaid=(tenant.payments||[]).some(p=>{
+    if(typeof window.nestiqPaymentCountsTowardMonthlyRent==='function' && !window.nestiqPaymentCountsTowardMonthlyRent(p)) return false;
+    return String(p.date||'').slice(0,7)===ym;
+  }) || (paymentsData||[]).some(p=>{
+    if(String(p.tenantId)!==String(tenant.id)) return false;
+    if(typeof window.nestiqPaymentCountsTowardMonthlyRent==='function' && !window.nestiqPaymentCountsTowardMonthlyRent(p)) return false;
+    return String(p.date||'').slice(0,7)===ym;
+  });
   if(hasPaid) return 'paid';
   return now>dueDate?'overdue':'due';
 }
@@ -40,7 +72,7 @@ function toggleTenantWaMenu(id){
 function ensureTenantPhoneOrEdit(tenant){
   const formatted=formatWhatsAppNumber(tenant?.phone||'');
   if(formatted) return formatted;
-  showNotif('No phone number on record for this tenant','warning');
+  nestiqShowNotif('No phone number on record for this tenant','warning');
   openTenantPhoneEditModal(tenant.id);
   return '';
 }
@@ -54,10 +86,10 @@ function openTenantPhoneEditModal(tenantId){
     <div class="form-group"><label>Phone Number</label><input id="edit_tenant_phone" class="form-input" value="${t.phone||''}" placeholder="071 234 5678"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn-primary btn-sm" onclick="saveTenantPhone(${tenantId})">Save</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function saveTenantPhone(tenantId){
@@ -65,9 +97,9 @@ function saveTenantPhone(tenantId){
   if(!t) return;
   t.phone=document.getElementById('edit_tenant_phone')?.value?.trim()||'';
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   renderTenants();
-  showNotif('Tenant phone updated','success');
+  nestiqShowNotif('Tenant phone updated','success');
 }
 
 function buildTenantWhatsAppMessage(tenant, type){
@@ -98,21 +130,21 @@ function openTenantCustomWhatsAppModal(tenantId){
     <div class="form-group"><label>Message</label><textarea id="wa_custom_msg" class="form-input form-textarea" placeholder="Type your message..."></textarea></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn-whatsapp btn-sm" onclick="sendTenantCustomWhatsApp(${tenantId})">Send via WhatsApp</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function sendTenantCustomWhatsApp(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
   if(!t) return;
   const msg=document.getElementById('wa_custom_msg')?.value?.trim()||'';
-  if(!msg){showNotif('Type a custom message','warning');return;}
+  if(!msg){nestiqShowNotif('Type a custom message','warning');return;}
   const phone=ensureTenantPhoneOrEdit(t);
   if(!phone) return;
   openWhatsApp(t.phone, msg, {tenantId:t.id,tenantName:t.name,type:'custom'});
-  closeModal();
+  nestiqCloseModalAnimated();
 }
 
 function openTenantDirectWhatsAppChat(tenantId){
@@ -129,116 +161,71 @@ function renderTenants(){
   if(!grid) return;
   const list=Array.isArray(tenantsData)?tenantsData.filter(t=>t&&typeof t==='object'&&t.id!=null):[];
   if(window.nestiqTenantsLoading){
-    grid.innerHTML=Array.from({length:3},()=>`<div class="nestiq-skel-card" style="
-  background: var(--card-bg);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  height: 200px;
-  animation: nestiqShimmer 1.5s infinite;
-"></div>`).join('');
+    nestiqShowSkeleton(grid, 'row', 5);
     return;
   }
   if(!list.length){
-    grid.innerHTML=`
-  <div style="
-    grid-column: 1/-1;
-    text-align: center;
-    padding: 80px 40px;
-    color: var(--muted);
-  ">
-    <div style="font-size: 3rem; margin-bottom: 16px">
-      👥
-    </div>
-    <div style="
-      font-family: 'Playfair Display', serif;
-      font-size: 1.4rem;
-      font-weight: 600;
-      color: var(--ink);
-      margin-bottom: 8px;
-    ">
-      No tenants yet
-    </div>
-    <div style="
-      font-size: 0.9rem;
-      margin-bottom: 28px;
-      max-width: 320px;
-      margin-left: auto;
-      margin-right: auto;
-      line-height: 1.6;
-    ">
-      Add your tenants to track rent payments,
-      leases and maintenance requests
-    </div>
-    <button
-      class="btn-primary"
-      onclick="openModal('addTenant')"
-    >
-      + Add Your First Tenant
-    </button>
-  </div>`;
+    nestiqShowEmptyState(grid, { icon:'👥', title:'No tenants yet', message:'Profiles appear here after you approve an application. Applicants apply from Browse listings.', action:{ label:'Open Applications', fn:'nestiqGoToApplications' } });
     return;
   }
-  const wa=typeof whatsappIconSvg==='function'?whatsappIconSvg():'';
-  const statusMap={paid:'badge-green',vacant:'badge-red',due:'badge-amber','due-soon':'badge-amber',overdue:'badge-red'};
-  const labelMap={paid:'✓ Paid',vacant:'Vacant',due:'Due soon','due-soon':'Due soon',overdue:'Overdue'};
-  const msgList=(Array.isArray(messages)?messages:[]).filter(m=>m&&typeof m==='object');
+  const statusMap={paid:'badge-green',vacant:'badge-red',due:'badge-amber','due-soon':'badge-amber',overdue:'badge-red','pending-lease':'badge-gold'};
+  const labelMap={paid:'✓ Paid',vacant:'Vacant',due:'Due soon','due-soon':'Due soon',overdue:'Overdue','pending-lease':'Lease pending'};
+  const msgList=(Array.isArray(window.messages)?window.messages:(Array.isArray(messages)?messages:[])).filter(m=>m&&typeof m==='object');
   grid.innerHTML=list.map(t=>{
     const rent=Number(t.rent||0);
     const st=(t.status in labelMap)?t.status:'vacant';
-    const unread=msgList.filter(m=>m.tenantId===t.id&&m.fromRole==='tenant'&&!m.read).length;
+    const unread=typeof nestiqLandlordUnreadForTenant==='function'?nestiqLandlordUnreadForTenant(t.id):msgList.filter(m=>String(m.tenantId)===String(t.id)&&m.fromRole==='tenant'&&!m.read&&!m.deleted).length;
     const avatarHtml=typeof nestiqTenantAvatarHtml==='function'?nestiqTenantAvatarHtml(t):`<div class="tenant-avatar">${String(t.avatar||'👤')}</div>`;
     const name=String(t.name||'Tenant');
     const unit=String(t.unit||'—');
     const prop=String(t.property||'—');
     const leaseLbl=String(t.lease||t.leaseEnd||'—');
+    const tidArg=typeof nestiqHtmlJsArg==='function'?nestiqHtmlJsArg(t.id):JSON.stringify(t.id);
     return `
-    <div class="tenant-card" onclick="viewTenant(${nestiqHtmlJsArg(t.id)})">
-      <button type="button" class="card-edit-pencil" title="Edit" aria-label="Edit" onclick="event.stopPropagation();openEditTenantModal(${nestiqHtmlJsArg(t.id)})">✏</button>
-      ${avatarHtml}
+    <div class="tenant-card${unread?' has-unread':''}" onclick="viewTenant(${nestiqHtmlJsArg(t.id)})">
+      <button type="button" class="card-edit-pencil" title="Edit" aria-label="Edit" data-nq-tip="Edit" onclick="event.stopPropagation();openEditTenantModal(${nestiqHtmlJsArg(t.id)})">✏</button>
+      <div class="tenant-avatar-wrap">${avatarHtml}${unread?`<span class="nestiq-unread-dot" title="${unread} unread message${unread===1?'':'s'}"></span>`:''}</div>
       <div class="tenant-name">${name}</div>
       <div class="tenant-unit">${unit} · ${prop}</div>
       <div class="tenant-meta">
         <div class="tenant-meta-item"><div class="tenant-meta-val">R${rent.toLocaleString()}</div><div class="tenant-meta-lbl">Monthly Rent</div></div>
         <div class="tenant-meta-item"><div class="tenant-meta-val" style="font-size:0.75rem">${leaseLbl}</div><div class="tenant-meta-lbl">Lease End</div></div>
       </div>
-      <div class="tenant-tag" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <div class="tenant-tag">
         <span class="badge ${statusMap[st]||statusMap.vacant}">${labelMap[st]||labelMap.vacant}</span>
-        ${unread?`<span class="badge badge-red">${unread} unread msg</span>`:''}
-        ${(st==='overdue'||st==='due'||st==='due-soon')?`<button class="btn-gold btn-sm" onclick="event.stopPropagation();nestiqOpenRecordPaymentModal(${t.id})">💳 Record Payment</button>`:''}
-        ${(!t.portalUid)?`<button class="btn-gold btn-sm" onclick="event.stopPropagation();nestiqInviteTenantToPortal(${t.id})">Send portal invite</button>`:''}
-        <button class="btn-primary btn-sm" onclick="event.stopPropagation();sendTenantReminderEmail(${t.id})">Send Reminder</button>
-        <div class="wa-dropdown" id="emDrop_${t.id}" onclick="event.stopPropagation()">
-          <button class="btn-outline btn-sm" onclick="toggleTenantEmailMenu(${t.id})">📧 Email</button>
-          <div class="wa-menu">
-            <button class="wa-item" onclick="sendTenantEmailAction(${t.id},'rentReminder')">Send Rent Reminder</button>
-            ${t.status==='overdue'?`<button class="wa-item" onclick="sendTenantEmailAction(${t.id},'overdueNotice')">Send Overdue Notice</button>`:''}
-            ${getTenantCurrentMonthPayment(t)?`<button class="wa-item" onclick="sendTenantEmailAction(${t.id},'paymentReceipt')">Send Payment Receipt</button>`:''}
-            ${getTenantLeaseDaysRemaining(t)<90?`<button class="wa-item" onclick="sendTenantEmailAction(${t.id},'leaseExpiry')">Send Lease Expiry Warning</button>`:''}
-            <button class="wa-item" onclick="sendTenantEmailAction(${t.id},'welcomeTenant')">Send Welcome Email</button>
-            <button class="wa-item" onclick="openTenantCustomEmailModal(${t.id})">Send Custom Message</button>
-          </div>
-        </div>
-        <button class="btn-outline btn-sm" onclick="event.stopPropagation();openLogCommunicationModal(${t.id})">Log communication</button>
-        <button class="btn-outline btn-sm" onclick="event.stopPropagation();openCpiForTenant(${t.id})">Calculate Increase</button>
-        <button class="btn-outline btn-sm" onclick="event.stopPropagation();openTenantQrModal(${t.id})">🔳 QR</button>
-        <div class="wa-dropdown" id="waDrop_${t.id}" onclick="event.stopPropagation()">
-          <button class="btn-whatsapp btn-sm" onclick="toggleTenantWaMenu(${t.id})">${wa} WhatsApp</button>
-          <div class="wa-menu">
-            <button class="wa-item" onclick="sendTenantWhatsAppTemplate(${t.id},'rentReminder')">Send Rent Reminder</button>
-            ${t.status==='overdue'?`<button class="wa-item" onclick="sendTenantWhatsAppTemplate(${t.id},'overdueNotice')">Send Overdue Notice</button>`:''}
-            ${getTenantCurrentMonthPayment(t)?`<button class="wa-item" onclick="sendTenantWhatsAppTemplate(${t.id},'paymentConfirmation')">Send Payment Confirmation</button>`:''}
-            ${getTenantLeaseDaysRemaining(t)<90?`<button class="wa-item" onclick="sendTenantWhatsAppTemplate(${t.id},'leaseExpiry')">Send Lease Expiry Warning</button>`:''}
-            <button class="wa-item" onclick="sendTenantWhatsAppTemplate(${t.id},'welcomeMessage')">Send Welcome Message</button>
-            <button class="wa-item" onclick="openTenantCustomWhatsAppModal(${t.id})">Custom Message</button>
-          </div>
-        </div>
+        ${unread?`<button type="button" class="badge badge-gold tenant-unread-chip" onclick="event.stopPropagation();openLandlordTenantMessages(${tidArg})">Caretaker thread</button>`:''}
+        <span class="tenant-card-hint">Open for details</span>
       </div>
     </div>`;
   }).join('');
   try{ window.nestiqRenderInvitationsTable?.(); }catch(_e){}
-  if(typeof nestiqStaggerChildren==='function') nestiqStaggerChildren(grid, 50, '.tenant-card');
+  try{ nestiqRenderTenantsUnreadBanner?.(); }catch(_e){}
+  try{ window.updateMessageBadge?.(); }catch(_e){}
+  if(typeof nestiqStaggerChildren==='function') nestiqStaggerChildren(document.getElementById('tenantsList') || document.getElementById('tenantsGrid') || grid, 50);
   if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
+  if(typeof nestiqInitLazyImages==='function') nestiqInitLazyImages();
 }
+
+function nestiqRenderTenantsUnreadBanner(){
+  const grid=document.getElementById('tenantsGrid');
+  if(!grid||!grid.parentNode) return;
+  let bar=document.getElementById('tenantsUnreadBar');
+  const unread=typeof nestiqLandlordUnreadMessages==='function'?nestiqLandlordUnreadMessages():[];
+  if(!unread.length){
+    if(bar) bar.remove();
+    return;
+  }
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='tenantsUnreadBar';
+    bar.className='nestiq-tenants-unread-bar';
+    grid.parentNode.insertBefore(bar, grid);
+  }
+  const n=unread.length;
+  const tenants=new Set(unread.map(m=>String(m.tenantId||'')).filter(Boolean));
+  bar.innerHTML=`<strong>${n} new ${n===1?'message':'messages'}</strong> in caretaker threads for ${tenants.size} ${tenants.size===1?'tenant':'tenants'}. You can view them — only the caretaker can reply.`;
+}
+window.nestiqRenderTenantsUnreadBanner=nestiqRenderTenantsUnreadBanner;
 
 function nestiqOpenRecordPaymentModal(tenantId){
   syncTenantStatuses();
@@ -264,20 +251,27 @@ function nestiqOpenRecordPaymentModal(tenantId){
     </label>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
       <button type="button" class="btn-gold" style="width:100%;justify-content:center" onclick="nestiqSavePaymentFromModal(${Number(tenantId)})">Save Payment</button>
-      <button type="button" class="btn-outline" style="width:100%;justify-content:center" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline" style="width:100%;justify-content:center" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
-function nestiqSavePaymentFromModal(tenantId){
-  const amount=Number(document.getElementById('nestiqPayAmt')?.value||0);
-  const date=document.getElementById('nestiqPayDate')?.value?.trim()||'';
-  const method=document.getElementById('nestiqPayMethod')?.value||'EFT';
-  const reference=document.getElementById('nestiqPayRef')?.value?.trim()||'';
-  const notes=document.getElementById('nestiqPayNotes')?.value?.trim()||'';
-  const genReceipt=Boolean(document.getElementById('nestiqPayReceipt')?.checked);
-  nestiqSavePayment(tenantId,{amount,date,method,reference,notes,generateReceipt:genReceipt});
+async function nestiqSavePaymentFromModal(tenantId){
+  const btn=nestiqBtnFromEvent?.()||document.querySelector('#modalOverlay .btn-gold');
+  nestiqSetBtnLoading?.(btn,true,'Saving...');
+  try{
+    const amount=Number(document.getElementById('nestiqPayAmt')?.value||0);
+    const date=document.getElementById('nestiqPayDate')?.value?.trim()||'';
+    const method=document.getElementById('nestiqPayMethod')?.value||'EFT';
+    const reference=document.getElementById('nestiqPayRef')?.value?.trim()||'';
+    const notes=document.getElementById('nestiqPayNotes')?.value?.trim()||'';
+    const genReceipt=Boolean(document.getElementById('nestiqPayReceipt')?.checked);
+    const ok=await nestiqSavePayment(tenantId,{amount,date,method,reference,notes,generateReceipt:genReceipt});
+    if(ok) nestiqConfetti?.({ count: 50, spread: 45, origin: { y: 0.8 } });
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+  }
 }
 
 async function nestiqSavePayment(tenantId, paymentData){
@@ -481,10 +475,10 @@ function nestiqOpenBulkRecordPaymentsModal(){
     <div id="bulkPayProgress" style="font-size:0.86rem;color:var(--muted);margin-top:10px;min-height:20px"></div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px">
       <button type="button" class="btn-gold" style="flex:1;justify-content:center" onclick="nestiqBulkRecordPaymentsRun()">Record All Selected Payments</button>
-      <button type="button" class="btn-outline" style="flex:1;justify-content:center" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline" style="flex:1;justify-content:center" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 async function nestiqBulkRecordPaymentsRun(){
@@ -503,7 +497,7 @@ async function nestiqBulkRecordPaymentsRun(){
     if(success) ok++;
   }
   if(progress) progress.textContent=`✅ ${ok} payment${ok===1?'':'s'} recorded successfully`;
-  setTimeout(()=>{ try{ closeModal(); }catch(_e){} }, 700);
+  setTimeout(()=>{ try{ nestiqCloseModalAnimated(); }catch(_e){} }, 700);
 }
 
 window.nestiqOpenRecordPaymentModal=nestiqOpenRecordPaymentModal;
@@ -522,6 +516,8 @@ function viewTenant(id){
   syncTenantStatuses();
   const t=tenantsData.find(x=>String(x.id)===String(id));
   if(!t) return;
+  window.__nestiqViewingTenantId=id;
+  const tidArg=typeof nestiqHtmlJsArg==='function'?nestiqHtmlJsArg(t.id):JSON.stringify(String(t.id)).replace(/"/g,'&quot;');
   const wa=typeof whatsappIconSvg==='function'?whatsappIconSvg():'';
   const rentDisp=Number(t.rent||0).toLocaleString();
   const history=(rentIncreases||[]).filter(r=>r&&String(r.tenantId)===String(t.id)).sort((a,b)=>String(b.appliedDate||'').localeCompare(String(a.appliedDate||'')));
@@ -532,11 +528,10 @@ function viewTenant(id){
     <h2 class="modal-title" style="margin-bottom:4px;display:flex;align-items:center;gap:4px">${titleAv}<span>${String(t.name||'Tenant').replace(/</g,'&lt;')}</span></h2>
     <p class="modal-sub" style="margin-bottom:0">${t.unit||'—'} · ${t.property||'—'}</p>
       </div>
-      <button type="button" class="btn-outline btn-sm" onclick="openLogCommunicationModal(${t.id})">Log communication</button>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
-      <button type="button" class="btn-outline btn-sm nest-vt-tab comm-tab-active" data-tab="ov" data-tid="${t.id}" onclick="nestiqViewTenantSwitchTab(${t.id},'ov')">Overview</button>
-      <button type="button" class="btn-outline btn-sm nest-vt-tab" data-tab="com" data-tid="${t.id}" onclick="nestiqViewTenantSwitchTab(${t.id},'com')">Communication history</button>
+      <button type="button" class="btn-outline btn-sm nest-vt-tab comm-tab-active" data-tab="ov" data-tid="${String(t.id).replace(/"/g,'&quot;')}" onclick="nestiqViewTenantSwitchTab(${tidArg},'ov')">Overview</button>
+      <button type="button" class="btn-outline btn-sm nest-vt-tab" data-tab="com" data-tid="${String(t.id).replace(/"/g,'&quot;')}" onclick="nestiqViewTenantSwitchTab(${tidArg},'com')">Communication history</button>
     </div>
     <div id="vtenant_ov_${t.id}">
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
@@ -551,45 +546,36 @@ function viewTenant(id){
       <div style="font-weight:700;margin-bottom:8px">Email</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;margin-bottom:8px">
         <span>✉️ ${t.email||'No email saved'}</span>
-        <button class="btn-outline btn-sm" onclick="navigator.clipboard?.writeText('${t.email||''}');showNotif('Email copied','success')">Copy</button>
+        <button class="btn-outline btn-sm" onclick="navigator.clipboard?.writeText('${t.email||''}');nestiqShowNotif('Email copied','success')">Copy</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${t.id},'rentReminder')">Rent Reminder</button>
-        ${t.status==='overdue'?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${t.id},'overdueNotice')">Overdue Notice</button>`:''}
-        ${getTenantCurrentMonthPayment(t)?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${t.id},'paymentReceipt')">Payment Receipt</button>`:''}
-        ${getTenantLeaseDaysRemaining(t)<90?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${t.id},'leaseExpiry')">Lease Expiry</button>`:''}
-        <button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${t.id},'welcomeTenant')">Welcome Email</button>
-        <button class="btn-outline btn-sm" onclick="openTenantCustomEmailModal(${t.id})">Custom Message</button>
+        <button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${tidArg},'rentReminder')">Rent Reminder</button>
+        ${t.status==='overdue'?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${tidArg},'overdueNotice')">Overdue Notice</button>`:''}
+        ${getTenantCurrentMonthPayment(t)?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${tidArg},'paymentReceipt')">Payment Receipt</button>`:''}
+        ${getTenantLeaseDaysRemaining(t)<90?`<button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${tidArg},'leaseExpiry')">Lease Expiry</button>`:''}
+        <button class="btn-outline btn-sm" onclick="sendTenantEmailAction(${tidArg},'welcomeTenant')">Welcome Email</button>
+        <button class="btn-outline btn-sm" onclick="openTenantCustomEmailModal(${tidArg})">Custom Message</button>
       </div>
     </div>
     <div style="margin-top:14px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--paper)">
       <div style="font-weight:700;margin-bottom:8px">WhatsApp</div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:0.82rem;margin-bottom:8px">
         <span>📱 ${t.phone||'No phone saved'}</span>
-        <button class="btn-outline btn-sm" onclick="navigator.clipboard?.writeText('${t.phone||''}');showNotif('Phone copied','success')">Copy</button>
-        <button class="btn-whatsapp btn-sm" onclick="openTenantDirectWhatsAppChat(${t.id})">${wa} Open WhatsApp Chat</button>
+        <button class="btn-outline btn-sm" onclick="navigator.clipboard?.writeText('${t.phone||''}');nestiqShowNotif('Phone copied','success')">Copy</button>
+        <button class="btn-whatsapp btn-sm" onclick="openTenantDirectWhatsAppChat(${tidArg})">${wa} Open WhatsApp Chat</button>
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${t.id},'rentReminder')">${wa} Rent Reminder</button>
-        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${t.id},'paymentConfirmation')">${wa} Payment Confirmation</button>
-        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${t.id},'welcomeMessage')">${wa} Welcome</button>
-        ${t.status==='overdue'?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${t.id},'overdueNotice')">${wa} Overdue Notice</button>`:''}
-        ${getTenantLeaseDaysRemaining(t)<90?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${t.id},'leaseExpiry')">${wa} Lease Expiry</button>`:''}
+        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tidArg},'rentReminder')">${wa} Rent Reminder</button>
+        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tidArg},'paymentConfirmation')">${wa} Payment Confirmation</button>
+        <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tidArg},'welcomeMessage')">${wa} Welcome</button>
+        ${t.status==='overdue'?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tidArg},'overdueNotice')">${wa} Overdue Notice</button>`:''}
+        ${getTenantLeaseDaysRemaining(t)<90?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tidArg},'leaseExpiry')">${wa} Lease Expiry</button>`:''}
       </div>
     </div>
     <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--paper)">
       <div style="font-weight:700;margin-bottom:8px">Portal documents</div>
       <p style="font-size:0.78rem;color:var(--muted);margin-bottom:8px">Lease agreements, receipts, and inspection reports appear in the tenant portal.</p>
-      <button type="button" class="btn-outline btn-sm" onclick="event.stopPropagation();nestiqUploadTenantPortalDocument(${t.id})">Upload document for tenant</button>
-    </div>
-    <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--paper)">
-      <div style="font-weight:700;margin-bottom:8px">Share Portal Access</div>
-      <div id="tenantLoginQrBox" style="display:flex;justify-content:center"></div>
-      <div style="font-size:0.78rem;color:var(--muted);margin-top:8px">Share this QR with ${t.name} so they can quickly access their login credentials.</div>
-      <div style="display:flex;gap:8px;margin-top:8px;justify-content:center">
-        <button class="btn-outline btn-sm" onclick="downloadQRCode('tenantLoginQrBox','tenant-login-${t.id}.png')">Download QR</button>
-        <button class="btn-outline btn-sm" onclick="printQRCode('tenantLoginQrBox','${t.name.replace(/'/g,"&#39;")} Login QR')">Print QR</button>
-      </div>
+      <button type="button" class="btn-outline btn-sm" onclick="event.stopPropagation();nestiqUploadTenantPortalDocument(${tidArg})">Upload document for tenant</button>
     </div>
     <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--paper)">
       <div style="font-weight:700;margin-bottom:8px">Rent History</div>
@@ -620,31 +606,31 @@ function viewTenant(id){
     </div>
     </div>
     <div id="vtenant_com_${t.id}" style="display:none"></div>
-    <div id="tenantDetailFooter" style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap">
-      <button class="btn-primary btn-sm" style="flex:1;justify-content:center" onclick="sendTenantReminderEmail(${t.id})">Send Reminder</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openLandlordTenantMessages(${t.id})">Messages</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="sendTenantStatementEmail(${t.id})">Email Statement</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openPaymentModal(${t.id})">Record Payment</button>
-      <button class="btn-whatsapp btn-sm" style="flex:1;justify-content:center" onclick="sendTenantWhatsApp(${t.id},'confirm')">WhatsApp</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="generatePaymentStatementPDF(${t.id})">⬇ Statement PDF</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="generateLeaseSummaryPDF(${t.id})">⬇ Lease PDF</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openLeaseClauseGenerator(${t.id})">AI Generate Clauses</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="closeModal();openCpiForTenant(${t.id})">Increase Rent</button>
+    <div id="tenantDetailFooter" class="tenant-detail-actions">
+      <button class="btn-primary btn-sm" onclick="sendTenantReminderEmail(${tidArg})">Send Reminder</button>
+      <button class="btn-outline btn-sm" onclick="openLandlordTenantMessages(${tidArg})">Caretaker thread <span id="tenantDetailMsgBadge" class="nav-item-badge" style="display:none">0</span></button>
+      <button class="btn-outline btn-sm" onclick="sendTenantStatementEmail(${tidArg})">Email Statement</button>
+      <button class="btn-outline btn-sm" onclick="openPaymentModal(${tidArg})">Record Payment</button>
+      <button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsApp(${tidArg},'confirm')">WhatsApp</button>
+      <button class="btn-outline btn-sm" onclick="generatePaymentStatementPDF(${tidArg})">⬇ Statement PDF</button>
+      <button class="btn-outline btn-sm" onclick="generateLeaseSummaryPDF(${tidArg})" title="Download PDF" data-nq-tip="Download PDF">⬇ Lease PDF</button>
+      <button class="btn-outline btn-sm" onclick="openLeaseClauseGenerator(${tidArg})" title="AI Powered" data-nq-tip="AI Powered">AI Generate Clauses</button>
       ${t.status==='due'||t.status==='overdue'
-        ? `<button class="btn-whatsapp btn-sm" style="flex:1;justify-content:center" onclick="sendTenantWhatsApp(${t.id},'overdue')">Send Reminder</button>`
+        ? `<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsApp(${tidArg},'overdue')">Send Reminder</button>`
         : ``}
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="openEditTenantModal(${t.id})">Edit</button>
-      <button class="btn-outline btn-sm" style="flex:1;justify-content:center" onclick="closeModal();deleteTenant(${t.id})">Remove</button>
+      <button class="btn-outline btn-sm" onclick="openEditTenantModal(${tidArg})">Edit</button>
+      <button class="btn-outline btn-sm" onclick="deleteTenant(${tidArg})">Remove</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   renderTenantLoginShareQr?.(t.id);
+  try{ window.updateMessageBadge?.(); }catch(_e){}
 }
 
 async function sendTenantReminderEmail(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
   if(!t) return;
   if(!isEmailConfigured()){
-    showNotif('Configure EmailJS in Settings to enable emails','warning');
+    nestiqShowNotif('Configure EmailJS in Settings to enable emails','warning');
     return;
   }
   await sendRentReminderEmail(t, formatDueDateDefault(), {scope:monthKey(new Date())});
@@ -654,7 +640,7 @@ async function sendTenantStatementEmail(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
   if(!t) return;
   if(!isEmailConfigured()){
-    showNotif('Configure EmailJS in Settings to enable emails','warning');
+    nestiqShowNotif('Configure EmailJS in Settings to enable emails','warning');
     return;
   }
   await sendRentReminderEmail(t, formatDueDateDefault(), {scope:`statement-${Date.now()}`});
@@ -672,7 +658,7 @@ async function sendTenantEmailAction(tenantId, type){
   if(type==='overdueNotice') return sendOverdueEmail(t, getTenantDaysOverdue(t));
   if(type==='paymentReceipt'){
     const p=getTenantCurrentMonthPayment(t)||((t.payments||[])[0]);
-    if(!p){ showNotif('No payment found for receipt email','warning'); return; }
+    if(!p){ nestiqShowNotif('No payment found for receipt email','warning'); return; }
     return sendReceiptEmail(t,p);
   }
   if(type==='leaseExpiry') return sendLeaseExpiryEmail(t, Math.max(0,getTenantLeaseDaysRemaining(t)));
@@ -689,10 +675,10 @@ function openTenantCustomEmailModal(tenantId){
     <div class="form-group" style="margin-top:10px"><label>Message</label><textarea id="cust_email_msg" class="form-input form-textarea" placeholder="Type your message..."></textarea></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn-primary btn-sm" onclick="sendTenantCustomEmail(${tenantId})">Send</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 async function sendTenantCustomEmail(tenantId){
@@ -700,9 +686,9 @@ async function sendTenantCustomEmail(tenantId){
   if(!t) return;
   const subject=document.getElementById('cust_email_subj')?.value?.trim()||'Message from landlord';
   const message=document.getElementById('cust_email_msg')?.value?.trim()||'';
-  if(!message){ showNotif('Type a message first','warning'); return; }
+  if(!message){ nestiqShowNotif('Type a message first','warning'); return; }
   const ok=await sendCustomEmail(t,subject,message);
-  if(ok) closeModal();
+  if(ok) nestiqCloseModalAnimated();
 }
 
 function openPaymentModal(tenantId, extra){
@@ -729,10 +715,10 @@ function openPaymentModal(tenantId, extra){
     </label>
     <div style="display:flex;gap:10px;margin-top:18px">
       <button class="btn-primary btn-sm" onclick="submitPaymentModal(${tenantId})">Save Payment</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function submitPaymentModal(tenantId){
@@ -742,7 +728,7 @@ function submitPaymentModal(tenantId){
   const emailReceipt=Boolean(document.getElementById('pay_email_receipt')?.checked);
   const payDateRaw=document.getElementById('pay_date')?.value?.trim()||'';
   if(amount<=0){
-    showNotif('Enter a valid payment amount','error');
+    nestiqShowNotif('Enter a valid payment amount','error');
     return;
   }
   const extra=window.__nestiqPaymentModalExtra||{};
@@ -769,11 +755,15 @@ window.sendTenantCustomWhatsApp=sendTenantCustomWhatsApp;
 window.openTenantPhoneEditModal=openTenantPhoneEditModal;
 window.saveTenantPhone=saveTenantPhone;
 window.openTenantDirectWhatsAppChat=openTenantDirectWhatsAppChat;
+window.nestiqGoToApplications=function(){ if(typeof showPage==='function') showPage('applications'); };
+window.nestiqGoToListings=function(){ if(typeof showPage==='function') showPage('listings'); };
 
 async function openLeaseClauseGenerator(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
   if(!t) return;
   if(!isGeminiConfigured()){ aiConfigError(); return; }
+  const aiBtn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="openLeaseClauseGenerator"]');
+  nestiqSetBtnLoading?.(aiBtn,true,'Generating...');
   const p=propertiesData.find(x=>x.name===t.property);
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">Generate AI Clauses</h2>
@@ -784,7 +774,7 @@ async function openLeaseClauseGenerator(tenantId){
       <button class="btn-primary btn-sm" onclick="applySelectedLeaseAiClauses(${tenantId})">Add Selected Clauses to Lease PDF</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   try{
     const city=(String(p?.addr||'').split(',').pop()||'').trim()||'South Africa';
     const list=await generateLeaseClausesAI({
@@ -816,10 +806,11 @@ async function openLeaseClauseGenerator(tenantId){
       window.__leaseAiRows=rows;
     }
   }catch(_err){
-    showNotif('AI unavailable, try again','error');
+    nestiqShowNotif('AI unavailable, try again','error');
   }finally{
     const loading=document.getElementById('leaseAiLoading');
     if(loading) loading.style.display='none';
+    nestiqSetBtnLoading?.(aiBtn,false);
   }
 }
 
@@ -829,14 +820,14 @@ function applySelectedLeaseAiClauses(tenantId){
   const prop=propertiesData.find(x=>x.id===t.propertyId)||propertiesData.find(x=>x.name===t.property)||{};
   const rows=window.__leaseAiRows||[];
   const selected=rows.filter((_,idx)=>document.getElementById(`lease_clause_chk_${idx}`)?.checked).map(r=>r.clause).filter(Boolean);
-  generateLeasePDF(t,prop,selected);
+  generateLeasePDF(t,prop,selected, typeof nestiqPrimaryLeaseForTenant==='function'?nestiqPrimaryLeaseForTenant(t.id):null);
 }
 
 function copyLeaseClause(idx){
   const txt=document.getElementById(`lease_clause_${idx}`)?.innerText||'';
   if(!txt) return;
   navigator.clipboard?.writeText(txt);
-  showNotif('Clause copied','success');
+  nestiqShowNotif('Clause copied','success');
 }
 
 window.openLeaseClauseGenerator=openLeaseClauseGenerator;
@@ -854,9 +845,9 @@ function openPostNoticeModal(){
         ${tenantsData.filter(t=>t.status!=='vacant').map(t=>`<option value="${String(t.id).replace(/"/g,'&quot;')}">${String(t.name||'').replace(/</g,'&lt;')}</option>`).join('')}
       </select>
     </div>
-    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn-primary btn-sm" onclick="saveNoticePost()">Post</button><button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button></div>
+    <div style="display:flex;gap:8px;margin-top:12px"><button class="btn-primary btn-sm" onclick="saveNoticePost()">Post</button><button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button></div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqNoticePropertyIdForTarget(targetRaw){
@@ -868,9 +859,9 @@ function nestiqNoticePropertyIdForTarget(targetRaw){
 
 async function nestiqUploadTenantPortalDocument(tenantId){
   const t=(tenantsData||[]).find(x=>Number(x.id)===Number(tenantId)||String(x.id)===String(tenantId));
-  if(!t){ showNotif('Tenant not found','error'); return; }
+  if(!t){ nestiqShowNotif('Tenant not found','error'); return; }
   const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
-  if(!window.nestiqDb||!lid){ showNotif('Firestore not available','warning'); return; }
+  if(!window.nestiqDb||!lid){ nestiqShowNotif('Firestore not available','warning'); return; }
   const tenantDocId=String(t._fireId||t.id||'');
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">Upload tenant document</h2>
@@ -888,9 +879,9 @@ async function nestiqUploadTenantPortalDocument(tenantId){
     <p style="font-size:0.78rem;color:var(--muted);margin-top:8px">Paste a download link after uploading the file to Firebase Storage or your document host.</p>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveTenantPortalDocument(${Number(t.id)})">Save</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 async function nestiqSaveTenantPortalDocument(tenantId){
@@ -899,7 +890,7 @@ async function nestiqSaveTenantPortalDocument(tenantId){
   const name=document.getElementById('tdoc_name')?.value?.trim();
   const type=document.getElementById('tdoc_type')?.value||'other';
   const url=document.getElementById('tdoc_url')?.value?.trim();
-  if(!name||!url){ showNotif('Name and file URL are required','error'); return; }
+  if(!name||!url){ nestiqShowNotif('Name and file URL are required','error'); return; }
   const lid=window.nestiqCurrentLandlordUid?.();
   if(!lid||!window.nestiqDb) return;
   try{
@@ -913,10 +904,10 @@ async function nestiqSaveTenantPortalDocument(tenantId){
       url,
       uploadedAt:firebase.firestore.FieldValue.serverTimestamp()
     });
-    closeModal();
-    showNotif('Document shared with tenant','success');
+    nestiqCloseModalAnimated();
+    nestiqShowNotif('Document shared with tenant','success');
   }catch(e){
-    showNotif('Could not save document','error');
+    nestiqShowNotif('Could not save document','error');
     console.error(e);
   }
 }
@@ -925,7 +916,7 @@ async function saveNoticePost(){
   const title=document.getElementById('notice_title')?.value?.trim();
   const message=document.getElementById('notice_message')?.value?.trim();
   const targetRaw=document.getElementById('notice_target')?.value||'';
-  if(!title||!message){showNotif('Add title and message','error');return;}
+  if(!title||!message){nestiqShowNotif('Add title and message','error');return;}
   const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
   const fv=typeof firebase!=='undefined'&&firebase.firestore&&firebase.firestore.FieldValue;
   const postedBy=String(landlordSettings?.name||'Admin');
@@ -947,11 +938,11 @@ async function saveNoticePost(){
       const docRef=await window.nestiqFs.notices(window.nestiqDb, lid).add(row);
       if(targetRaw) nestiqCommDefer(()=>window.nestiqAutoLogNotice?.(targetRaw,title,message));
       notifyTenantNewNotice?.({ id:docRef.id, ...row });
-      closeModal();
-      showNotif('📢 Notice posted!','success');
+      nestiqCloseModalAnimated();
+      nestiqShowNotif('📢 Notice posted!','success');
       return;
     }catch(err){
-      showNotif('Failed to post notice','error');
+      nestiqShowNotif('Failed to post notice','error');
       return;
     }
   }
@@ -969,8 +960,8 @@ async function saveNoticePost(){
   saveData();
   if(targetRaw) nestiqCommDefer(()=>window.nestiqAutoLogNotice?.(targetRaw,title,message));
   notifyTenantNewNotice?.(notices[0]);
-  closeModal();
-  showNotif('Notice posted','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Notice posted','success');
 }
 
 window.openPostNoticeModal=openPostNoticeModal;
@@ -988,10 +979,10 @@ function openMessageAllOverdueModal(){
     <div id="waBulkCounter" style="font-size:0.82rem;color:var(--muted);margin-top:10px"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button class="btn-whatsapp btn-sm" onclick="sendOverdueWhatsAppToAll()">Send to All</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Close</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 async function sendOverdueWhatsAppToAll(){
@@ -1011,70 +1002,103 @@ async function sendOverdueWhatsAppToAll(){
 window.openMessageAllOverdueModal=openMessageAllOverdueModal;
 window.sendOverdueWhatsAppToAll=sendOverdueWhatsAppToAll;
 
-function openLandlordTenantMessages(tenantId){
-  const tenant=tenantsData.find(t=>t.id===tenantId);
+function openLandlordTenantMessages(tenantId, opts){
+  opts=opts||{};
+  const tenant=(tenantsData||[]).find(t=>String(t.id)===String(tenantId));
   if(!tenant) return;
-  const thread=(messages||[]).filter(m=>m.tenantId===tenantId).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  window.__nestiqOpenChatTenantId=tenantId;
+  if(document.getElementById('nestiqChatEditBox')&&opts.skipOpen) return;
+  const src=Array.isArray(window.messages)?window.messages:(Array.isArray(messages)?messages:[]);
+  const scoped=src.filter(m=>String(m.tenantId)===String(tenantId));
+  const thread=(typeof nestiqCaretakerChatThread==='function'?nestiqCaretakerChatThread(scoped):scoped.filter(m=>m.fromRole==='tenant'||m.fromRole==='caretaker'))
+    .slice()
+    .sort((a,b)=>new Date(a.date||0)-new Date(b.date||0));
+  const caretakerName=(()=>{
+    const p=(window.propertiesData||[]).find(x=>String(x.id)===String(tenant.propertyId||''));
+    return String(p?.caretakerName||'Assigned caretaker');
+  })();
+  const caretaker={name:caretakerName};
+  const headAv=typeof nestiqChatAvatarHtml==='function'?nestiqChatAvatarHtml(tenant,44):'';
+  const threadHtml=typeof nestiqChatThreadHtml==='function'
+    ? nestiqChatThreadHtml(thread,{mineRole:'landlord',observer:true,tenant,caretaker})
+    : `<div style="color:var(--muted)">No messages yet.</div>`;
   document.getElementById('modalContent').innerHTML=`
-    <h2 class="modal-title">Messages — ${tenant.name}</h2>
-    <div class="tenant-chat" id="lmThread">${thread.length?thread.map(m=>`<div class="chat-bubble ${m.fromRole==='tenant'?'chat-left':'chat-right'}"><div style="font-size:0.72rem;color:var(--muted);margin-bottom:4px">${m.fromRole==='tenant'?tenant.name:'Admin'}</div><div>${m.message}</div><div style="font-size:0.68rem;color:var(--muted);margin-top:4px">${formatDate(m.date)}</div></div>`).join(''):`<div style="color:var(--muted)">No messages yet.</div>`}</div>
-    <div style="display:flex;gap:8px;margin-top:10px">
-      <textarea id="lmInput" class="form-input form-textarea" maxlength="500" placeholder="Reply..."></textarea>
-      <button class="btn-primary btn-sm" onclick="sendLandlordReply(${tenantId})">Send</button>
+    <div class="nestiq-chat-head nestiq-chat-head-modal">
+      ${headAv}
+      <div class="nestiq-chat-head-meta">
+        <div class="nestiq-chat-head-name">${String(tenant.name||'Tenant').replace(/</g,'&lt;')}</div>
+        <div class="nestiq-chat-head-sub">${String(tenant.unit||'—').replace(/</g,'&lt;')} · ${String(tenant.property||'—').replace(/</g,'&lt;')}</div>
+      </div>
+      <span class="nestiq-viewonly-pill">View only</span>
     </div>
+    <div class="nestiq-chat-viewonly">Tenants speak with <strong>${String(caretakerName).replace(/</g,'&lt;')}</strong> — the caretaker for this property. You cannot send messages in this thread.</div>
+    <div class="tenant-chat nestiq-landlord-thread" id="lmThread">${thread.length?threadHtml:`<div class="nestiq-chat-empty">No caretaker conversation yet.</div>`}</div>
   `;
-  messages=messages.map(m=>m.tenantId===tenantId && m.fromRole==='tenant'?{...m,read:true}:m);
-  saveData();
-  document.getElementById('modalOverlay').classList.add('open');
+  if(!opts.skipOpen) nestiqOpenModalAnimated();
   const th=document.getElementById('lmThread'); if(th) th.scrollTop=th.scrollHeight;
 }
 
-async function sendLandlordReply(tenantId){
-  const txt=document.getElementById('lmInput')?.value?.trim()||'';
-  if(!txt) return;
-  const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
-  const fv=typeof firebase!=='undefined'&&firebase.firestore&&firebase.firestore.FieldValue;
-  if(window.nestiqUseFirestore&&window.nestiqDb&&firebase?.auth?.()?.currentUser&&lid){
-    try{
-      const row={
-        tenantId,
-        fromRole:'landlord',
-        fromName:String(landlordSettings?.name||'Admin'),
-        message:txt,
-        date:new Date().toISOString(),
-        read:false,
-        landlordId:lid
-      };
-      if(fv) row.createdAt=fv.serverTimestamp();
-      await window.nestiqFs.messages(window.nestiqDb, lid).add(row);
-      openLandlordTenantMessages(tenantId);
-      return;
-    }catch(err){
-      showNotif('Failed to send message','error');
-      return;
-    }
-  }
-  messages.push({id:Date.now(),tenantId,fromRole:'landlord',fromName:String(landlordSettings?.name||'Admin'),message:txt,date:new Date().toISOString(),read:false});
-  saveData();
-  notifyTenantNewMessage?.(messages[messages.length-1]);
-  openLandlordTenantMessages(tenantId);
+async function sendLandlordReply(){
+  nestiqShowNotif?.('Only the property caretaker can message tenants in-app. Use email or WhatsApp for official notices.','info');
 }
 
 window.openLandlordTenantMessages=openLandlordTenantMessages;
 window.sendLandlordReply=sendLandlordReply;
 
-function deleteTenant(id){
-  tenantsData=tenantsData.filter(t=>String(t.id)!==String(id));
-  saveData();
+async function deleteTenant(id){
+  const tid=String(id??'').trim();
+  if(!tid){
+    nestiqShowNotif?.('Could not remove tenant — missing id.','error');
+    return;
+  }
+  const list=Array.isArray(tenantsData)?tenantsData:(window.tenantsData||[]);
+  const tenant=list.find(t=>String(t.id)===tid);
+  const name=String(tenant?.name||'this tenant');
+  if(!confirm(`Remove ${name} from your tenants list? This cannot be undone.`)) return;
+  if(tenant && typeof nestiqUnlinkTenantFromUnit==='function'){
+    try{ await nestiqUnlinkTenantFromUnit(tenant); }catch(_e){}
+  }
+  try{ await window.nestiqTerminateLeasesForTenant?.(tid); }catch(_e){}
+  try{ await window.nestiqMarkApplicationsTenancyEndedForTenant?.(tenant); }catch(_e){}
+  const portalUid=String(tenant?.portalUid||tenant?.tenantUid||'').trim();
+  if(portalUid && typeof window.nestiqReleaseTenantAccount==='function'){
+    try{ await window.nestiqReleaseTenantAccount(portalUid); }catch(_e){}
+  }
+  const kept=list.filter(t=>String(t.id)!==tid);
+  if(Array.isArray(tenantsData)){
+    tenantsData.length=0;
+    kept.forEach(t=>tenantsData.push(t));
+  }
+  window.tenantsData=Array.isArray(tenantsData)?tenantsData:kept;
+  try{ window.nestiqBindWindowDataArrays?.(); }catch(_e){}
+  try{
+    const lid=typeof window.nestiqCurrentLandlordUid==='function'?window.nestiqCurrentLandlordUid():null;
+    const db=window.nestiqDb;
+    if(window.nestiqUseFirestore&&db&&lid){
+      const col=window.nestiqFs?.tenants?.(db,lid);
+      if(col) await col.doc(tid).delete();
+      try{ await window.nestiqFs?.caretakerTenants?.(db,lid)?.doc(tid)?.delete?.(); }catch(_e){}
+    }else{
+      saveData();
+    }
+  }catch(err){
+    console.warn('[NestIQ] deleteTenant cloud', err);
+    nestiqShowNotif?.('Could not remove tenant from the cloud. They may reappear until this succeeds.','error');
+    renderTenants();
+    return;
+  }
+  nestiqCloseModalAnimated?.();
   renderTenants();
-  showNotif('Tenant removed','warning');
+  renderProperties?.();
+  nestiqShowNotif('Tenant removed','warning');
 }
+window.deleteTenant=deleteTenant;
 
 function exportTenantsCSV(){
   const hdr='Name,Unit,Property,Rent,Status,Lease End,Phone,Email';
   const rows=tenantsData.map(t=>`"${t.name}","${t.unit}","${t.property}",${t.rent},"${t.status}","${t.lease}","${t.phone}","${t.email}"`);
   downloadCSV([hdr,...rows].join('\n'),'nestiq-tenants.csv');
-  showNotif('📥 Tenants exported!','success');
+  nestiqShowNotif('📥 Tenants exported!','success');
 }
 
 window.updateTenantPaymentStatuses=syncTenantStatuses;

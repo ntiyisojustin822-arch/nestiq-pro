@@ -63,8 +63,21 @@ service cloud.firestore {
 
     // Auth profile (required for sign-in bootstrap) — 2026-07-15
     match /users/{userId} {
-      allow read, write: if request.auth != null
-        && (request.auth.uid == userId || isNestiqAdmin());
+      allow read: if request.auth != null
+                  && (request.auth.uid == userId || isNestiqAdmin());
+      allow create: if request.auth != null
+                    && (request.auth.uid == userId || isNestiqAdmin());
+      allow update: if request.auth != null
+                    && (request.auth.uid == userId
+                    || isNestiqAdmin()
+                    || (resource.data.landlordId == request.auth.uid
+                        && (resource.data.role == 'caretaker' || resource.data.role == 'contractor')
+                        && request.resource.data.landlordId == resource.data.landlordId
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['assignedPropertyIds'])));
+      allow delete: if request.auth != null
+                    && (request.auth.uid == userId || isNestiqAdmin());
     }
 
     match /pendingClaims/{userId} {
@@ -89,6 +102,7 @@ service cloud.firestore {
 
     // Tenants can read their own record and related data
     // Tenants: landlord owns the collection; tenants may accept invite / update own portal fields
+    // Self-registered applicants may create/update their own unassigned stub (portalUid == auth.uid)
     match /landlords/{landlordId}/tenants/{tenantId} {
       allow read: if request.auth != null
                   && (request.auth.uid == landlordId
@@ -100,13 +114,52 @@ service cloud.firestore {
                     && (request.auth.uid == landlordId
                     || isNestiqAdmin()
                     || (request.resource.data.portalUid == request.auth.uid
-                        && request.resource.data.landlordId == landlordId));
+                        && request.resource.data.landlordId == landlordId
+                        && request.resource.data.portalUid == tenantId));
       allow update: if request.auth != null
                     && (request.auth.uid == landlordId
                     || isNestiqAdmin()
                     || isTenantOf(request.auth.uid, landlordId, tenantId)
                     || (resource.data.portalUid == request.auth.uid
-                        && resource.data.landlordId == landlordId));
+                        && resource.data.landlordId == landlordId
+                        && request.resource.data.portalUid == request.auth.uid));
+      allow delete: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    // Units: landlord-scoped collection — same landlord-owner read/write pattern as tenants
+    // Leases: landlord owns; tenant may read their lease and write only their in-app signature.
+    // Signing is a typed-name acknowledgement (student project), not a certified e-signature.
+    match /landlords/{landlordId}/leases/{leaseId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || tenantOwnsLease(landlordId));
+      allow create: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+      allow update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || isNestiqAdmin()
+                    || (tenantOwnsLease(landlordId) && tenantLeaseSignWrite()));
+      allow delete: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    match /landlords/{landlordId}/units/{unitId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || (resource.data.tenantId is string
+                      && resource.data.tenantId.size() > 0
+                      && isTenantOf(request.auth.uid, landlordId, resource.data.tenantId)));
+      allow create: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+      allow update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || isNestiqAdmin()
+                    || (resource.data.tenantId is string
+                        && resource.data.tenantId.size() > 0
+                        && isTenantOf(request.auth.uid, landlordId, resource.data.tenantId)));
       allow delete: if request.auth != null
                     && (request.auth.uid == landlordId || isNestiqAdmin());
     }
@@ -116,6 +169,18 @@ service cloud.firestore {
                   && (request.auth.uid == landlordId
                   || isTenantInProperty(request.auth.uid, landlordId, propertyId));
       allow write: if request.auth != null && request.auth.uid == landlordId;
+    }
+
+    // Legacy nested units path (pre–landlord-scoped units); keep until migration complete
+    match /landlords/{landlordId}/properties/{propertyId}/units/{unitId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || isTenantInProperty(request.auth.uid, landlordId, propertyId)
+                  || (isTenantUnderLandlord(request.auth.uid, landlordId)
+                      && string(resource.data.tenantId) == string(tenantAccountId(request.auth.uid))));
+      allow write: if request.auth != null
+                   && (request.auth.uid == landlordId || isNestiqAdmin());
     }
 
     match /landlords/{landlordId}/invitations/{invitationId} {
@@ -137,43 +202,117 @@ service cloud.firestore {
                   || ownsPortalRowByTenantId(request.auth.uid, landlordId));
       allow create: if request.auth != null
                     && (request.auth.uid == landlordId
-                    || request.resource.data.tenantUid == request.auth.uid);
+                    || request.resource.data.tenantUid == request.auth.uid
+                    || (request.resource.data.tenantId is string
+                        && request.resource.data.tenantId.size() > 0
+                        && isTenantOf(request.auth.uid, landlordId, request.resource.data.tenantId)));
+    }
+
+    match /landlords/{landlordId}/pendingPayments/{paymentId} {
+      allow create: if request.auth != null
+                    && request.resource.data.tenantId is string
+                    && request.resource.data.tenantId.size() > 0
+                    && (request.auth.uid == landlordId
+                        || isNestiqAdmin()
+                        || (isTenantUnderLandlord(request.auth.uid, landlordId)
+                            && string(request.resource.data.tenantId) == string(tenantAccountId(request.auth.uid))));
+      allow read, update: if request.auth != null
+                          && (request.auth.uid == landlordId
+                          || isNestiqAdmin()
+                          || (isTenantUnderLandlord(request.auth.uid, landlordId)
+                              && string(resource.data.tenantId) == string(tenantAccountId(request.auth.uid))));
     }
 
     match /landlords/{landlordId}/messages/{messageId} {
       allow read: if request.auth != null
                   && (request.auth.uid == landlordId
                   || ownsPortalRow(request.auth.uid)
-                  || ownsPortalRowByTenantId(request.auth.uid, landlordId));
+                  || ownsPortalRowByTenantId(request.auth.uid, landlordId)
+                  || caretakerCanAccessTenant(request.auth.uid, landlordId, resource.data.tenantId));
       allow create: if request.auth != null
-                    && (request.auth.uid == landlordId
-                    || request.resource.data.tenantUid == request.auth.uid);
+                    && request.auth.uid != landlordId
+                    && (
+                      (
+                        request.resource.data.fromRole == 'tenant'
+                        && request.resource.data.toRole == 'caretaker'
+                        && (
+                          request.resource.data.tenantUid == request.auth.uid
+                          || ownsPortalRow(request.auth.uid)
+                          || ownsPortalRowByTenantId(request.auth.uid, landlordId)
+                        )
+                      )
+                      || (isCaretakerUnderLandlord(request.auth.uid, landlordId)
+                          && request.resource.data.fromRole == 'caretaker'
+                          && request.resource.data.toRole == 'tenant'
+                          && caretakerCanAccessTenant(request.auth.uid, landlordId, request.resource.data.tenantId))
+                    );
       allow update: if request.auth != null
+                    && request.auth.uid != landlordId
+                    && (
+                      ((ownsPortalRow(request.auth.uid) || ownsPortalRowByTenantId(request.auth.uid, landlordId))
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt']))
+                      || ((ownsPortalRow(request.auth.uid) || ownsPortalRowByTenantId(request.auth.uid, landlordId))
+                          && resource.data.fromRole == 'tenant'
+                          && request.resource.data.fromRole == 'tenant'
+                          && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['message', 'editedAt', 'deleted', 'deletedAt', 'read', 'readAt']))
+                      || (resource.data.tenantUid == request.auth.uid
+                          && resource.data.fromRole == 'tenant'
+                          && request.resource.data.fromRole == 'tenant'
+                          && request.resource.data.diff(resource.data).affectedKeys()
+                              .hasOnly(['message', 'editedAt', 'deleted', 'deletedAt', 'read', 'readAt']))
+                      || (isCaretakerUnderLandlord(request.auth.uid, landlordId)
+                          && caretakerCanAccessTenant(request.auth.uid, landlordId, resource.data.tenantId)
+                          && (
+                            request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])
+                            || (resource.data.fromRole == 'caretaker'
+                                && request.resource.data.fromRole == 'caretaker'
+                                && resource.data.fromUid == request.auth.uid
+                                && request.resource.data.diff(resource.data).affectedKeys()
+                                    .hasOnly(['message', 'editedAt', 'deleted', 'deletedAt', 'read', 'readAt']))
+                          ))
+                    );
+      allow delete: if request.auth != null
                     && (request.auth.uid == landlordId
-                    || ((ownsPortalRow(request.auth.uid) || ownsPortalRowByTenantId(request.auth.uid, landlordId))
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read', 'readAt'])));
-      allow delete: if request.auth != null && request.auth.uid == landlordId;
+                    || (resource.data.fromRole == 'tenant'
+                        && (resource.data.tenantUid == request.auth.uid
+                            || ownsPortalRowByTenantId(request.auth.uid, landlordId))));
     }
 
     match /landlords/{landlordId}/maintenance/{requestId} {
       allow read: if request.auth != null
                   && (request.auth.uid == landlordId
                   || ownsPortalRow(request.auth.uid)
-                  || ownsPortalRowByTenantId(request.auth.uid, landlordId));
+                  || ownsPortalRowByTenantId(request.auth.uid, landlordId)
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId)
+                  || (isContractorUnderLandlord(request.auth.uid, landlordId)
+                      && vendorIdMatchesContractor(resource.data.vendorId, request.auth.uid)));
       allow create: if request.auth != null
                     && (request.auth.uid == landlordId
-                    || request.resource.data.tenantUid == request.auth.uid);
+                    || request.resource.data.tenantUid == request.auth.uid
+                    || tenantMaintenanceCreateAllowed(landlordId)
+                    || caretakerMaintenanceCreateAllowed(landlordId));
       allow update: if request.auth != null
                     && (request.auth.uid == landlordId
+                    || (caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId)
+                        && caretakerMaintenanceUpdateAllowed(landlordId))
                     || ((ownsPortalRow(request.auth.uid) || ownsPortalRowByTenantId(request.auth.uid, landlordId))
                         && request.resource.data.diff(resource.data).affectedKeys()
-                            .hasOnly(['maintenanceRating', 'tenantRating', 'ratedAt'])));
+                            .hasOnly(['maintenanceRating', 'tenantRating', 'ratedAt', 'resolved', 'reopenedCount', 'status']))
+                    || (isContractorUnderLandlord(request.auth.uid, landlordId)
+                        && vendorIdMatchesContractor(resource.data.vendorId, request.auth.uid)
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'actualCost', 'partsCost', 'labourCost', 'completedDate', 'completionNotes', 'partsUsed', 'completedByContractor', 'completionPhotoUrl', 'completionPhotos', 'partsLines', 'contractorStage', 'contractorAcceptedAt', 'contractorStartedAt', 'contractorCompletedAt', 'contractorDeclinedAt', 'declineReason', 'declineNotes', 'vendorId', 'vendorName', 'vendorPhone', 'vendorType', 'activityLog', 'updatedAt', 'scheduledDate', 'scheduledWindow', 'scheduledAt', 'visitNotifiedAt'])
+                        && (!request.resource.data.diff(resource.data).affectedKeys().hasAny(['vendorId', 'vendorName', 'vendorPhone', 'vendorType'])
+                            || request.resource.data.vendorId == null
+                            || request.resource.data.vendorId == '')));
     }
 
     match /landlords/{landlordId}/notices/{noticeId} {
       allow read: if request.auth != null
                   && (request.auth.uid == landlordId
                   || isTenantInProperty(request.auth.uid, landlordId, resource.data.propertyId)
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId)
                   || (isTenantUnderLandlord(request.auth.uid, landlordId)
                       && resource.data.targetTenantId == tenantAccountId(request.auth.uid)));
       allow create, delete: if request.auth != null && request.auth.uid == landlordId;
@@ -200,9 +339,114 @@ service cloud.firestore {
       allow read: if request.auth != null
                   && (request.auth.uid == landlordId
                   || isNestiqAdmin()
-                  || isTenantUnderLandlord(request.auth.uid, landlordId));
+                  || isTenantUnderLandlord(request.auth.uid, landlordId)
+                  || isContractorUnderLandlord(request.auth.uid, landlordId)
+                  || isCaretakerUnderLandlord(request.auth.uid, landlordId));
+      allow write: if request.auth != null
+                   && (request.auth.uid == landlordId
+                   || isNestiqAdmin()
+                   || (docId == 'settings'
+                       && isCaretakerUnderLandlord(request.auth.uid, landlordId)
+                       && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['bellNotifs'])));
+    }
+
+    match /landlords/{landlordId}/staff/{staffId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || isCaretakerUnderLandlord(request.auth.uid, landlordId)
+                  || staffOwnsDoc(request.auth.uid, landlordId, staffId)
+                  || staffInviteEmailMatches(resource.data)
+                  || tenantCanReadAssignedCaretaker(request.auth.uid, landlordId, staffId));
+      allow create, delete: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+      allow update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || isNestiqAdmin()
+                    || staffInviteAcceptanceUpdate());
+    }
+
+    match /landlords/{landlordId}/staffInvitations/{invitationId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == landlordId;
+      allow update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || (resource.data.status == 'pending'
+                        && request.resource.data.status == 'accepted'
+                        && request.resource.data.acceptedByUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'acceptedAt', 'acceptedByUid'])));
+    }
+
+    match /landlords/{landlordId}/caretakerProperties/{propertyId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, propertyId));
       allow write: if request.auth != null
                    && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    match /landlords/{landlordId}/caretakerUnits/{unitId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId));
+      allow write: if request.auth != null
+                   && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    match /landlords/{landlordId}/caretakerTenants/{tenantId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId));
+      allow write: if request.auth != null
+                   && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    match /landlords/{landlordId}/inspections/{inspectionId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || caretakerAssignedToProperty(request.auth.uid, landlordId, resource.data.propertyId));
+      allow create, update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || isNestiqAdmin()
+                    || caretakerAssignedToProperty(request.auth.uid, landlordId, request.resource.data.propertyId));
+      allow delete: if request.auth != null
+                    && (request.auth.uid == landlordId || isNestiqAdmin());
+    }
+
+    // Verified tenant property reviews — public read; tenant may write their own row.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && request.resource.data.tenantUid == request.auth.uid
+        && request.resource.data.landlordId is string
+        && request.resource.data.propertyId is string
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5
+        && isTenantUnderLandlord(request.auth.uid, request.resource.data.landlordId)
+        && string(get(/databases/$(database)/documents/tenantAccounts/$(request.auth.uid)).data.propertyId)
+             == string(request.resource.data.propertyId);
+      allow delete: if request.auth != null
+        && resource.data.tenantUid == request.auth.uid;
+    }
+
+    // Landlord product testimonials for the public landing page.
+    match /productReviews/{reviewId} {
+      allow read: if true;
+      allow create, update: if request.auth != null
+        && reviewId == request.auth.uid
+        && request.resource.data.landlordId == request.auth.uid
+        && (
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'landlord')
+          || exists(/databases/$(database)/documents/landlords/$(request.auth.uid))
+        );
+      allow delete: if request.auth != null && reviewId == request.auth.uid;
     }
 
     // Public browse feed (avoids collectionGroup composite-index delays)
@@ -228,37 +472,388 @@ service cloud.firestore {
       allow write: if request.auth != null;
     }
 
-    // Tenant account records
-    match /tenantAccounts/{tenantUid} {
+    // Landlord-added / walk-in tenants: they create a NestIQ account with this email (no code).
+    match /tenantPortalLinks/{emailKey} {
+      allow create: if request.auth != null
+                    && request.resource.data.landlordId == request.auth.uid
+                    && request.resource.data.email is string;
+      allow update: if request.auth != null
+                    && (
+                      resource.data.landlordId == request.auth.uid
+                      || (
+                        request.auth.token.email != null
+                        && resource.data.email is string
+                        && request.auth.token.email.lower() == resource.data.email
+                        && request.resource.data.landlordId == resource.data.landlordId
+                        && request.resource.data.tenantId == resource.data.tenantId
+                      )
+                    );
+      allow delete: if request.auth != null
+                    && resource.data.landlordId == request.auth.uid;
       allow read: if request.auth != null
-                  && (request.auth.uid == tenantUid || isNestiqAdmin());
-      allow write: if request.auth != null
-                   && (request.auth.uid == tenantUid || isNestiqAdmin());
+                  && (request.auth.uid == resource.data.landlordId
+                      || (request.auth.token.email != null
+                          && resource.data.email is string
+                          && request.auth.token.email.lower() == resource.data.email));
     }
 
-    // Public application submissions — unauthenticated allowed to create only
+    // Tenant account records (includes self-registered / unassigned)
+    match /tenantAccounts/{tenantUid} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == tenantUid || isNestiqAdmin()
+                  || (resource.data.landlordId is string
+                      && request.auth.uid == resource.data.landlordId));
+      allow create, update: if request.auth != null
+                   && (request.auth.uid == tenantUid || isNestiqAdmin()
+                   || (resource.data.landlordId is string
+                       && request.auth.uid == resource.data.landlordId
+                       && request.resource.data.landlordId == resource.data.landlordId));
+      allow delete: if request.auth != null
+                    && (request.auth.uid == tenantUid || isNestiqAdmin());
+    }
+
+    function isApplicationApplicant() {
+      return request.auth != null
+        && resource.data.applicantUid is string
+        && request.auth.uid == resource.data.applicantUid;
+    }
+
+    function applicantInfoResponseUpdate() {
+      return isApplicationApplicant()
+        && resource.data.status == 'info_required'
+        && request.resource.data.status in ['info_required', 'reviewing']
+        && request.resource.data.applicantUid == resource.data.applicantUid
+        && request.resource.data.listingLandlordId == resource.data.listingLandlordId
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'infoResponseDocuments', 'infoRespondedAt', 'infoResponseNote', 'updatedAt']);
+    }
+
+    // Public application submissions — signed-in tenants create; applicants can read their own
     match /applications/{appId} {
       allow create: if request.resource.data.listingLandlordId is string
                     && request.resource.data.listingLandlordId.size() > 0
                     && request.resource.data.agreedToTerms == true
                     && request.resource.data.id is string
                     && request.resource.data.id.size() > 0;
-      allow read, update, delete: if isNestiqAdmin()
+      allow read: if isNestiqAdmin()
+        || (request.auth != null
+            && request.auth.uid == resource.data.listingLandlordId)
+        || isApplicationApplicant();
+      allow delete: if isNestiqAdmin()
         || (request.auth != null
             && request.auth.uid == resource.data.listingLandlordId);
+      allow update: if isNestiqAdmin()
+        || (request.auth != null
+            && request.auth.uid == resource.data.listingLandlordId)
+        || applicantInfoResponseUpdate();
+    }
+
+    // Landlord-scoped copies: applicants may read their own and reply to info requests
+    match /landlords/{landlordId}/applications/{appId} {
+      allow read: if isNestiqAdmin()
+        || (request.auth != null && request.auth.uid == landlordId)
+        || isApplicationApplicant();
+      allow create, delete: if isNestiqAdmin()
+        || (request.auth != null && request.auth.uid == landlordId);
+      allow update: if isNestiqAdmin()
+        || (request.auth != null && request.auth.uid == landlordId)
+        || applicantInfoResponseUpdate();
+    }
+
+    // Contractor invitation lookup — anyone can read to verify a code.
+    // Landlords create the lookup row; the contractor updates it to accepted.
+    match /contractorInvitationLookup/{code} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.landlordId == request.auth.uid;
+      allow update, delete: if request.auth != null
+                    && (resource.data.landlordId == request.auth.uid
+                    || request.resource.data.status == 'accepted');
+    }
+
+    // Contractor account records
+    match /contractorAccounts/{contractorUid} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == contractorUid || isNestiqAdmin());
+      allow create, update: if request.auth != null
+                   && (request.auth.uid == contractorUid || isNestiqAdmin());
+    }
+
+    match /staffInvitationLookup/{code} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.landlordId == request.auth.uid;
+      allow update, delete: if request.auth != null
+                    && (resource.data.landlordId == request.auth.uid
+                    || request.resource.data.status == 'accepted');
+    }
+
+    match /staffAccounts/{staffUid} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == staffUid
+                  || isNestiqAdmin()
+                  || resource.data.landlordId == request.auth.uid);
+      allow create: if request.auth != null
+                    && (request.auth.uid == staffUid || isNestiqAdmin());
+      // Landlord may update assignment lists for their staff (unassign one property without deleting the account)
+      allow update: if request.auth != null
+                    && (request.auth.uid == staffUid
+                    || isNestiqAdmin()
+                    || (resource.data.landlordId == request.auth.uid
+                        && request.resource.data.landlordId == resource.data.landlordId
+                        && request.resource.data.role == resource.data.role
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['assignedPropertyIds', 'accountStatus', 'uid', 'email', 'name', 'phone', 'updatedAt'])));
+    }
+
+    // Contractor invitations (landlord-scoped)
+    match /landlords/{landlordId}/contractorInvitations/{invitationId} {
+      allow read: if true;
+      allow create, delete: if request.auth != null && request.auth.uid == landlordId;
+      allow update: if request.auth != null
+                    && (request.auth.uid == landlordId
+                    || (resource.data.status == 'pending'
+                        && request.resource.data.status == 'accepted'
+                        && request.resource.data.acceptedByUid == request.auth.uid
+                        && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['status', 'acceptedAt', 'acceptedByUid'])));
+    }
+
+    // Contractor access to maintenance records — read/update only where vendorId matches
+    // Note: the wildcard rule at landlords/{landlordId}/{document=**} already grants landlord full access.
+    // This rule grants contractors read access to maintenance docs assigned to them.
+    // The specific maintenance match above (line ~222) handles landlord + tenant access.
+    // We extend it here for contractors:
+
+    // Contractor access to vendors collection (their own record)
+    match /landlords/{landlordId}/vendors/{vendorId} {
+      allow read: if request.auth != null
+                  && (request.auth.uid == landlordId
+                  || isNestiqAdmin()
+                  || isContractorForVendor(request.auth.uid, landlordId, vendorId));
+      allow create, delete: if request.auth != null
+                   && (request.auth.uid == landlordId || isNestiqAdmin());
+      allow update: if request.auth != null
+                   && (request.auth.uid == landlordId
+                   || isNestiqAdmin()
+                   || (isContractorForVendor(request.auth.uid, landlordId, vendorId)
+                       && request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['uid', 'email', 'accountStatus'])));
     }
 
     // Helper functions
+    function isContractorForVendor(uid, landlordId, vendorId) {
+      return exists(/databases/$(database)/documents/contractorAccounts/$(uid))
+        && get(/databases/$(database)/documents/contractorAccounts/$(uid)).data.landlordId == landlordId
+        && get(/databases/$(database)/documents/contractorAccounts/$(uid)).data.vendorId == vendorId;
+    }
+
+    function isContractorUnderLandlord(uid, landlordId) {
+      return exists(/databases/$(database)/documents/contractorAccounts/$(uid))
+        && get(/databases/$(database)/documents/contractorAccounts/$(uid)).data.landlordId == landlordId;
+    }
+
+    function isCaretakerUnderLandlord(uid, landlordId) {
+      return exists(/databases/$(database)/documents/staffAccounts/$(uid))
+        && get(/databases/$(database)/documents/staffAccounts/$(uid)).data.landlordId == landlordId
+        && get(/databases/$(database)/documents/staffAccounts/$(uid)).data.role == 'caretaker';
+    }
+
+    function caretakerAssignedToProperty(uid, landlordId, propertyId) {
+      return isCaretakerUnderLandlord(uid, landlordId)
+        && propertyId != null
+        && get(/databases/$(database)/documents/staffAccounts/$(uid)).data.assignedPropertyIds.hasAny([string(propertyId)]);
+    }
+
+    function caretakerAutoApproveLimit(landlordId) {
+      return exists(/databases/$(database)/documents/landlords/$(landlordId)/profile/settings)
+        && get(/databases/$(database)/documents/landlords/$(landlordId)/profile/settings).data.keys().hasAll(['landlordSettings'])
+        && get(/databases/$(database)/documents/landlords/$(landlordId)/profile/settings).data.landlordSettings.keys().hasAll(['caretakerAutoApproveLimit'])
+        ? get(/databases/$(database)/documents/landlords/$(landlordId)/profile/settings).data.landlordSettings.caretakerAutoApproveLimit
+        : 1000;
+    }
+
+    // Same convention as js/properties.js: true unless maintenanceSettings.caretakerCanManage is explicitly false.
+    function propertyCaretakerCanManage(landlordId, propertyId) {
+      return propertyId != null
+        && exists(/databases/$(database)/documents/landlords/$(landlordId)/properties/$(propertyId))
+        && (
+          !get(/databases/$(database)/documents/landlords/$(landlordId)/properties/$(propertyId)).data.keys().hasAll(['maintenanceSettings'])
+          || !get(/databases/$(database)/documents/landlords/$(landlordId)/properties/$(propertyId)).data.maintenanceSettings.keys().hasAll(['caretakerCanManage'])
+          || get(/databases/$(database)/documents/landlords/$(landlordId)/properties/$(propertyId)).data.maintenanceSettings.caretakerCanManage != false
+        );
+    }
+
+    function caretakerAssignmentKeysTouched(diff) {
+      return diff.hasAny(['vendorId', 'vendorName', 'vendorType', 'estimatedCost', 'pendingLandlordApproval', 'proposedVendorId', 'proposedVendorName', 'proposedVendorType', 'proposedEstimatedCost', 'proposedByRole', 'proposedByUid', 'proposedByName', 'proposedAt']);
+    }
+
+    function tenantMaintenanceCreateAllowed(landlordId) {
+      return isTenantUnderLandlord(request.auth.uid, landlordId)
+        && request.resource.data.landlordId == landlordId
+        && request.resource.data.status == 'open'
+        && string(request.resource.data.tenantId) == string(tenantAccountId(request.auth.uid));
+    }
+
+    function caretakerMaintenanceCreateAllowed(landlordId) {
+      return caretakerAssignedToProperty(request.auth.uid, landlordId, request.resource.data.propertyId)
+        && request.resource.data.landlordId == landlordId
+        && request.resource.data.status == 'open'
+        && request.resource.data.reportedBy == 'caretaker'
+        && request.resource.data.property is string
+        && request.resource.data.priority is string
+        && request.resource.data.issueCategory is string
+        && request.resource.data.description is string
+        && !request.resource.data.keys().hasAny(['vendorId', 'vendorName']);
+    }
+
+    // Caretaker may auto-assign only at/under the landlord limit; over-limit must use proposal fields without vendorId.
+    // Assignment writes are rejected when the linked property's caretakerCanManage is false.
+    function caretakerMaintenanceUpdateAllowed(landlordId) {
+      let diff = request.resource.data.diff(resource.data).affectedKeys();
+      return diff.hasOnly(['vendorId', 'vendorName', 'vendorType', 'estimatedCost', 'pendingLandlordApproval', 'proposedVendorId', 'proposedVendorName', 'proposedVendorType', 'proposedEstimatedCost', 'proposedByRole', 'proposedByUid', 'proposedByName', 'proposedAt', 'updatedAt', 'updatedByRole', 'updatedByUid', 'status', 'maintenanceRating', 'tenantRating', 'ratedAt', 'resolved', 'reopenedCount', 'activityLog', 'assignedAt', 'contractorStage', 'priority', 'urgency', 'priorityReviewedBy', 'priorityReviewedByRole', 'priorityReviewedAt', 'contractorPaymentStatus', 'contractorPaidAt', 'contractorPaidAmount', 'contractorPaidRef', 'contractorReceiptNo', 'contractorPaidBy', 'contractorPaidByRole'])
+        && (!caretakerAssignmentKeysTouched(diff) || propertyCaretakerCanManage(landlordId, resource.data.propertyId))
+        && (
+          (
+            // Pending landlord approval path — do not set vendor assignment yet
+            request.resource.data.pendingLandlordApproval == true
+            && !diff.hasAny(['vendorId', 'vendorName', 'vendorType'])
+            && request.resource.data.proposedEstimatedCost is number
+            && request.resource.data.proposedEstimatedCost > caretakerAutoApproveLimit(landlordId)
+          )
+          || (
+            // Auto-approve path — estimate at or below limit
+            diff.hasAny(['vendorId'])
+            && request.resource.data.estimatedCost is number
+            && request.resource.data.estimatedCost >= 0
+            && request.resource.data.estimatedCost <= caretakerAutoApproveLimit(landlordId)
+            && request.resource.data.get('pendingLandlordApproval', false) == false
+          )
+          || (
+            // Status / rating / payout updates only (no assignment changes)
+            !caretakerAssignmentKeysTouched(diff)
+            && (
+              !diff.hasAny(['contractorPaymentStatus', 'contractorPaidAt', 'contractorPaidAmount', 'contractorPaidRef', 'contractorReceiptNo', 'contractorPaidBy', 'contractorPaidByRole'])
+              || (
+                resource.data.status == 'done'
+                && request.resource.data.contractorPaymentStatus == 'paid'
+              )
+            )
+          )
+        );
+    }
+
+    function caretakerCanAccessTenant(uid, landlordId, tenantId) {
+      return tenantId != null
+        && exists(/databases/$(database)/documents/landlords/$(landlordId)/tenants/$(tenantId))
+        && caretakerAssignedToProperty(
+          uid,
+          landlordId,
+          get(/databases/$(database)/documents/landlords/$(landlordId)/tenants/$(tenantId)).data.propertyId
+        );
+    }
+
+    function tenantCanReadAssignedCaretaker(uid, landlordId, staffId) {
+      return exists(/databases/$(database)/documents/tenantAccounts/$(uid))
+        && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.landlordId == landlordId
+        && exists(/databases/$(database)/documents/landlords/$(landlordId)/staff/$(staffId))
+        && get(/databases/$(database)/documents/landlords/$(landlordId)/staff/$(staffId)).data.role == 'caretaker'
+        && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.propertyId != null
+        && get(/databases/$(database)/documents/landlords/$(landlordId)/staff/$(staffId)).data.assignedPropertyIds.hasAny([
+             string(get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.propertyId)
+           ]);
+    }
+
+    function staffOwnsDoc(uid, landlordId, staffId) {
+      return exists(/databases/$(database)/documents/staffAccounts/$(uid))
+        && get(/databases/$(database)/documents/staffAccounts/$(uid)).data.landlordId == landlordId
+        && get(/databases/$(database)/documents/staffAccounts/$(uid)).data.staffId == staffId;
+    }
+
+    function authEmailLower() {
+      return request.auth.token.email.lower();
+    }
+
+    function staffInviteEmailMatches(data) {
+      return request.auth != null
+        && request.auth.token.email != null
+        && data.accountStatus == 'invited'
+        && data.email is string
+        && data.email.lower() == authEmailLower();
+    }
+
+    // Invited caretaker/contractor may activate their own staff row (uid + email + status only).
+    function staffInviteAcceptanceUpdate() {
+      return staffInviteEmailMatches(resource.data)
+        && request.resource.data.accountStatus == 'active'
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string
+        && request.resource.data.email.lower() == authEmailLower()
+        && request.resource.data.landlordId == resource.data.landlordId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['uid', 'email', 'accountStatus', 'updatedAt']);
+    }
+
+    // vendorId may be stored as a number (legacy) or a string (portal invites).
+    function vendorIdMatchesContractor(jobVendorId, uid) {
+      return exists(/databases/$(database)/documents/contractorAccounts/$(uid))
+        && string(jobVendorId) == string(get(/databases/$(database)/documents/contractorAccounts/$(uid)).data.vendorId);
+    }
+
     function isTenantOf(uid, landlordId, tenantId) {
       return exists(/databases/$(database)/documents/tenantAccounts/$(uid))
         && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.landlordId == landlordId
-        && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.tenantId == tenantId;
+        && string(get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.tenantId) == string(tenantId);
+    }
+
+    function tenantOwnsLease(landlordId) {
+      return request.auth != null && (
+        resource.data.tenantUid == request.auth.uid
+        || resource.data.tenantId == request.auth.uid
+        || (resource.data.tenantId is string
+            && resource.data.tenantId.size() > 0
+            && isTenantOf(request.auth.uid, landlordId, resource.data.tenantId))
+        || (exists(/databases/$(database)/documents/tenantAccounts/$(request.auth.uid))
+            && get(/databases/$(database)/documents/tenantAccounts/$(request.auth.uid)).data.landlordId == landlordId
+            && (
+              string(get(/databases/$(database)/documents/tenantAccounts/$(request.auth.uid)).data.tenantId)
+                == string(resource.data.tenantId)
+              || string(get(/databases/$(database)/documents/tenantAccounts/$(request.auth.uid)).data.tenantId)
+                == string(resource.data.tenantUid)
+            ))
+        || (resource.data.tenantId is string
+            && resource.data.tenantId.size() > 0
+            && exists(/databases/$(database)/documents/landlords/$(landlordId)/tenants/$(resource.data.tenantId))
+            && (
+              get(/databases/$(database)/documents/landlords/$(landlordId)/tenants/$(resource.data.tenantId)).data.portalUid
+                == request.auth.uid
+              || get(/databases/$(database)/documents/landlords/$(landlordId)/tenants/$(resource.data.tenantId)).data.tenantUid
+                == request.auth.uid
+            ))
+      );
+    }
+
+    function tenantLeaseSignWrite() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['tenantSigned', 'status', 'updatedAt', 'tenantUid'])
+            && request.resource.data.tenantId == resource.data.tenantId
+            && request.resource.data.landlordId == resource.data.landlordId
+            && (
+              request.resource.data.status == resource.data.status
+              || (resource.data.landlordSigned != null
+                  && resource.data.status in ['pending_signature', 'draft']
+                  && request.resource.data.status in ['pending_signature', 'awaiting_payment', 'active'])
+              || (resource.data.status == 'awaiting_payment'
+                  && request.resource.data.status == 'active'
+                  && resource.data.landlordSigned != null)
+            );
     }
 
     function isTenantInProperty(uid, landlordId, propertyId) {
       return exists(/databases/$(database)/documents/tenantAccounts/$(uid))
         && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.landlordId == landlordId
-        && get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.propertyId == propertyId;
+        && string(get(/databases/$(database)/documents/tenantAccounts/$(uid)).data.propertyId) == string(propertyId);
     }
 
     function isTenantUnderLandlord(uid, landlordId) {
@@ -277,7 +872,7 @@ service cloud.firestore {
     function ownsPortalRowByTenantId(uid, landlordId) {
       return request.auth != null
         && isTenantUnderLandlord(uid, landlordId)
-        && resource.data.tenantId == tenantAccountId(uid);
+        && string(resource.data.tenantId) == string(tenantAccountId(uid));
     }
   }
 }

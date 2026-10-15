@@ -337,7 +337,7 @@ function nestiqReconRowsToRecord(){
 
 function nestiqReconOpenRecordConfirm(){
   const rows=nestiqReconRowsToRecord();
-  if(!rows.length){ showNotif('Select at least one row with a tenant and tick Record','warning'); return; }
+  if(!rows.length){ nestiqShowNotif('Select at least one row with a tenant and tick Record','warning'); return; }
   const lines=rows.map(r=>{
     const t=tenantsData.find(x=>String(x.id)===String(r.selectedTenantId));
     return`<li>${nestiqReconEscape(t?.name||'Tenant')} — R${Number(r.amount).toLocaleString('en-ZA')} on ${nestiqReconEscape(r.dateISO)}</li>`;
@@ -349,14 +349,14 @@ function nestiqReconOpenRecordConfirm(){
     <p style="font-size:0.82rem;color:var(--muted)">These will appear on the tenant ledger as EFT payments from bank reconciliation.</p>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqReconExecuteRecord()">Confirm and record</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqReconExecuteRecord(){
   const rows=nestiqReconRowsToRecord();
-  closeModal();
+  nestiqCloseModalAnimated();
   if(!rows.length) return;
   let recorded=0,totalAmt=0;
   rows.forEach((r,idx)=>{
@@ -393,7 +393,7 @@ function nestiqReconExecuteRecord(){
   reconciliations.unshift(hist);
   saveData();
   const notMatched=total-recorded;
-  showNotif(`${recorded} payment(s) recorded from ${total} transaction(s). ${notMatched} transaction(s) not matched.`,'success');
+  nestiqShowNotif(`${recorded} payment(s) recorded from ${total} transaction(s). ${notMatched} transaction(s) not matched.`,'success');
   nestiqReconReset();
   renderReconciliationPage();
 }

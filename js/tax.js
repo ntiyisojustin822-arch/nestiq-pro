@@ -62,7 +62,7 @@ function exportTaxCSV(){
   const year=document.getElementById('taxYear')?.value;
   const rows=['Category,Amount','Rental Income,1130400','Maintenance,-42800','Insurance,-5400','Rates & Taxes,-23400','Utilities,-3840','Agent Fees,-22500','Other,-5600','Net Taxable,1027260'];
   downloadCSV(rows.join('\n'),`nestiq-tax-${year}.csv`);
-  showNotif('📥 Tax report exported!','success');
+  nestiqShowNotif('📥 Tax report exported!','success');
 }
 
 function printTaxReport(){window.print();}

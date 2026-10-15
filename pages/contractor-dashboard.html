@@ -1,0 +1,36 @@
+<div class="page contractor-portal-page" id="page-contractor-dashboard" style="padding-top:0">
+  <div class="tenant-portal-wrap">
+    <nav class="tenant-tab-bar" id="contractorTabBar" aria-label="Contractor portal">
+      <button class="tab-btn active" data-tab="home" onclick="nestiqSwitchContractorTab('home')">
+        <span class="tab-icon" data-nq-icon="house" data-nq-size="20"></span><span class="tab-label">Home</span>
+      </button>
+      <button class="tab-btn" data-tab="jobs" onclick="nestiqSwitchContractorTab('jobs')">
+        <span class="tab-icon" data-nq-icon="wrench" data-nq-size="20"></span><span class="tab-label">My Jobs</span>
+        <span class="tab-badge" id="cTabBadge-jobs" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="completed" onclick="nestiqSwitchContractorTab('completed')">
+        <span class="tab-icon" data-nq-icon="circle-check" data-nq-size="20"></span><span class="tab-label">Completed</span>
+      </button>
+      <button class="tab-btn" data-tab="profile" onclick="nestiqSwitchContractorTab('profile')">
+        <span class="tab-icon" data-nq-icon="user" data-nq-size="20"></span><span class="tab-label">Profile</span>
+      </button>
+      <button type="button" class="tab-btn tenant-tab-logout" onclick="nestiqContractorLogout()">
+        <span class="tab-icon" data-nq-icon="log-out" data-nq-size="20"></span><span class="tab-label">Sign Out</span>
+      </button>
+    </nav>
+
+    <div class="tenant-portal-main">
+      <div class="tenant-portal-topbar">
+        <div class="tenant-portal-greeting" id="contractorGreeting">Welcome</div>
+        <button class="tenant-portal-logout" onclick="nestiqContractorLogout()">Sign Out</button>
+      </div>
+
+      <div class="tenant-tab-content-wrap" id="contractorTabContent">
+        <div id="cTab-home" class="tenant-tab-page active"></div>
+        <div id="cTab-jobs" class="tenant-tab-page"></div>
+        <div id="cTab-completed" class="tenant-tab-page"></div>
+        <div id="cTab-profile" class="tenant-tab-page"></div>
+      </div>
+    </div>
+  </div>
+</div>

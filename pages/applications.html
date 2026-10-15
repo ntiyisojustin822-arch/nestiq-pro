@@ -1,24 +1,20 @@
 <div class="page" id="page-applications">
   <div id="nestiqPublicApplicationRoot" class="section" style="display:none"></div>
   <section id="nestiqLandlordApplicationsSection" class="section reveal">
-    <div style="margin-bottom:8px">
+    <div class="nestiq-page-intro">
       <p class="eyebrow">Leasing</p>
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px">
         <h1 class="section-title reveal" style="margin:0">Tenant Applications</h1>
-        <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button type="button" class="btn-outline btn-sm" onclick="nestiqSyncPublicApplicationsToLandlord()">Sync New Applications</button>
-          <button type="button" class="btn-gold btn-sm" onclick="nestiqOpenWalkInApplicationModal()">Add Walk-in Application</button>
-        </div>
       </div>
-      <p style="font-size:0.88rem;color:var(--muted);max-width:56ch;margin-top:8px">Review and process rental applications submitted via your shareable application links.</p>
+      <p class="nestiq-page-lede">Applications arrive here the moment someone applies from Browse listings. Approve, waitlist, or decline — no sync, no walk-ins.</p>
     </div>
-    <div class="nestiq-app-disclaimer" style="font-size:0.82rem;color:var(--muted);background:var(--cream);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:18px;line-height:1.45">
-      <p style="margin:0;font-size:0.88rem;line-height:1.5;color:var(--muted)">
-        New applications sync automatically from Firebase. If a card looks wrong after creating a tenant, hard-refresh with <strong>Ctrl+F5</strong>.
-      </p>
+    <div class="nestiq-flow-banner">
+      <div class="nestiq-flow-step"><span class="nestiq-flow-num">1</span><strong>List</strong><span>Vacant units on Browse listings</span></div>
+      <div class="nestiq-flow-step"><span class="nestiq-flow-num">2</span><strong>Apply</strong><span>Applicant uses their NestIQ account</span></div>
+      <div class="nestiq-flow-step"><span class="nestiq-flow-num">3</span><strong>Review</strong><span>Approve, waitlist, or decline here</span></div>
     </div>
     <div id="nestiqApplicationsStats" class="nestiq-app-stats-grid"></div>
-    <div id="nestiqApplicationsFilters" class="nestiq-app-filter-tabs"></div>
+    <div id="nestiqApplicationsFilters" class="nestiq-app-filter-tabs filter-chips"></div>
     <div id="nestiqApplicationsList"></div>
   </section>
 </div>

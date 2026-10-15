@@ -1,13 +1,21 @@
-/** Safe embedding of a value in HTML inline onclick="fn(…)" handlers */
+/** Safe embedding of a value in HTML inline onclick="fn(…)" handlers.
+ * JSON.stringify alone breaks string ids: onclick="fn("abc")" is invalid HTML.
+ */
 function nestiqHtmlJsArg(v){
-  return JSON.stringify(v);
+  return JSON.stringify(v).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');
 }
 window.nestiqHtmlJsArg=nestiqHtmlJsArg;
 
-/** Tenant portal photo URL (https or data:) — empty if none / emoji-only. */
+/** Tenant photo URL (https or data:) — empty if none / emoji-only. */
 function nestiqTenantPhotoUrl(t){
-  const p=t&&t.profilePhoto!=null?String(t.profilePhoto).trim():'';
-  if(/^https?:\/\//i.test(p)||p.startsWith('data:image')) return p;
+  if(!t||typeof t!=='object') return '';
+  const keys=['profilePhoto','photoUrl','photoURL','imageUrl','avatar'];
+  for(let i=0;i<keys.length;i++){
+    const raw=t[keys[i]];
+    if(raw==null) continue;
+    const p=String(raw).trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
+    if(/^https?:\/\//i.test(p)||p.startsWith('data:image')) return p;
+  }
   return '';
 }
 window.nestiqTenantPhotoUrl=nestiqTenantPhotoUrl;
@@ -17,14 +25,40 @@ function nestiqEscAttr(s){
 }
 window.nestiqEscAttr=nestiqEscAttr;
 
+function nestiqTenantAvatarFallback(t){
+  const av=t&&t.avatar!=null?String(t.avatar).trim():'';
+  if(av && !/^https?:\/\//i.test(av) && !av.startsWith('data:image')) return av;
+  return '👤';
+}
+window.nestiqTenantAvatarFallback=nestiqTenantAvatarFallback;
+
+function nestiqTenantAvatarImgError(img){
+  if(!img) return;
+  const fallback=img.getAttribute('data-fallback')||'👤';
+  img.onerror=null;
+  const wrap=img.parentNode;
+  if(wrap&&wrap.classList&&(wrap.classList.contains('tenant-avatar')||wrap.classList.contains('renewal-card-av'))){
+    img.remove();
+    if(!wrap.querySelector('img')) wrap.textContent=fallback;
+    return;
+  }
+  const span=document.createElement('span');
+  span.className=img.className||'nestiq-tenant-av-inline';
+  span.style.marginRight='6px';
+  span.textContent=fallback;
+  if(typeof img.replaceWith==='function') img.replaceWith(span);
+  else if(wrap){ wrap.insertBefore(span, img); img.remove(); }
+}
+window.nestiqTenantAvatarImgError=nestiqTenantAvatarImgError;
+
 /** Landlord UI avatar: profile photo when set, else emoji. */
 function nestiqTenantAvatarHtml(t, opts){
   opts=opts||{};
   const cls=String(opts.className||'tenant-avatar');
   const photo=nestiqTenantPhotoUrl(t);
-  const fallback=String(t&&t.avatar!=null&&String(t.avatar).trim()!==''?t.avatar:'👤');
+  const fallback=nestiqTenantAvatarFallback(t);
   if(photo){
-    return `<div class="${cls}" aria-hidden="true"><img src="${nestiqEscAttr(photo)}" alt="" loading="lazy"/></div>`;
+    return `<div class="${cls}" aria-hidden="true"><img class="loaded" src="${nestiqEscAttr(photo)}" alt="" referrerpolicy="no-referrer" data-fallback="${nestiqEscAttr(fallback)}" onerror="nestiqTenantAvatarImgError(this)"/></div>`;
   }
   return `<div class="${cls}" aria-hidden="true">${fallback}</div>`;
 }
@@ -34,13 +68,343 @@ window.nestiqTenantAvatarHtml=nestiqTenantAvatarHtml;
 function nestiqTenantAvatarInlineHtml(t, sizePx){
   const size=Number(sizePx)||28;
   const photo=nestiqTenantPhotoUrl(t);
-  const fallback=String(t&&t.avatar!=null&&String(t.avatar).trim()!==''?t.avatar:'👤');
+  const fallback=nestiqTenantAvatarFallback(t);
   if(photo){
-    return `<img class="nestiq-tenant-av-inline" src="${nestiqEscAttr(photo)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px" loading="lazy"/>`;
+    return `<img class="nestiq-tenant-av-inline loaded" src="${nestiqEscAttr(photo)}" alt="" width="${size}" height="${size}" style="width:${size}px;height:${size}px;border-radius:50%;object-fit:cover;vertical-align:middle;margin-right:8px" referrerpolicy="no-referrer" data-fallback="${nestiqEscAttr(fallback)}" onerror="nestiqTenantAvatarImgError(this)"/>`;
   }
   return `<span class="nestiq-tenant-av-inline" style="margin-right:6px">${fallback}</span>`;
 }
 window.nestiqTenantAvatarInlineHtml=nestiqTenantAvatarInlineHtml;
+
+function nestiqChatPhotoUrl(person){
+  if(!person||typeof person!=='object') return '';
+  const keys=['profilePhoto','logoBase64','photoUrl','photoURL','logoUrl','avatar'];
+  for(let i=0;i<keys.length;i++){
+    const p=String(person[keys[i]]||'').trim();
+    if(/^https?:\/\//i.test(p)||p.startsWith('data:image')) return p;
+  }
+  return '';
+}
+window.nestiqChatPhotoUrl=nestiqChatPhotoUrl;
+
+function nestiqChatAvatarHtml(person, sizePx){
+  const size=Number(sizePx)||32;
+  const url=nestiqChatPhotoUrl(person);
+  const name=String(person&&person.name||'?').trim();
+  const initial=(name.slice(0,1)||'?').toUpperCase();
+  if(url){
+    return `<span class="nestiq-chat-av" style="width:${size}px;height:${size}px"><img src="${nestiqEscAttr(url)}" alt="" referrerpolicy="no-referrer"></span>`;
+  }
+  return `<span class="nestiq-chat-av nestiq-chat-av-fallback" style="width:${size}px;height:${size}px">${initial}</span>`;
+}
+window.nestiqChatAvatarHtml=nestiqChatAvatarHtml;
+
+function nestiqChatLandlordPerson(){
+  const info=window.landlordInfo||{};
+  const ls=window.landlordSettings||info.landlordSettings||{};
+  return {
+    name:info.name||ls.name||'Landlord',
+    profilePhoto:info.profilePhoto||info.logoBase64||ls.logoBase64||ls.profilePhoto||ls.logoUrl||''
+  };
+}
+window.nestiqChatLandlordPerson=nestiqChatLandlordPerson;
+
+function nestiqTenantAssignedCaretaker(){
+  const live=window.tenantCaretaker;
+  if(live&&(live.id||live.name)){
+    return {
+      id:String(live.id||live.staffId||''),
+      staffId:String(live.id||live.staffId||''),
+      name:String(live.name||'Caretaker'),
+      uid:live.uid||null,
+      email:live.email||'',
+      phone:live.phone||'',
+      profilePhoto:live.profilePhoto||live.photoUrl||''
+    };
+  }
+  const p=window.tenantProperty||{};
+  const id=String(p.caretakerId||'').trim();
+  if(!id) return null;
+  return {
+    id,
+    staffId:id,
+    name:String(p.caretakerName||'Caretaker'),
+    uid:p.caretakerUid||null,
+    email:p.caretakerEmail||'',
+    phone:p.caretakerPhone||'',
+    profilePhoto:''
+  };
+}
+window.nestiqTenantAssignedCaretaker=nestiqTenantAssignedCaretaker;
+
+function nestiqCaretakerChatThread(messages){
+  return (Array.isArray(messages)?messages:[]).filter(m=>{
+    const r=String(m?.fromRole||'');
+    return r==='tenant'||r==='caretaker';
+  });
+}
+window.nestiqCaretakerChatThread=nestiqCaretakerChatThread;
+
+function nestiqChatDateLabel(dt){
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(dt); d.setHours(0,0,0,0);
+  const diff=Math.round((today-d)/86400000);
+  if(diff===0) return 'Today';
+  if(diff===1) return 'Yesterday';
+  return dt.toLocaleDateString('en-ZA',{day:'numeric',month:'short'});
+}
+window.nestiqChatDateLabel=nestiqChatDateLabel;
+
+function nestiqChatEsc(s){
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+}
+function nestiqChatIsNarrow(){
+  try{ return window.matchMedia('(max-width:720px)').matches; }catch(_e){ return false; }
+}
+window.nestiqChatIsNarrow=nestiqChatIsNarrow;
+
+function nestiqChatMsgDate(m){
+  if(!m) return null;
+  if(m.date){
+    const d=new Date(m.date);
+    if(!isNaN(d.getTime())) return d;
+  }
+  try{
+    const ts=m.createdAt?.toDate?.();
+    if(ts) return ts;
+    if(typeof m.createdAt?.seconds==='number') return new Date(m.createdAt.seconds*1000);
+  }catch(_e){}
+  return null;
+}
+function nestiqChatListTimeLabel(dateVal){
+  const dt=dateVal instanceof Date?dateVal:new Date(dateVal||0);
+  if(!dateVal||isNaN(dt.getTime())) return '';
+  const today=new Date(); today.setHours(0,0,0,0);
+  const d=new Date(dt); d.setHours(0,0,0,0);
+  const diff=Math.round((today-d)/86400000);
+  if(diff===0) return dt.toLocaleTimeString('en-ZA',{hour:'numeric',minute:'2-digit',hour12:true});
+  if(diff===1) return 'Yesterday';
+  if(diff<7) return dt.toLocaleDateString('en-ZA',{weekday:'short'});
+  return dt.toLocaleDateString('en-ZA',{day:'numeric',month:'short'});
+}
+window.nestiqChatListTimeLabel=nestiqChatListTimeLabel;
+
+function nestiqChatPreviewText(m){
+  if(!m||m.deleted) return 'This message was deleted';
+  if(m.attachmentUrl&&!String(m.message||'').trim()) return 'Photo';
+  const raw=String(m.message||'').replace(/\s+/g,' ').trim();
+  if(!raw) return 'Tap to open chat';
+  return raw.length>52?raw.slice(0,52)+'…':raw;
+}
+function nestiqChatLastInThread(messages, tenantId){
+  const tid=tenantId==null?'':String(tenantId);
+  const list=(typeof nestiqCaretakerChatThread==='function'?nestiqCaretakerChatThread(messages):messages||[])
+    .filter(m=>m&&!m.deleted&&(tid===''||String(m.tenantId)===tid));
+  if(!list.length) return null;
+  return list.slice().sort((a,b)=>{
+    const da=nestiqChatMsgDate(a)?.getTime()||0;
+    const db=nestiqChatMsgDate(b)?.getTime()||0;
+    return da-db;
+  }).pop();
+}
+window.nestiqChatLastInThread=nestiqChatLastInThread;
+window.nestiqChatMsgDate=nestiqChatMsgDate;
+
+function nestiqChatListRowHtml(opts){
+  opts=opts||{};
+  const unread=Math.max(0,Number(opts.unread)||0);
+  const last=opts.last||null;
+  const mine=Boolean(opts.mine);
+  const ticks=mine&&last?`<span class="nestiq-wa-ticks" aria-hidden="true">${last.read?'✓✓':'✓'}</span>`:'';
+  const preview=last?nestiqChatPreviewText(last):(opts.preview||'Tap to start a conversation');
+  const time=last?nestiqChatListTimeLabel(nestiqChatMsgDate(last)):String(opts.time||'');
+  const person=opts.person||{name:opts.name||'Chat'};
+  return `<button type="button" class="nestiq-wa-row${opts.active?' is-active':''}${unread?' has-unread':''}" ${opts.attrs||''}>
+    ${typeof nestiqChatAvatarHtml==='function'?nestiqChatAvatarHtml(person,52):''}
+    <span class="nestiq-wa-main">
+      <span class="nestiq-wa-top">
+        <span class="nestiq-wa-name">${nestiqChatEsc(opts.name||person.name||'Chat')}</span>
+        <span class="nestiq-wa-time${unread?' is-unread':''}">${nestiqChatEsc(time)}</span>
+      </span>
+      <span class="nestiq-wa-bottom">
+        <span class="nestiq-wa-preview">${ticks}${nestiqChatEsc(preview)}</span>
+        ${unread?`<span class="nestiq-wa-unread">${unread>99?'99+':unread}</span>`:''}
+      </span>
+    </span>
+  </button>`;
+}
+window.nestiqChatListRowHtml=nestiqChatListRowHtml;
+
+function nestiqChatLandlordId(){
+  try{
+    const s=typeof getSession==='function'?getSession():window.__nestiqSession;
+    if(s&&s.role==='landlord') return String(s.uid||window.nestiqCurrentLandlordUid?.()||'');
+  }catch(_e){}
+  return String(window.nestiqTenantSession?.landlordId||window.currentUser?.landlordId||window.nestiqCurrentLandlordUid?.()||'');
+}
+
+function nestiqFindChatMessage(id){
+  const sid=String(id);
+  const pools=[window.tenantMessages,window.messages,window.caretakerMessages];
+  for(let i=0;i<pools.length;i++){
+    const list=pools[i];
+    if(!Array.isArray(list)) continue;
+    const hit=list.find(m=>m&&String(m.id)===sid);
+    if(hit) return hit;
+  }
+  return null;
+}
+
+function nestiqCanEditChatMessage(m){
+  if(!m||m.deleted) return false;
+  let role='';
+  try{ role=String((typeof getSession==='function'?getSession():window.__nestiqSession)?.role||''); }catch(_e){}
+  if(role==='tenant') return m.fromRole==='tenant';
+  if(role==='caretaker') return m.fromRole==='caretaker';
+  if(role==='landlord') return false;
+  return false;
+}
+
+function nestiqRefreshOpenChat(){
+  if(document.getElementById('nestiqChatEditBox')) return;
+  if(document.getElementById('tenantMessages')){
+    try{ window.renderMessagesCard?.(); }catch(_e){}
+  }
+  if(document.getElementById('kCaretakerThread')){
+    try{ window.renderCaretakerMessages?.(); }catch(_e){}
+  }
+  if(document.getElementById('lmThread')&&window.__nestiqOpenChatTenantId!=null){
+    try{ window.openLandlordTenantMessages?.(window.__nestiqOpenChatTenantId,{skipMarkRead:true,skipOpen:true}); }catch(_e){}
+  }
+}
+
+function nestiqBindComposerEnter(el, sendFn){
+  if(!el||typeof sendFn!=='function') return;
+  el.addEventListener('keydown', e=>{
+    if(e.key==='Enter' && !e.shiftKey){
+      e.preventDefault();
+      sendFn();
+    }
+  });
+}
+window.nestiqBindComposerEnter=nestiqBindComposerEnter;
+
+function nestiqChatThreadHtml(thread, opts){
+  opts=opts||{};
+  const mineRole=opts.mineRole||'tenant';
+  const observer=Boolean(opts.observer)||mineRole==='landlord';
+  const tenant=opts.tenant||{};
+  const landlord=opts.landlord||nestiqChatLandlordPerson();
+  const caretaker=opts.caretaker||{name:'Caretaker'};
+  const list=Array.isArray(thread)?thread.slice():[];
+  if(!list.length){
+    return `<div class="nestiq-chat-empty">No messages yet.</div>`;
+  }
+  let lastDay='';
+  return list.map(m=>{
+    const mine=!observer && m.fromRole===mineRole;
+    const person=m.fromRole==='tenant'
+      ? tenant
+      : (m.fromRole==='caretaker'?caretaker:landlord);
+    const fromLabel=m.fromRole==='caretaker'?'Caretaker':(m.fromRole==='tenant'?'Tenant':'');
+    const dt=new Date(m.date||m.createdAt?.toDate?.()||Date.now());
+    const dayKey=dt.toDateString();
+    let sep='';
+    if(dayKey!==lastDay){
+      lastDay=dayKey;
+      sep=`<div class="tenant-chat-date-sep nestiq-chat-date-sep">${nestiqChatDateLabel(dt)}</div>`;
+    }
+    const time=dt.toLocaleString('en-ZA',{hour:'2-digit',minute:'2-digit'});
+    const ticks=mine?(m.read?'✓✓':'✓'):'';
+    const idArg=nestiqHtmlJsArg(m.id);
+    const deleted=Boolean(m.deleted);
+    const edited=Boolean(m.editedAt)&&!deleted;
+    const img=(!deleted&&m.attachmentUrl)?`<img src="${nestiqEscAttr(m.attachmentUrl)}" class="nestiq-chat-attach-img" alt="">`:'';
+    const text=deleted
+      ? `<em class="nestiq-chat-deleted">This message was deleted</em>`
+      : `${String(m.message||'').replace(/</g,'&lt;')}${img}`;
+    const actions=(mine&&!deleted)
+      ? `<span class="nestiq-chat-actions"><button type="button" class="nestiq-chat-act" onclick="nestiqBeginChatEdit(${idArg})">Edit</button><button type="button" class="nestiq-chat-act" onclick="nestiqDeleteChatMessage(${idArg})">Delete</button></span>`
+      : '';
+    const nameHtml=observer?`<div class="nestiq-chat-from">${String(person.name||fromLabel).replace(/</g,'&lt;')}</div>`:'';
+    return `${sep}
+      <div class="nestiq-chat-row ${mine?'mine':'theirs'} ${m.fromRole==='caretaker'?'from-caretaker':'from-tenant'}" data-chat-msg="${nestiqEscAttr(m.id)}">
+        ${mine?'':nestiqChatAvatarHtml(person,32)}
+        <div class="nestiq-chat-col">
+          ${nameHtml}
+          <div class="nestiq-chat-bubble ${deleted?'is-deleted':''}"><div class="nestiq-chat-text">${text}</div></div>
+          <div class="nestiq-chat-meta">${time}${edited?' · edited':''} ${ticks}${actions}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+window.nestiqChatThreadHtml=nestiqChatThreadHtml;
+
+window.nestiqBeginChatEdit=function(id){
+  const m=nestiqFindChatMessage(id);
+  if(!nestiqCanEditChatMessage(m)) return;
+  const row=document.querySelector('[data-chat-msg="'+CSS.escape(String(id))+'"]');
+  const bubble=row&&row.querySelector('.nestiq-chat-text');
+  if(!bubble) return;
+  const cur=String(m.message||'');
+  bubble.innerHTML=`<textarea id="nestiqChatEditBox" class="form-input nestiq-chat-edit-box" maxlength="500">${nestiqEscAttr(cur)}</textarea>
+    <div class="nestiq-chat-edit-actions">
+      <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveChatEdit(${nestiqHtmlJsArg(id)})">Save</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCancelChatEdit()">Cancel</button>
+    </div>`;
+  const box=document.getElementById('nestiqChatEditBox');
+  if(box){ box.focus(); box.setSelectionRange(box.value.length,box.value.length); }
+};
+
+window.nestiqCancelChatEdit=function(){
+  nestiqRefreshOpenChat();
+};
+
+window.nestiqSaveChatEdit=async function(id){
+  const m=nestiqFindChatMessage(id);
+  if(!nestiqCanEditChatMessage(m)) return;
+  const box=document.getElementById('nestiqChatEditBox');
+  const next=String(box?.value||'').trim();
+  if(!next){ nestiqShowNotif?.('Message cannot be empty','warning'); return; }
+  if(next===String(m.message||'')){ nestiqCancelChatEdit(); return; }
+  try{
+    const lid=nestiqChatLandlordId();
+    if(!lid||!window.nestiqFs?.messages||!window.nestiqDb) throw new Error('Not connected');
+    await window.nestiqFs.messages(window.nestiqDb,lid).doc(String(id)).update({
+      message:next,
+      editedAt:new Date().toISOString()
+    });
+    m.message=next;
+    m.editedAt=new Date().toISOString();
+    nestiqShowNotif?.('Message updated','success');
+    nestiqRefreshOpenChat();
+  }catch(err){
+    console.error('edit chat',err);
+    nestiqShowNotif?.('Could not edit message','error');
+  }
+};
+
+window.nestiqDeleteChatMessage=async function(id){
+  const m=nestiqFindChatMessage(id);
+  if(!nestiqCanEditChatMessage(m)) return;
+  if(!window.confirm('Delete this message?')) return;
+  try{
+    const lid=nestiqChatLandlordId();
+    if(!lid||!window.nestiqFs?.messages||!window.nestiqDb) throw new Error('Not connected');
+    await window.nestiqFs.messages(window.nestiqDb,lid).doc(String(id)).update({
+      deleted:true,
+      deletedAt:new Date().toISOString(),
+      message:''
+    });
+    m.deleted=true;
+    m.message='';
+    nestiqShowNotif?.('Message deleted','success');
+    nestiqRefreshOpenChat();
+  }catch(err){
+    console.error('delete chat',err);
+    nestiqShowNotif?.('Could not delete message','error');
+  }
+};
 
 /** App root (folder containing the SPA index.html), always ends with /. Fixes …/index.html/?… vs other *.html paths. */
 function nestiqAppBaseUrl(){
@@ -73,7 +437,7 @@ function backupData(){
   a.download='nestiq-backup-'+new Date().toISOString().split('T')[0]+'.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  showNotif('💾 Backup downloaded!','success');
+  nestiqShowNotif('💾 Backup downloaded!','success');
 }
 
 function restoreData(){
@@ -98,9 +462,9 @@ function restoreData(){
           if(typeof normalizeStoredApplications==='function') normalizeStoredApplications();
         }
         saveData();
-        showNotif('📂 Data restored successfully!','success');
+        nestiqShowNotif('📂 Data restored successfully!','success');
         renderExpenses(); renderTenants(); renderKanban(); renderProperties();
-      }catch(err){showNotif('Invalid backup file','error');}
+      }catch(err){nestiqShowNotif('Invalid backup file','error');}
     };
     reader.readAsText(file);
   };
@@ -130,12 +494,21 @@ function whatsappIconSvg(){
 }
 
 function getTenantDueDateText(tenant){
+  if(typeof window.nestiqCurrentRentObligation==='function'){
+    const o=window.nestiqCurrentRentObligation(tenant);
+    if(o.dueDate instanceof Date){
+      return o.dueDate.toLocaleDateString('en-ZA',{day:'numeric',month:'long',year:'numeric'});
+    }
+  }
   const now=new Date();
   const dueDay=Math.max(1,Math.min(28,Number(tenant?.monthlyDueDate||1)));
   return `${dueDay} ${now.toLocaleString('en-ZA',{month:'long'})} ${now.getFullYear()}`;
 }
 
 function getTenantDaysOverdue(tenant){
+  if(typeof window.nestiqCurrentRentObligation==='function'){
+    return Number(window.nestiqCurrentRentObligation(tenant).daysOverdue||0);
+  }
   const now=new Date();
   const dueDay=Math.max(1,Math.min(28,Number(tenant?.monthlyDueDate||1)));
   const dueDate=new Date(now.getFullYear(), now.getMonth(), dueDay);
@@ -211,7 +584,7 @@ function logWhatsAppMessage(entry){
 function openWhatsApp(phone, message, meta={}){
   const url=buildWhatsAppUrl(phone, message);
   if(!url){
-    showNotif('No valid phone number for WhatsApp','error');
+    nestiqShowNotif('No valid phone number for WhatsApp','error');
     return;
   }
   logWhatsAppMessage({
@@ -229,7 +602,7 @@ function openWhatsApp(phone, message, meta={}){
 
 function openWhatsAppChat(phone, message){
   const normalized=formatWhatsAppNumber(phone);
-  if(!normalized){ showNotif('No valid phone number for WhatsApp','error'); return; }
+  if(!normalized){ nestiqShowNotif('No valid phone number for WhatsApp','error'); return; }
   const base=`https://wa.me/${normalized}`;
   const msg=message!=null?String(message).trim():'';
   const url=msg?`${base}?text=${encodeURIComponent(msg)}`:base;
@@ -268,7 +641,7 @@ function getPaymentsForTenant(tenantId){
 
 function recordPayment(tenantId, amount, method='EFT', reference='', opts={}){
   const tenant=getTenantById(tenantId);
-  if(!tenant){showNotif('Tenant not found','error');return null;}
+  if(!tenant){nestiqShowNotif('Tenant not found','error');return null;}
   const dateIso=(typeof opts.paymentDate==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(opts.paymentDate))
     ?opts.paymentDate
     :new Date().toISOString().slice(0,10);
@@ -324,11 +697,43 @@ function recordPayment(tenantId, amount, method='EFT', reference='', opts={}){
   }
   generateRentReceiptPDF(payment);
   showPaymentSuccessModal(tenant, payment, Boolean(opts.emailReceipt));
-  showNotif('✅ Payment recorded. Receipt generated.','success');
+  nestiqShowNotif('✅ Payment recorded. Receipt generated.','success');
   return payment;
 }
 
+function nestiqBindStatCounter(el, value, prefix, suffix){
+  if(!el) return;
+  const n=Number(value)||0;
+  prefix=prefix||'';
+  suffix=suffix||'';
+  el.dataset.countTo=String(n);
+  if(prefix) el.dataset.prefix=prefix; else delete el.dataset.prefix;
+  if(suffix) el.dataset.suffix=suffix; else delete el.dataset.suffix;
+  if(el.getAttribute('data-count-done')==='1'){
+    if(typeof nestiqUpdateStat==='function') nestiqUpdateStat(el,n,prefix,suffix);
+    else el.textContent=prefix+n.toLocaleString('en-ZA')+suffix;
+    return;
+  }
+  el.textContent='0';
+  if(typeof nestiqInitCounters==='function') nestiqInitCounters();
+}
+
 function updateHomeStats(){
+  const sk=document.getElementById('homeStatsSkeleton');
+  const metrics=document.getElementById('homeDashMetrics');
+  if((window.nestiqPropertiesLoading||window.nestiqTenantsLoading) && !document.getElementById('statRevenue')){
+    if(sk){ sk.style.display=''; nestiqShowSkeleton?.(sk,'stat',4); }
+    return;
+  }
+  if((window.nestiqPropertiesLoading||window.nestiqTenantsLoading) && metrics && sk && !window.__nestiqHomeStatsReady){
+    sk.style.display='';
+    nestiqShowSkeleton?.(sk,'stat',4);
+    metrics.style.display='none';
+    return;
+  }
+  if(sk) sk.style.display='none';
+  if(metrics) metrics.style.display='';
+  window.__nestiqHomeStatsReady=true;
   if(typeof syncTenantStatuses==='function') syncTenantStatuses();
   const occupied=tenantsData.filter(t=>t.status!=='vacant');
   const totalRevenue=occupied.reduce((sum,t)=>sum+(Number(t.rent)||0),0);
@@ -336,38 +741,126 @@ function updateHomeStats(){
   const occupiedProperties=propertiesData.filter(p=>p.status==='occupied').length;
   const occupancyRate=totalProperties>0?Math.round(occupiedProperties/totalProperties*100):0;
   const activeTenants=occupied.length;
-  const revenueEl=document.getElementById('statRevenue');
-  const occupancyEl=document.getElementById('statOccupancy');
-  const tenantsEl=document.getElementById('statTenants');
-  if(revenueEl) revenueEl.textContent='R'+totalRevenue.toLocaleString('en-ZA');
-  if(occupancyEl) occupancyEl.textContent=occupancyRate+'%';
-  if(tenantsEl) tenantsEl.textContent=String(activeTenants);
+  nestiqBindStatCounter(document.getElementById('statRevenue'), totalRevenue, 'R', '');
+  nestiqBindStatCounter(document.getElementById('statOccupancy'), occupancyRate, '', '%');
+  nestiqBindStatCounter(document.getElementById('statTenants'), activeTenants, '', '');
 }
 
 function renderHomeStats(){
   updateHomeStats();
   const fuEl=document.getElementById('homeFollowUpsStat');
   const s=typeof getSession==='function'?getSession():null;
-  if(fuEl && s?.role==='landlord') fuEl.textContent=String(typeof nestiqFollowUpsDueCount==='function'?nestiqFollowUpsDueCount():0);
+  if(fuEl && s?.role==='landlord'){
+    nestiqBindStatCounter(fuEl, typeof nestiqFollowUpsDueCount==='function'?nestiqFollowUpsDueCount():0, '', '');
+  }
   nestiqRenderHomeFollowUpsWidget?.();
+  nestiqRenderHomeUnreadMessagesWidget?.();
+  if(document.getElementById('nestiqLandlordDashboardHome')) nestiqRenderLandlordDashboardHome?.();
 }
 
 window.updateHomeStats=updateHomeStats;
 window.renderHomeStats=renderHomeStats;
 
-function updateMessageBadge(count){
-  const el=document.getElementById('navMessageBadge');
+function nestiqLandlordUnreadMessages(){
+  return [];
+}
+function nestiqLandlordUnreadMsgCount(){
+  return nestiqLandlordUnreadMessages().length;
+}
+function nestiqLandlordUnreadForTenant(tenantId){
+  return nestiqLandlordUnreadMessages().filter(m=>String(m.tenantId)===String(tenantId)).length;
+}
+function nestiqPaintCountBadge(el, count){
   if(!el) return;
   const n=Math.max(0,Number(count)||0);
   el.textContent=n>99?'99+':String(n);
   el.style.display=n>0?'inline-flex':'none';
 }
+function updateMessageBadge(count){
+  const n=count==null?nestiqLandlordUnreadMsgCount():Math.max(0,Number(count)||0);
+  nestiqPaintCountBadge(document.getElementById('navMessageBadge'), n);
+  nestiqPaintCountBadge(document.getElementById('navMessageBadgeMobile'), n);
+  document.querySelectorAll('a[href="#tenants"]').forEach(a=>{
+    if(a.querySelector('#navMessageBadge, #navMessageBadgeMobile')) return;
+    let b=a.querySelector('.nestiq-tenants-msg-badge');
+    if(!b&&n>0){
+      b=document.createElement('span');
+      b.className='nav-item-badge nestiq-tenants-msg-badge';
+      a.appendChild(b);
+    }
+    nestiqPaintCountBadge(b, n);
+  });
+  const viewing=window.__nestiqViewingTenantId;
+  if(viewing!=null) nestiqPaintCountBadge(document.getElementById('tenantDetailMsgBadge'), nestiqLandlordUnreadForTenant(viewing));
+  try{ nestiqRenderHomeUnreadMessagesWidget?.(); }catch(_e){}
+  try{ nestiqRenderTenantsUnreadBanner?.(); }catch(_e){}
+}
+window.nestiqLandlordUnreadMessages=nestiqLandlordUnreadMessages;
+window.nestiqLandlordUnreadMsgCount=nestiqLandlordUnreadMsgCount;
+window.nestiqLandlordUnreadForTenant=nestiqLandlordUnreadForTenant;
 window.updateMessageBadge=updateMessageBadge;
+
+function nestiqRenderHomeUnreadMessagesWidget(){
+  let sec=document.getElementById('homeUnreadMsgsSection');
+  if(!sec){
+    const page=document.getElementById('page-home');
+    if(!page) return;
+    sec=document.createElement('section');
+    sec.className='section';
+    sec.id='homeUnreadMsgsSection';
+    sec.style.cssText='display:none;max-width:960px;margin:0 auto;padding-top:0;padding-bottom:24px';
+    sec.innerHTML='<div id="homeUnreadMsgsWidget"></div>';
+    const after=document.getElementById('homeFollowUpsSection')||document.getElementById('gettingStarted')?.closest?.('section');
+    if(after&&after.parentNode) after.parentNode.insertBefore(sec, after.nextSibling);
+    else page.insertBefore(sec, page.firstChild);
+  }
+  const w=document.getElementById('homeUnreadMsgsWidget');
+  if(!w) return;
+  const s=typeof getSession==='function'?getSession():null;
+  if(s&&s.role&&s.role!=='landlord'){ sec.style.display='none'; return; }
+  const unread=nestiqLandlordUnreadMessages();
+  if(!unread.length){ sec.style.display='none'; return; }
+  const byTenant=new Map();
+  unread.forEach(m=>{
+    const id=String(m.tenantId||'');
+    if(!id) return;
+    const row=byTenant.get(id)||{id,count:0,preview:'',date:''};
+    row.count+=1;
+    const dt=String(m.date||'');
+    if(!row.date||dt>row.date){
+      row.date=dt;
+      row.preview=String(m.message||'New message');
+      row.fromName=String(m.fromName||'');
+    }
+    byTenant.set(id,row);
+  });
+  const tenants=Array.isArray(window.tenantsData)?window.tenantsData:[];
+  const esc=s=>String(s||'').replace(/</g,'&lt;');
+  sec.style.display='block';
+  w.innerHTML=`
+    <div class="followup-home-card nestiq-unread-msgs-card">
+      <div class="followup-home-title">Caretaker inbox</div>
+      <p class="followup-home-sub">Tenants message the assigned caretaker. You can view the thread — replies are caretaker-only.</p>
+      <div class="followup-home-list">${[...byTenant.values()].map(row=>{
+        const t=tenants.find(x=>String(x.id)===row.id);
+        const name=esc(t?.name||row.fromName||'Tenant');
+        const tidArg=typeof nestiqHtmlJsArg==='function'?nestiqHtmlJsArg(row.id):JSON.stringify(row.id);
+        return `<div class="followup-home-row">
+          <div>
+            <div class="followup-home-tenant">${name}</div>
+            <div class="followup-home-prop">${esc(t?.unit||'')} · ${esc(t?.property||'')}</div>
+            <div class="followup-home-subj">${esc(row.preview).slice(0,120)}</div>
+          </div>
+          <button type="button" class="btn-outline btn-sm" onclick="showPage('tenants');openLandlordTenantMessages(${tidArg})">View thread <span class="nav-item-badge" style="display:inline-flex">${row.count>99?'99+':row.count}</span></button>
+        </div>`;
+      }).join('')}</div>
+    </div>`;
+}
+window.nestiqRenderHomeUnreadMessagesWidget=nestiqRenderHomeUnreadMessagesWidget;
 
 function renderGettingStarted(){
   const hasProperties=propertiesData.length>0;
   const hasTenants=tenantsData.length>0;
-  const hasExpenses=expenses.length>0;
   const hasProfile=String(landlordSettings?.name||'').trim()!=='';
   if(hasProperties && hasTenants){
     const gs=document.getElementById('gettingStarted');
@@ -379,8 +872,8 @@ function renderGettingStarted(){
   gsEl.style.display='block';
   const steps=[
     {done:hasProfile,icon:'👤',title:'Set up your profile',desc:'Add your name, company and contact details',action:"showPage('settings')",btnText:'Go to Settings'},
-    {done:hasProperties,icon:'🏠',title:'Add your first property',desc:'Enter your rental property details',action:"openModal('addProperty')",btnText:'Add Property'},
-    {done:hasTenants,icon:'👥',title:'Add your first tenant',desc:'Add the tenant living in your property',action:"openModal('addTenant')",btnText:'Add Tenant'},
+    {done:hasProperties,icon:'🏠',title:'Add your first property',desc:'Enter your rental property details',action:"openModal('addProperty');nestiqOpenModalAnimated()",btnText:'Add Property'},
+        {done:hasTenants,icon:'👥',title:'Approve your first tenant',desc:'They apply from Browse listings — you review Applications',action:"showPage('listings')",btnText:'Browse listings'},
     {done:false,icon:'💳',title:'Record your first payment',desc:'Log a rent payment to start tracking income',action:"showPage('tenants')",btnText:'Go to Tenants'}
   ];
   gsEl.innerHTML=`
@@ -504,11 +997,11 @@ function showPaymentSuccessModal(tenant, payment, shouldEmailReceipt){
     <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
       <button class="btn-outline btn-sm" onclick="generateRentReceiptPDF(${JSON.stringify(payment).replace(/"/g,'&quot;')})">Download Receipt PDF</button>
       <button class="btn-primary btn-sm" onclick="emailReceiptNow(${JSON.stringify(tenant.id)},'${payment.receiptNo}')">Yes, Email Receipt</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">No thanks</button>
-      <button class="btn-outline btn-sm" onclick="closeModal()">Done</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">No thanks</button>
+      <button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Done</button>
     </div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   if(shouldEmailReceipt){
     emailReceiptNow(tenant.id, payment.receiptNo);
   }
@@ -519,14 +1012,14 @@ async function emailReceiptNow(tenantId, receiptNo){
     const payment=(paymentsData||[]).find(p=>String(p.tenantId)===String(tenantId) && p.receiptNo===receiptNo);
   if(!tenant||!payment) return;
   if(!isEmailConfigured()){
-    showNotif('Configure EmailJS in Settings to enable email notifications','warning');
+    nestiqShowNotif('Configure EmailJS in Settings to enable email notifications','warning');
     return;
   }
   try{
     await sendReceiptEmail(tenant, payment);
-    showNotif(`📧 Receipt emailed to ${tenant.name}`,'success');
+    nestiqShowNotif(`📧 Receipt emailed to ${tenant.name}`,'success');
   }catch(err){
-    showNotif(err?.message||'Receipt email failed','error');
+    nestiqShowNotif(err?.message||'Receipt email failed','error');
   }
 }
 

@@ -1,24 +1,25 @@
 const admin = require('firebase-admin');
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+function getAdmin() {
+  if (!admin.apps.length) admin.initializeApp();
+  return admin;
 }
 
 function getDatePlusMonths(months) {
   const d = new Date();
   d.setMonth(d.getMonth() + months);
-  return admin.firestore.Timestamp.fromDate(d);
+  return getAdmin().firestore.Timestamp.fromDate(d);
 }
 
 async function logFailedPayment(data) {
-  const db = admin.firestore();
+  const db = getAdmin().firestore();
   await db.collection('adminActivity').add({
     action: 'payment_failed',
     targetId: data.custom_str1 || '',
     amount: data.amount_gross || '',
     plan: data.custom_str2 || '',
     reason: data.payment_status || 'unknown',
-    timestamp: admin.firestore.FieldValue.serverTimestamp()
+    timestamp: getAdmin().firestore.FieldValue.serverTimestamp()
   });
 }
 
@@ -41,17 +42,20 @@ async function payfastWebhookHandler(req, res) {
       return res.status(400).send('Missing metadata');
     }
 
-    const db = admin.firestore();
+    const db = getAdmin().firestore();
+    const periodEnd = getDatePlusMonths(billingCycle === 'annual' ? 12 : 1);
+    const periodEndIso = periodEnd.toDate().toISOString();
+    const periodStartIso = new Date().toISOString();
 
     await db.collection('landlords').doc(landlordId).collection('profile').doc('settings').set({
       billing: {
         plan: planKey,
         billingCycle: billingCycle || 'monthly',
         status: 'active',
-        payfastPaymentId: paymentId || null,
-        currentPeriodStart: admin.firestore.FieldValue.serverTimestamp(),
-        currentPeriodEnd: getDatePlusMonths(billingCycle === 'annual' ? 12 : 1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+        payfastPaymentId: paymentId || mPaymentId || null,
+        currentPeriodStart: periodStartIso,
+        currentPeriodEnd: periodEndIso,
+        updatedAt: periodStartIso
       }
     }, { merge: true });
 
@@ -63,13 +67,21 @@ async function payfastWebhookHandler(req, res) {
       amount,
       currency: 'ZAR',
       status: 'paid',
-      paidAt: admin.firestore.FieldValue.serverTimestamp(),
-      description: `NestIQ ${planKey} — ${billingCycle || 'monthly'}`
+      paidAt: getAdmin().firestore.FieldValue.serverTimestamp(),
+      description: `NestIQ ${planKey} — ${billingCycle || 'monthly'}`,
+      source: 'payfast_itn'
     });
 
     if (mPaymentId) {
       try {
-        await db.collection('landlords').doc(landlordId).collection('billing').doc('pending').collection('records').doc(mPaymentId).delete();
+        await db.collection('landlords').doc(landlordId).collection('billing').doc('pending').collection('records').doc(mPaymentId).set({
+          status: 'completed',
+          completedAt: getAdmin().firestore.FieldValue.serverTimestamp(),
+          plan: planKey,
+          billingCycle: billingCycle || 'monthly',
+          amount,
+          pf_payment_id: paymentId || null
+        }, { merge: true });
       } catch (_e) { /* ignore */ }
     }
 
@@ -79,7 +91,7 @@ async function payfastWebhookHandler(req, res) {
       amount,
       plan: planKey,
       billingCycle: billingCycle || 'monthly',
-      timestamp: admin.firestore.FieldValue.serverTimestamp()
+      timestamp: getAdmin().firestore.FieldValue.serverTimestamp()
     });
 
     return res.status(200).send('OK');

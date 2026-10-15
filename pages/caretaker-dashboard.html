@@ -1,0 +1,44 @@
+<div class="page caretaker-portal-page" id="page-caretaker-dashboard" style="padding-top:0">
+  <div class="tenant-portal-wrap">
+    <nav class="tenant-tab-bar" id="caretakerTabBar" aria-label="Caretaker portal">
+      <button class="tab-btn active" data-tab="home" onclick="nestiqSwitchCaretakerTab('home')">
+        <span class="tab-icon" data-nq-icon="house" data-nq-size="20"></span><span class="tab-label">Home</span>
+      </button>
+      <button class="tab-btn" data-tab="properties" onclick="nestiqSwitchCaretakerTab('properties')">
+        <span class="tab-icon" data-nq-icon="building-2" data-nq-size="20"></span><span class="tab-label">Properties</span>
+      </button>
+      <button class="tab-btn" data-tab="maintenance" onclick="nestiqSwitchCaretakerTab('maintenance')">
+        <span class="tab-icon" data-nq-icon="wrench" data-nq-size="20"></span><span class="tab-label">Maintenance</span>
+      </button>
+      <button class="tab-btn" data-tab="inspections" onclick="nestiqSwitchCaretakerTab('inspections')">
+        <span class="tab-icon" data-nq-icon="clipboard-check" data-nq-size="20"></span><span class="tab-label">Inspections</span>
+      </button>
+      <button class="tab-btn" data-tab="messages" onclick="nestiqSwitchCaretakerTab('messages')">
+        <span class="tab-icon" data-nq-icon="message-square" data-nq-size="20"></span><span class="tab-label">Messages</span>
+        <span class="tab-badge" id="tabBadge-caretaker-messages" style="display:none"></span>
+      </button>
+      <button class="tab-btn" data-tab="profile" onclick="nestiqSwitchCaretakerTab('profile')">
+        <span class="tab-icon" data-nq-icon="user" data-nq-size="20"></span><span class="tab-label">Profile</span>
+      </button>
+      <button type="button" class="tab-btn tenant-tab-logout" onclick="nestiqContractorLogout()">
+        <span class="tab-icon" data-nq-icon="log-out" data-nq-size="20"></span><span class="tab-label">Sign Out</span>
+      </button>
+    </nav>
+
+    <div class="tenant-portal-main">
+      <div class="tenant-portal-topbar">
+        <div class="tenant-portal-greeting" id="caretakerGreeting">Welcome</div>
+        <button class="tenant-portal-logout" onclick="nestiqContractorLogout()">Sign Out</button>
+      </div>
+
+      <div class="tenant-tab-content-wrap" id="caretakerTabContent">
+        <div id="kTab-home" class="tenant-tab-page active"></div>
+        <div id="kTab-properties" class="tenant-tab-page"></div>
+        <div id="kTab-maintenance" class="tenant-tab-page"></div>
+        <div id="kTab-inspections" class="tenant-tab-page"></div>
+        <div id="kTab-messages" class="tenant-tab-page"></div>
+        <div id="kTab-profile" class="tenant-tab-page"></div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -2,8 +2,9 @@ const functions = require('firebase-functions');
 const admin = require('firebase-admin');
 const { sendSequenceEmail, APP_BASE } = require('./emailSequences-server');
 
-if (!admin.apps.length) {
-  admin.initializeApp();
+function getAdmin() {
+  if (!admin.apps.length) admin.initializeApp();
+  return admin;
 }
 
 function profileFirstName(data) {
@@ -17,7 +18,7 @@ function profileEmail(data) {
 }
 
 async function runScheduledEmails() {
-  const db = admin.firestore();
+  const db = getAdmin().firestore();
   const now = new Date();
   const landlords = await db.collection('landlords').get();
 

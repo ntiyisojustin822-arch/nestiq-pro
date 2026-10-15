@@ -40,10 +40,42 @@ function generateCalendarEventsByType(type, info){
   if(type==='due'){
     for(const tenant of (tenantsData||[])){
       if(tenant.status==='vacant') continue;
+      const ls=String(tenant.leaseStatus||'').toLowerCase();
+      if(ls && ls!=='active' && ls!=='expired') continue;
       const leaseStart=parseAnyDate(tenant.leaseStart)||addMonths(now,-12);
       const leaseEnd=tenantLeaseEndDate(tenant)||addMonths(now,12);
       const start=new Date(Math.max(leaseStart,rangeStart));
       const end=new Date(Math.min(leaseEnd,rangeEnd));
+      const leaseLike=typeof window.nestiqLeaseLikeFromTenant==='function'?window.nestiqLeaseLikeFromTenant(tenant):null;
+      const periods=typeof window.nestiqLeaseSchedulePeriods==='function' && leaseLike
+        ? window.nestiqLeaseSchedulePeriods(leaseLike, start, end)
+        : null;
+      if(periods&&periods.length){
+        for(const p of periods){
+          const paid=paymentExistsForTenantMonth(tenant,p.year,p.month);
+          if(paid) continue;
+          const past=p.dueDate < new Date(now.getFullYear(),now.getMonth(),now.getDate());
+          const amt=Number(p.amount||tenant.rent||0);
+          events.push(past?{
+            id:`overdue-${tenant.id}-${p.year}-${p.month}`,
+            title:`⚠ ${tenant.name} OVERDUE R${amt.toLocaleString('en-ZA')}`,
+            start:toISODate(p.dueDate),
+            allDay:true,
+            color:'#c46a3a',
+            textColor:'#ffffff',
+            extendedProps:{type:'overdue',tenantId:tenant.id,amount:amt}
+          }:{
+            id:`due-${tenant.id}-${p.year}-${p.month}`,
+            title:`${tenant.name} — R${amt.toLocaleString('en-ZA')} due`,
+            start:toISODate(p.dueDate),
+            allDay:true,
+            color:'#c9a84c',
+            textColor:'#0e1117',
+            extendedProps:{type:'due',tenantId:tenant.id,amount:amt}
+          });
+        }
+        continue;
+      }
       const dueDate=Math.max(1,Math.min(28,Number(tenant.monthlyDueDate||1)));
       let cur=new Date(start.getFullYear(), start.getMonth(), dueDate);
       while(cur<=end){
@@ -221,7 +253,7 @@ function handleCalendarEventClick(info){
   if(props.type==='due' || props.type==='overdue'){
     title=`Rent Due — ${tenant?.name||'Tenant'}`;
     body=`<div><strong>Amount:</strong> R${Number(props.amount||0).toLocaleString('en-ZA')}</div><div><strong>Due date:</strong> ${date}</div><div><strong>Tenant:</strong> ${tenant?.name||'—'} (${tenant?.property||'—'})</div>`;
-    actions=`<button class="btn-primary btn-sm" onclick="openPaymentModal(${tenant?.id||0});closeModal()">Record Payment</button>${typeof sendTenantWhatsAppTemplate==='function'?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tenant?.id||0},'rentReminder');closeModal()">Send WhatsApp Reminder</button>`:''}`;
+    actions=`<button class="btn-primary btn-sm" onclick="openPaymentModal(${tenant?.id||0});nestiqCloseModalAnimated()">Record Payment</button>${typeof sendTenantWhatsAppTemplate==='function'?`<button class="btn-whatsapp btn-sm" onclick="sendTenantWhatsAppTemplate(${tenant?.id||0},'rentReminder');nestiqCloseModalAnimated()">Send WhatsApp Reminder</button>`:''}`;
   }else if(props.type==='paid'){
     const p=props.payment||{};
     window.__calendarPaymentPreview=p;
@@ -231,12 +263,19 @@ function handleCalendarEventClick(info){
   }else if(props.type==='lease-start' || props.type==='lease-end' || props.type==='lease-warning'){
     title='Lease Event';
     body=`<div><strong>Tenant:</strong> ${tenant?.name||'—'}</div><div><strong>Property:</strong> ${tenant?.property||'—'}</div><div><strong>Date:</strong> ${date}</div><div><strong>Lease Start:</strong> ${tenant?.leaseStart||'—'}</div><div><strong>Lease End:</strong> ${tenant?.leaseEnd||tenant?.lease||'—'}</div>`;
-    actions=`<button class="btn-primary btn-sm" onclick="viewTenant(${tenant?.id||0});closeModal()">View Tenant</button>`;
+    actions=`<button class="btn-primary btn-sm" onclick="viewTenant(${tenant?.id||0});nestiqCloseModalAnimated()">View Tenant</button>`;
   }else if(props.type==='maintenance'){
-    const req=(maintenanceData||[]).find(m=>Number(m.id)===Number(props.maintId));
+    const req=(maintenanceData||[]).find(m=>String(m.id)===String(props.maintId)||Number(m.id)===Number(props.maintId));
+    const lock=typeof nestiqMaintLandlordLockMeta==='function'?nestiqMaintLandlordLockMeta(req):(typeof nestiqMaintContractorLockMeta==='function'?nestiqMaintContractorLockMeta(req):null);
+    const locked=!!(lock?.locked || (typeof nestiqMaintIsLandlordLocked==='function'&&nestiqMaintIsLandlordLocked(req)));
     title='Maintenance Request';
-    body=`<div><strong>Issue:</strong> ${req?.title||'—'}</div><div><strong>Property:</strong> ${req?.property||'—'}</div><div><strong>Status:</strong> ${req?.status||'open'}</div><div><strong>Date:</strong> ${date}</div>`;
-    actions=`<button class="btn-primary btn-sm" onclick="moveMaint(${req?.id||0},'progress');closeModal()">Update Status</button>`;
+    body=`<div><strong>Issue:</strong> ${req?.title||'—'}</div><div><strong>Property:</strong> ${req?.property||'—'}</div><div><strong>Status:</strong> ${req?.status||'open'}</div><div><strong>Date:</strong> ${date}</div>${locked&&lock?.message?`<div style="margin-top:8px;font-size:0.82rem;color:var(--muted)">${String(lock.message).replace(/</g,'&lt;')}</div>`:''}`;
+    if(locked){
+      actions=`<div class="nestiq-maint-awaiting" style="display:inline-flex">${String(lock?.label||'').replace(/</g,'&lt;')}</div>`;
+    }else{
+      const ridArg=typeof nestiqHtmlJsArg==='function'?nestiqHtmlJsArg(req?.id??0):JSON.stringify(String(req?.id??0));
+      actions=`<button class="btn-primary btn-sm" onclick="(async()=>{const ok=await moveMaint(${ridArg},'progress');if(ok!==false)nestiqCloseModalAnimated();})()">Update Status</button>`;
+    }
   }else if(props.type==='custom'){
     const ce=(customEvents||[]).find(x=>Number(x.id)===Number(props.eventId));
     title='Custom Event';
@@ -244,8 +283,8 @@ function handleCalendarEventClick(info){
     actions=`<button class="btn-outline btn-sm" onclick="openEditCustomCalendarEvent(${ce?.id||0})">Edit</button><button class="btn-outline btn-sm" onclick="deleteCustomCalendarEvent(${ce?.id||0})">Delete</button>`;
   }
 
-  document.getElementById('modalContent').innerHTML=`<h2 class="modal-title">${title}</h2><div style="font-size:.86rem;color:var(--muted);display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${body}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${actions}<button class="btn-outline btn-sm" onclick="closeModal()">Close</button></div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  document.getElementById('modalContent').innerHTML=`<h2 class="modal-title">${title}</h2><div style="font-size:.86rem;color:var(--muted);display:flex;flex-direction:column;gap:8px;margin-bottom:14px">${body}</div><div style="display:flex;gap:8px;flex-wrap:wrap">${actions}<button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button></div>`;
+  nestiqOpenModalAnimated();
 }
 
 function handleCalendarDateClick(info){ openAddCustomCalendarEvent(info.dateStr); }
@@ -262,9 +301,9 @@ function openAddCustomCalendarEvent(defaultDate=''){
     </div>
     <div style="margin-top:10px"><label>Color</label><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">${['#888','#5a7a60','#c9a84c','#c46a3a','#3a6b8a','#7c5cbf'].map(c=>`<button type="button" onclick="pickCustomEventColor('${c}')" data-color="${c}" class="ce-color-dot" style="width:22px;height:22px;border-radius:999px;border:2px solid var(--border);background:${c};cursor:pointer"></button>`).join('')}</div><input type="hidden" id="ce_color" value="#888"></div>
     <div class="form-group" style="margin-top:10px"><label>Notes</label><textarea class="form-input form-textarea" id="ce_note" placeholder="Optional notes"></textarea></div>
-    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn-primary btn-sm" onclick="saveCustomCalendarEvent()">Add to Calendar</button><button class="btn-outline btn-sm" onclick="closeModal()">Cancel</button></div>
+    <div style="display:flex;gap:8px;margin-top:14px"><button class="btn-primary btn-sm" onclick="saveCustomCalendarEvent()">Add to Calendar</button><button class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button></div>
   `;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 function toggleCustomEventTime(){
   const on=!document.getElementById('ce_all_day')?.checked;
@@ -281,7 +320,7 @@ function pickCustomEventColor(color){
 function saveCustomCalendarEvent(){
   const title=document.getElementById('ce_title')?.value?.trim();
   const date=document.getElementById('ce_date')?.value;
-  if(!title || !date){ showNotif('Add title and date','error'); return; }
+  if(!title || !date){ nestiqShowNotif('Add title and date','error'); return; }
   customEvents.unshift({
     id:Date.now(),
     title,
@@ -294,9 +333,9 @@ function saveCustomCalendarEvent(){
   });
   customEvents=customEvents.slice(0,200);
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   refreshNestiqCalendar();
-  showNotif('Calendar event added','success');
+  nestiqShowNotif('Calendar event added','success');
 }
 function openEditCustomCalendarEvent(eventId){
   const ce=(customEvents||[]).find(x=>Number(x.id)===Number(eventId));
@@ -329,13 +368,13 @@ function saveEditedCustomCalendarEvent(eventId){
     notes:document.getElementById('ce_note')?.value?.trim()||''
   };
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   refreshNestiqCalendar();
 }
 function deleteCustomCalendarEvent(eventId){
   customEvents=(customEvents||[]).filter(x=>Number(x.id)!==Number(eventId));
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   refreshNestiqCalendar();
 }
 
@@ -343,7 +382,7 @@ function downloadCalendarPaymentReceipt(tenantId){
   const tenant=getTenantById(tenantId);
   const payment=window.__calendarPaymentPreview||null;
   if(tenant && payment) generateReceiptPDF(tenant,payment);
-  closeModal();
+  nestiqCloseModalAnimated();
 }
 
 function setCalendarFilter(mode){

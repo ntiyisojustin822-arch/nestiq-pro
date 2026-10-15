@@ -24,7 +24,7 @@
     window.__nestiqOnboardingComplete=true;
     location.hash='#home';
     if(typeof mountPage==='function') mountPage('home').catch(()=>{});
-    showNotif('You can finish setup anytime in Settings.','success');
+    nestiqShowNotif('You can finish setup anytime in Settings.','success');
   }
 
   function render(){
@@ -41,7 +41,7 @@
           <h2 class="modal-title" style="text-align:center">Welcome to NestIQ Pro, ${String(name).replace(/</g,'&lt;')}!</h2>
           <p class="modal-sub" style="text-align:center">Let's get your account set up in just a few minutes.</p>
           <ul style="font-size:0.88rem;color:var(--muted);line-height:1.7;max-width:400px;margin:16px auto">
-            <li>Add your first property</li><li>Add your first tenant</li><li>Set up your contact details</li><li>Configure your payment details</li>
+            <li>Add your first property</li><li>Publish a vacancy so tenants can apply</li><li>Set up your contact details</li><li>Configure your payment details</li>
           </ul>
           <button type="button" class="btn-primary" style="width:100%;max-width:320px;display:block;margin:20px auto 0" onclick="nestiqOnboardNext(2)">Let's Get Started →</button>
         </div>`;
@@ -74,7 +74,7 @@
           <div class="form-group"><label>Property name</label><input class="form-input" id="ob_pname" placeholder="e.g. Seaside Studio"></div>
           <div class="form-group"><label>Full address</label><input class="form-input" id="ob_paddr" placeholder="Street address"></div>
           <div class="form-group"><label>City</label><input class="form-input" id="ob_pcity" placeholder="City"></div>
-          <div class="form-group"><label>Type</label><select class="form-input" id="ob_ptype"><option>Apartment</option><option>House</option><option>Townhouse</option></select></div>
+          <div class="form-group"><label>Type</label><select class="form-input" id="ob_ptype"><option>Apartment</option><option>House</option><option>Townhouse</option><option>Bachelor Apartment</option><option>Backroom / Garden Flat</option></select></div>
           <div class="form-group"><label>Bedrooms</label><select class="form-input" id="ob_pbed"><option>1</option><option>2</option><option>3</option><option>4+</option></select></div>
           <div class="form-group"><label>Monthly rent (R)</label><input class="form-input" id="ob_prent" type="number" placeholder="0"></div>
           <div class="form-group"><label>Status</label>
@@ -94,19 +94,15 @@
         <div class="nestiq-onboard-card">
           <div class="nestiq-onboard-bar"><div class="nestiq-onboard-bar-fill" style="width:${pct}%"></div></div>
           <div class="nestiq-onboard-skip"><button type="button" class="btn-outline btn-sm" onclick="nestiqOnboardSkip()">Skip</button></div>
-          <h2 class="modal-title">Add your first tenant</h2>
-          <p class="modal-sub">Who lives in ${String(prop?.name||'this property').replace(/</g,'&lt;')}?</p>
-          <div class="form-group"><label>Full name</label><input class="form-input" id="ob_tname"></div>
-          <div class="form-group"><label>Email</label><input class="form-input" id="ob_temail" type="email"></div>
-          <div class="form-group"><label>Phone</label><input class="form-input" id="ob_tphone"></div>
-          <div class="form-group"><label>Unit</label><input class="form-input" id="ob_tunit" placeholder="e.g. 4B"></div>
-          <div class="form-group"><label>Monthly rent (R)</label><input class="form-input" id="ob_trent" type="number" value="${prop?.rent||0}"></div>
-          <div class="form-group"><label>Lease start</label><input class="form-input" id="ob_tls" type="date"></div>
-          <div class="form-group"><label>Lease end</label><input class="form-input" id="ob_tle" type="date"></div>
-          <label style="display:flex;gap:8px;align-items:center;font-size:0.86rem;margin:12px 0"><input type="checkbox" id="ob_tinv" checked> Send portal invitation to this tenant</label>
-          <p style="font-size:0.78rem;color:var(--muted)">We will email instructions when EmailJS is configured, or you can share the invitation code.</p>
-          <button type="button" class="btn-primary" style="width:100%" onclick="nestiqOnboardAddTenant()">Add Tenant →</button>
-          <p style="text-align:center;margin-top:12px"><a href="#" onclick="nestiqOnboardNext(5);return false;">Skip for now</a></p>
+        <h2 class="modal-title">Tenants apply in NestIQ</h2>
+          <p class="modal-sub" style="line-height:1.55;margin-bottom:16px">You do not add tenants by hand. Publish a vacancy; they apply from the web app.</p>
+          <div class="nestiq-flow-banner" style="margin:0 0 18px">
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">1</span><strong>List</strong><span>Vacant units</span></div>
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">2</span><strong>Apply</strong><span>From listings</span></div>
+            <div class="nestiq-flow-step"><span class="nestiq-flow-num">3</span><strong>Approve</strong><span>Applications</span></div>
+          </div>
+          <button type="button" class="btn-gold" style="width:100%;justify-content:center" onclick="nestiqOnboardNext(5)">Continue →</button>
+          <p style="text-align:center;margin-top:12px"><a href="#" onclick="nestiqOnboardNext(5);return false;" style="color:var(--muted);font-size:0.84rem">Skip for now</a></p>
         </div>`;
       return;
     }
@@ -169,11 +165,11 @@
 
   window.nestiqOnboardAddProperty=async function(){
     const name=document.getElementById('ob_pname')?.value?.trim();
-    if(!name){ showNotif('Property name required','error'); return; }
+    if(!name){ nestiqShowNotif('Property name required','error'); return; }
     const addr=document.getElementById('ob_paddr')?.value?.trim()||'';
     const city=document.getElementById('ob_pcity')?.value?.trim()||'';
     const typeEl=document.getElementById('ob_ptype');
-    const typeMap={ Apartment:'apartment', House:'house', Townhouse:'apartment' };
+    const typeMap={ Apartment:'apartment', House:'house', Townhouse:'townhouse', 'Bachelor Apartment':'bachelor', Bachelor:'bachelor', 'Backroom / Garden Flat':'backroom' };
     const typeVal=typeEl?typeEl.value:'Apartment';
     const bed=document.getElementById('ob_pbed')?.value||'1';
     const rent=parseFloat(document.getElementById('ob_prent')?.value||'0')||0;
@@ -187,13 +183,15 @@
       rent,
       status:obOccupied?'occupied':'vacant',
       type:typeMap[typeVal]||'apartment',
-      icon:typeVal==='House'?'🏠':'🏢',
+      icon:typeVal==='House'?'🏠':typeVal==='Backroom / Garden Flat'?'🏡':typeVal==='Bachelor Apartment'?'🛏️':'🏢',
       bedrooms:parseInt(String(bed).replace(/\D/g,''),10)||1,
       leaseEnd:'Available',
       lat:null,
       lng:null,
       landlordId:lid||undefined,
-      publicListing:!obOccupied
+      publicListing:!obOccupied,
+      totalUnits:1,
+      unitPrefix:'Unit'
     };
     if(window.nestiqUseFirestore&&window.nestiqDb&&firebase?.auth?.()?.currentUser&&lid){
       try{
@@ -207,6 +205,7 @@
         }else{
           propertiesData.push(localRow);
         }
+        try{ await window.nestiqSyncPropertyUnits?.(ref.id, 1, 'Unit', rent); }catch(_e){}
         try{ await window.nestiqSyncPublicListingMirror?.(localRow); }catch(_e){}
         saveData?.();
         nestiqOnboardNext(obOccupied?4:5);
@@ -216,51 +215,19 @@
         const msg=typeof nestiqPropertyFirestoreErrorMessage==='function'
           ? nestiqPropertyFirestoreErrorMessage(err,'save')
           : 'Failed to add property';
-        showNotif(msg,'error');
+        nestiqShowNotif(msg,'error');
         return;
       }
     }
     const id=Date.now();
     obPropId=id;
     propertiesData.push({ ...row, id });
+    try{ await window.nestiqSyncPropertyUnits?.(id, 1, 'Unit', rent); }catch(_e){}
     saveData?.();
     nestiqOnboardNext(obOccupied?4:5);
   };
 
   window.nestiqOnboardAddTenant=async function(){
-    const nm=document.getElementById('ob_tname')?.value?.trim();
-    const em=document.getElementById('ob_temail')?.value?.trim().toLowerCase();
-    if(!nm||!em){ showNotif('Name and email required','error'); return; }
-    const prop=propertiesData.find(p=>p.id===obPropId);
-    const lid=window.nestiqCurrentLandlordUid?.();
-    const tid=typeof tenantNextId==='number'?tenantNextId++:Date.now();
-    const unit=(document.getElementById('ob_tunit')?.value||'Unit').trim();
-    const newTenant={
-      id:tid,
-      name:nm,
-      property:prop?.name||'',
-      propertyId:obPropId,
-      unit,
-      rent:parseFloat(document.getElementById('ob_trent')?.value||'0')||prop?.rent||0,
-      status:'paid',
-      lease:'Annual',
-      leaseStart:document.getElementById('ob_tls')?.value||new Date().toISOString().slice(0,10),
-      leaseEnd:document.getElementById('ob_tle')?.value||'2026-12-31',
-      monthlyDueDate:1,
-      payments:[],
-      phone:document.getElementById('ob_tphone')?.value||'',
-      email:em,
-      avatar:'👤',
-      notes:'',
-      landlordId:lid||undefined,
-      unitPassword:String(unit).toLowerCase().replace(/^unit\s*/,'').replace(/\s+/g,''),
-      firstLogin:false,
-      hasPortalAccess:false,
-      deposit:typeof nestiqNormalizeTenantDeposit==='function'?nestiqNormalizeTenantDeposit(null,parseFloat(document.getElementById('ob_trent')?.value||'0')||prop?.rent||0):undefined
-    };
-    tenantsData.push(newTenant);
-    saveData?.();
-    if(document.getElementById('ob_tinv')?.checked) await window.nestiqAfterTenantAddedFlow?.(newTenant,{ sendEmail:true });
     nestiqOnboardNext(5);
   };
 
@@ -281,7 +248,7 @@
     window.__nestiqOnboardingComplete=true;
     saveData?.();
     document.getElementById('nestiqOnboardingOverlay')?.remove();
-    showNotif('🎉 Welcome to NestIQ Pro! Your account is all set up.','success');
+    nestiqShowNotif('🎉 Welcome to NestIQ Pro! Your account is all set up.','success');
     location.hash='#home';
     if(typeof mountPage==='function') mountPage('home').catch(()=>{});
   };

@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NestIQ — Presentation Q&amp;A Pack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --gold: #C46A3A;
+      --gold-soft: rgba(196, 106, 58, 0.12);
+      --ink: #0E1117;
+      --cream: #F5F0E8;
+      --paper: #FFFcf8;
+      --muted: #5c5a56;
+      --line: rgba(14, 17, 23, 0.10);
+      --rust: #A63D2F;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--cream);
+      color: var(--ink);
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+      font-size: 11.2pt;
+      line-height: 1.55;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+
+    @page {
+      size: A4;
+      margin: 18mm 16mm 20mm;
+    }
+    @page :first {
+      margin: 0;
+    }
+
+    .cover {
+      page-break-after: always;
+      min-height: 297mm;
+      padding: 0;
+      background:
+        radial-gradient(ellipse 80% 50% at 100% 0%, rgba(196,106,58,0.22), transparent 55%),
+        linear-gradient(165deg, #0E1117 0%, #171c28 55%, #1c2333 100%);
+      color: #F7F4EF;
+      position: relative;
+      overflow: hidden;
+    }
+    .cover-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(247,244,239,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(247,244,239,0.04) 1px, transparent 1px);
+      background-size: 32px 32px;
+      opacity: 0.45;
+    }
+    .cover-inner {
+      position: relative;
+      z-index: 1;
+      padding: 28mm 22mm 22mm;
+      min-height: 297mm;
+      display: flex;
+      flex-direction: column;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-size: 11pt;
+      color: #e8c4a8;
+    }
+    .logo-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--gold);
+      box-shadow: 0 0 0 4px rgba(196,106,58,0.25);
+    }
+    .cover h1 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      font-size: 42pt;
+      line-height: 1.12;
+      margin: 48px 0 18px;
+      max-width: 14ch;
+    }
+    .cover h1 em {
+      font-style: italic;
+      color: #e8b48a;
+    }
+    .cover-lead {
+      max-width: 42ch;
+      font-size: 13pt;
+      color: rgba(247,244,239,0.72);
+      margin: 0 0 40px;
+      line-height: 1.65;
+    }
+    .cover-meta {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      border-top: 1px solid rgba(247,244,239,0.14);
+      padding-top: 22px;
+    }
+    .cover-meta .k {
+      font-size: 8.5pt;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #e8c4a8;
+      margin-bottom: 4px;
+    }
+    .cover-meta .v { font-size: 11.5pt; font-weight: 500; }
+
+    .page-rest { background: var(--paper); }
+
+    h2 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 20pt;
+      font-weight: 600;
+      margin: 0 0 8px;
+      color: var(--ink);
+    }
+    .section-kicker {
+      font-size: 8.5pt;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--gold);
+      font-weight: 700;
+      margin: 0 0 6px;
+    }
+    .section-intro {
+      color: var(--muted);
+      margin: 0 0 18px;
+      max-width: 62ch;
+    }
+    .section {
+      page-break-before: always;
+    }
+    .section.first { page-break-before: auto; padding-top: 4mm; }
+
+    .toc {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px 18px;
+      margin-top: 8px;
+    }
+    .toc-item {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 12px 14px;
+      background: #fff;
+    }
+    .toc-num {
+      color: var(--gold);
+      font-weight: 700;
+      font-size: 9pt;
+      letter-spacing: 0.08em;
+    }
+    .toc-item strong { display: block; margin-top: 2px; font-size: 11.5pt; }
+    .toc-item span { color: var(--muted); font-size: 9.5pt; }
+
+    .how {
+      background: var(--cream);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin: 18px 0 0;
+    }
+    .how h3 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 13pt;
+      margin: 0 0 8px;
+    }
+    .how ol { margin: 0; padding-left: 18px; }
+    .how li { margin: 4px 0; }
+
+    .qa {
+      break-inside: avoid;
+      page-break-inside: avoid;
+      margin: 0 0 13px;
+      padding: 0 0 13px;
+      border-bottom: 1px solid var(--line);
+    }
+    .qa:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
+    .q {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 12.4pt;
+      font-weight: 600;
+      margin: 0 0 7px;
+      color: var(--ink);
+    }
+    .q::before {
+      content: "Q";
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      line-height: 18px;
+      text-align: center;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #fff;
+      font-family: "DM Sans", sans-serif;
+      font-size: 8pt;
+      font-weight: 700;
+      margin-right: 8px;
+      vertical-align: 2px;
+    }
+    .say {
+      margin: 0 0 6px;
+    }
+    .label {
+      display: inline-block;
+      font-size: 7.8pt;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin-bottom: 3px;
+    }
+    .probe {
+      background: var(--gold-soft);
+      border-left: 3px solid var(--gold);
+      border-radius: 0 10px 10px 0;
+      padding: 8px 12px;
+      color: #3d3834;
+      font-size: 10.2pt;
+      margin-top: 6px;
+    }
+
+    .closer {
+      page-break-before: always;
+      min-height: 240mm;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+    .closer-card {
+      background: #0E1117;
+      color: #F7F4EF;
+      border-radius: 18px;
+      padding: 28px 30px;
+    }
+    .closer-card .section-kicker { color: #e8c4a8; }
+    .closer-card h2 { color: #fff; font-size: 22pt; margin-bottom: 14px; }
+    .closer-card p { font-size: 13.5pt; line-height: 1.7; color: rgba(247,244,239,0.86); margin: 0; }
+    .tips { margin-top: 22px; }
+    .tips h3 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 14pt;
+      margin: 0 0 10px;
+    }
+    .tips ul { margin: 0; padding-left: 18px; color: var(--muted); }
+    .tips li { margin: 6px 0; }
+
+    footer.run {
+      display: none;
+    }
+    @media print {
+      body { background: white; }
+    }
+  </style>
+</head>
+<body>
+  <section class="cover">
+    <div class="cover-grid"></div>
+    <div class="cover-inner">
+      <div class="brand"><span class="logo-dot"></span> NestIQ Pro</div>
+      <h1>Presentation<br><em>Q&amp;A pack</em></h1>
+      <p class="cover-lead">Spoken answers for a project defence. Short enough to say out loud. Strong enough if they ask a follow-up.</p>
+      <div class="cover-meta">
+        <div>
+          <div class="k">Document</div>
+          <div class="v">Oral presentation brief</div>
+        </div>
+        <div>
+          <div class="k">Product</div>
+          <div class="v">Smart rental management</div>
+        </div>
+        <div>
+          <div class="k">Stack</div>
+          <div class="v">Vanilla JS · Firebase · simulated pay</div>
+        </div>
+        <div>
+          <div class="k">Prepared for</div>
+          <div class="v">Ntiyiso Justin · nestiq-pro.web.app</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="page-rest">
+    <section class="section first">
+      <div class="section-kicker">How to use this</div>
+      <h2>Keep the first paragraph. Use the gold box only if they probe.</h2>
+      <p class="section-intro">Markers usually ask why it exists, who it is for, how it works, and what you would change. Speak the main answer. Do not read the follow-up unless they push.</p>
+      <div class="how">
+        <h3>In the room</h3>
+        <ol>
+          <li>Lead with the problem: WhatsApp and Excel have no record of who paid, who fixed it, or what it cost.</li>
+          <li>Demo one loop: tenant reports a leak → contractor completes with parts → landlord pays → both sides get a receipt. Chat is the backup demo if time is short.</li>
+          <li>Be honest: card/EFT does not debit a real bank; PayFast is the intended live gateway; WhatsApp is pre-filled; receipts are not SARS invoices.</li>
+          <li>If stuck, land on the closer sentence at the end of this pack.</li>
+        </ol>
+      </div>
+
+      <div class="toc" style="margin-top:22px">
+        <div class="toc-item"><div class="toc-num">01</div><strong>Problem and purpose</strong><span>Why NestIQ exists</span></div>
+        <div class="toc-item"><div class="toc-num">02</div><strong>Users and roles</strong><span>Landlord, tenant, caretaker, contractor</span></div>
+        <div class="toc-item"><div class="toc-num">03</div><strong>Architecture</strong><span>Vanilla JS and Firebase</span></div>
+        <div class="toc-item"><div class="toc-num">04</div><strong>Features</strong><span>Jobs, payouts, rent, chat</span></div>
+        <div class="toc-item"><div class="toc-num">05</div><strong>Security and privacy</strong><span>Rules, POPIA, passwords</span></div>
+        <div class="toc-item"><div class="toc-num">06</div><strong>Limits and evaluation</strong><span>Bugs, testing, next month</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">01 — Problem and purpose</div>
+      <h2>Why this product exists</h2>
+      <p class="section-intro">Start here. If they only remember one thing, it should be the problem.</p>
+
+      <article class="qa">
+        <p class="q">What problem does NestIQ solve?</p>
+        <p class="say">Landlords in South Africa often run rentals on WhatsApp, Excel, and email. Rent due dates, repairs, contractor payments, and tenant chat get lost. NestIQ puts the people who actually run a building — landlord, tenant, caretaker, contractor — into one record: who paid, who fixed it, and what it cost.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Who is it for?</p>
+        <p class="say">Small-to-medium South African landlords. Tenants get a portal. Caretakers and contractors are invited in — they do not share the landlord password. It is not an enterprise ERP.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Why not just Excel and WhatsApp?</p>
+        <p class="say">Spreadsheets do not notify anyone, do not give tenants a login, and do not keep a clean history of payments and repairs. WhatsApp is easy to miss. A contractor paid in cash has no receipt next to the job. NestIQ stores that loop in one place.</p>
+      </article>
+      <article class="qa">
+        <p class="q">If you only had two minutes, what would you demo?</p>
+        <p class="say">Tenant reports a leak. Contractor accepts, starts, completes with parts. Landlord pays from the completed job and downloads a receipt. If time is tight, chat with an unread badge is the backup — it is visual and fast.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">02 — Users and roles</div>
+      <h2>Who signs in, and what they can do</h2>
+
+      <article class="qa">
+        <p class="q">How does a landlord account differ from a tenant account?</p>
+        <p class="say">A landlord signs up and owns the portfolio. Everyone else is invited. A tenant never creates a landlord account. Caretakers and contractors redeem a staff invite and land on their own dashboard, not the full rent roll.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How does a tenant get access?</p>
+        <p class="say">The landlord adds the tenant, then sends a portal invite — a code like NQ-XXXXXX, or a link. The tenant signs in with their email and the code. Their account is linked to that landlord and that tenant profile in Firestore.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What about caretakers and contractors?</p>
+        <p class="say">The landlord invites them from Staff. A caretaker can log issues, review urgency, and assign a contractor inside the landlord’s settings. A contractor only sees assigned jobs: accept or decline, start, complete with parts and photos. They cannot mark themselves paid.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What can each side do that the other cannot?</p>
+        <p class="say">The landlord sees properties, all tenants, expenses, and payouts. The tenant sees only their unit. The contractor sees only their jobs. Firestore rules enforce that — not just hidden menus.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What if the wrong person signs in as a landlord?</p>
+        <p class="say">The UI hides landlord screens for tenants, but that is not the real lock. Firestore security rules are. A tenant can only read their own rows under that landlord. They cannot load another landlord’s tenants even from the browser console.</p>
+        <div class="probe"><span class="label">If they probe</span><br />Hiding a menu is not security. Anyone can call Firebase from DevTools. Rules on the server decide what is allowed.</div>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">03 — Architecture</div>
+      <h2>How the system is built</h2>
+
+      <article class="qa">
+        <p class="q">Why vanilla JavaScript instead of React or Angular?</p>
+        <p class="say">This is a school project that had to ship as a working product. Vanilla JS and HTML pages keep it simple to host on Firebase Hosting, with no build step required for the core app. The tradeoff is a larger codebase of globals. A framework would help if a team grew.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Why Firebase instead of your own backend?</p>
+        <p class="say">Firebase gives authentication, a realtime database, and file storage without writing a full custom server. That fits a student project: login, live chat, and cloud sync work out of the box.</p>
+        <div class="probe"><span class="label">If they probe</span><br />We still wrote the product logic: rent status, invitations, contractor stages, payouts, receipts, unread chat, and the role split. Firebase is infrastructure, not the whole system.</div>
+      </article>
+      <article class="qa">
+        <p class="q">How is data scoped so Landlord A cannot see Landlord B?</p>
+        <p class="say">Data lives under landlords/{landlordUid}/… — tenants, payments, messages, and so on. The signed-in landlord’s UID is the folder. Tenants are linked through tenantAccounts and can only read their own landlord’s documents.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How do live updates work — for example chat?</p>
+        <p class="say">Firestore listeners. When a tenant sends a chat, the landlord’s messages listener fires, the list updates, and unread badges refresh. No page reload.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Where is data stored?</p>
+        <p class="say">Signed-in use is Firestore, and Storage for photos. The browser holds the live arrays in memory while you work. The real product path is the cloud, not a spreadsheet on one PC.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Why South Africa, Rand, and PayFast?</p>
+        <p class="say">Amounts are in ZAR. Banks in the EFT step are FNB, Standard Bank, Absa, Nedbank, Capitec. Lease copy follows local notice habits. PayFast is the intended live checkout. For this school project the lecturer accepted a simulated in-app wizard — we do not charge a real card.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">04 — Features they will poke at</div>
+      <h2>What to say about the product surface</h2>
+
+      <article class="qa">
+        <p class="q">How is rent marked paid or overdue?</p>
+        <p class="say">Each tenant has a monthly due day. If a payment exists for the current month, status is paid. If today is after the due day and there is no payment, it is overdue. Otherwise it is due soon. The dashboard and the tenant home both use that status.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How do public listings and applications become a tenant?</p>
+        <p class="say">A vacant property can be listed. An applicant submits a public application. The landlord reviews it, approves it, and that creates a tenant profile. Then they send a portal invite so the person can sign in.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How does a maintenance job actually move?</p>
+        <p class="say">The tenant reports a fault with a suggested priority. The landlord or caretaker sets the official urgency the contractor sees. The job is assigned. The contractor accepts or declines, starts work, then completes with a description, parts, labour, and photos. The landlord board still reads Open / In progress / Done; the contractor portal owns the stages.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How do contractors get paid?</p>
+        <p class="say">Only after the job is complete. The landlord or caretaker opens Pay contractor — the same card / EFT wizard as rent, with the vendor’s name and masked bank details. On success we store paid amount, reference, receipt number, and who paid. The contractor sees Awaiting payment or Paid. They cannot mark themselves paid; Firestore rules block those fields on their writes.</p>
+        <div class="probe"><span class="label">If they probe</span><br />This is a school simulation. The wizard does not debit FNB or Capitec. PayFast is the intended live gateway. The important product rule is still real: the contractor cannot certify their own payout.</div>
+      </article>
+      <article class="qa">
+        <p class="q">What is on the receipt?</p>
+        <p class="say">A NestIQ PDF: amount, receipt number, payment reference, contractor, job, property, who paid, and the date. Same idea after a tenant pays rent. It is proof of payment in the app, not a SARS tax invoice — say that out loud if they ask.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How does in-app chat work, including unread badges?</p>
+        <p class="say">Messages sit in that landlord’s messages collection, tagged with tenantId and fromRole. Unread means read is false. Opening the chat marks those messages read.</p>
+        <div class="probe"><span class="label">If they probe</span><br />We had a bug where the landlord list was overwritten in memory after a cloud sync. We also briefly marked tenant messages read as soon as they arrived. Both are fixed: keep one shared list, and only mark read when the person opens the thread.</div>
+      </article>
+      <article class="qa">
+        <p class="q">What do WhatsApp and EmailJS actually send?</p>
+        <p class="say">WhatsApp is not fully automated. It opens WhatsApp with a pre-filled reminder and the landlord still taps send. Emails can go through EmailJS once templates are configured. We did not build an unofficial WhatsApp blaster.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What does the Gemini AI do, and what must the landlord still check?</p>
+        <p class="say">On Pro, Gemini Flash can suggest rent, help screen a tenant from details the landlord typed, or summarise the portfolio. It is not a credit bureau and not legal advice. The landlord must check the output. It needs a Gemini API key in Settings.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How do PayFast, plans, and the trial work?</p>
+        <p class="say">Starter is limited — about two properties and five tenants. New landlords get a 14-day Pro trial. Paid Pro is designed to go through PayFast in Rand. For this school project we are not charging real customers. In-app rent and contractor payouts use the simulated wizard the lecturer accepted.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">05 — Security and privacy</div>
+      <h2>Trust, data, and what is still missing</h2>
+
+      <article class="qa">
+        <p class="q">How are passwords stored?</p>
+        <p class="say">We do not store passwords. Firebase Authentication hashes and stores them. We only store profile fields — name, email, and the landlord or tenant link.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Can a tenant read another tenant’s messages or payments?</p>
+        <p class="say">No, if the rules are deployed. They can read messages and payments that belong to their tenant user ID or their tenant profile under their landlord. Another tenant’s documents are not allowed.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Why do Firestore rules matter if the UI already hides those screens?</p>
+        <p class="say">Anyone can call Firebase from the console. Security has to live on the server — the rules — not only in HTML. If rules were missing, a signed-in user could potentially read or write another landlord’s data.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What personal data do you store? What about POPIA?</p>
+        <p class="say">We store names, emails, phones, property addresses, payment records, bank details on vendor profiles, and optional photos. There is a public Terms and Privacy page. A full POPIA export-and-delete flow for a tenant on request is still the gap before a real launch.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What would you add before real landlords used this?</p>
+        <p class="say">Firebase App Check so the API cannot be abused from random sites, backups, an audit log of who changed what, and a proper POPIA delete/export flow. Also a real support process and live billing only after those are in place.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What if tenant IDs are stored as “3” in one place and 3 in another?</p>
+        <p class="say">Firestore treats a string and a number as different values. We hit that in chat and photos, so we now compare IDs as strings in the app and in some rules. That is a real production detail, not a textbook one.</p>
+      </article>
+    </section>
+
+    <section class="section">
+      <div class="section-kicker">06 — Limits, testing, and “so what”</div>
+      <h2>Be honest. Then show you know the next step.</h2>
+
+      <article class="qa">
+        <p class="q">What did you not finish, and why?</p>
+        <p class="say">Live charging is not the focus of this school build — the wizard is simulated. There is no native iOS or Android app. Email needs EmailJS setup. WhatsApp is not fully automated. Offline use is limited. Staff exist as invited caretakers and contractors, not as a full multi-admin company login with shared permissions.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What breaks if the user is offline?</p>
+        <p class="say">Listeners and writes need a network. Some UI might still show the last data in memory, but it is not a proper offline-first app. That would be a future piece of work, using Firestore’s offline cache more deliberately.</p>
+      </article>
+      <article class="qa">
+        <p class="q">If you had another month, what would you build first?</p>
+        <p class="say">A tenant data-export and delete flow, Firebase App Check, live PayFast only after that, and tighter onboarding so a landlord can go from signup to first paid contractor job without getting stuck.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How did you test it?</p>
+        <p class="say">Two browsers. Landlord in one, tenant or contractor in the other. Walk the job loop, then pay and download the receipt. For chat: send, check the unread badge, open the thread, confirm it clears.</p>
+      </article>
+      <article class="qa">
+        <p class="q">What bug taught you the most?</p>
+        <p class="say">Tenant chat was saved in Firestore, but the landlord screen replaced its message list with an empty local array after sync. The lesson: the UI must keep the same array the rest of the app reads, and unread state must not be marked read until the user actually opens the thread.</p>
+      </article>
+      <article class="qa">
+        <p class="q">How would you measure success?</p>
+        <p class="say">On-time rent rate, fewer missed tenant messages, time to record a payment, and whether tenants actually use the portal instead of only WhatsApp.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Who would pay, and why Starter vs Pro?</p>
+        <p class="say">Landlords pay. Tenants are free. Starter is for one or two units. Pro is for more units, AI tools, and reminders. The tenant is the product’s second user, not the customer.</p>
+      </article>
+      <article class="qa">
+        <p class="q">Could two landlords share a team login?</p>
+        <p class="say">Not as one shared company login. One Firebase user is one person. Caretakers and contractors are separate invited accounts with their own dashboards. Extra landlord admins with split permissions would still be more work.</p>
+      </article>
+    </section>
+
+    <section class="closer">
+      <div class="closer-card">
+        <div class="section-kicker">If they ask you to summarise NestIQ in one sentence</div>
+        <h2>Say this.</h2>
+        <p>NestIQ is a web app where a landlord, tenant, caretaker, and contractor share one record of the building — who paid, who fixed it, and what it cost — with Firebase keeping the sides in sync.</p>
+      </div>
+      <div class="tips">
+        <h3>Last-minute notes</h3>
+        <ul>
+          <li>If you forget a technical detail, go back to the user: “The landlord sees the portfolio; everyone else only sees their work.”</li>
+          <li>Never claim WhatsApp sends itself, that AI replaces a credit check, or that the wizard debits a real bank.</li>
+          <li>If they ask “is this production-ready?” — say it is a working prototype with real auth, a real database, and real role rules, not a launched company.</li>
+          <li>Demo the contractor pay + receipt. It is concrete, visual, and shows you did not let the contractor mark themselves paid.</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

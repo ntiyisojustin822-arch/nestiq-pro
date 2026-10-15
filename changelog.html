@@ -71,9 +71,10 @@
     .icon-btn:hover .tooltip { opacity: .96; }
 
     /* Sidebar version nav */
-    .ver-link { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); text-decoration: none; border: 1px solid transparent; transition: background .15s, border-color .15s; margin-bottom: 4px; }
+    .ver-link { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 12px; cursor: pointer; color: var(--ink); text-decoration: none; border: 1px solid transparent; border-left: 3px solid transparent; transition: background .15s, border-color .2s, padding-left .2s ease; margin-bottom: 4px; }
     .ver-link:hover { background: rgba(196,106,58,.06); }
-    .ver-link.active { border-color: rgba(196,106,58,.35); background: rgba(196,106,58,.08); }
+    .ver-link.active { border-color: rgba(196,106,58,.35); border-left-color: var(--gold); background: rgba(196,106,58,.08); padding-left: 16px; }
+    .vote-btn.voted { background: var(--gold); color: #fff; border-color: var(--gold); }
     .ver-sub { color: var(--muted); font-size: .82rem; }
 
     /* Timeline */
@@ -208,11 +209,6 @@
         <div>
           <p class="font-display" style="font-size:1.55rem;font-weight:900;color:var(--gold);margin:0 0 8px">🏠 NestIQ</p>
           <p style="color:rgba(255,255,255,.62);font-size:.9rem;margin:0 0 14px">Property management, simplified.</p>
-          <div style="display:flex;gap:10px">
-            <a href="#" title="Facebook" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">f</a>
-            <a href="#" title="Instagram" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">ig</a>
-            <a href="#" title="LinkedIn" style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.10);display:flex;align-items:center;justify-content:center;margin:0">in</a>
-          </div>
         </div>
         <div>
           <div class="foot-head">Product</div>
@@ -223,17 +219,15 @@
         </div>
         <div>
           <div class="foot-head">Company</div>
-          <a href="#">About</a>
-          <a href="#">Blog</a>
-          <a href="#">Careers</a>
-          <a href="#">Press</a>
+          <a href="landing.html">About</a>
+          <a href="mailto:hello@nestiq.co.za">Contact</a>
         </div>
         <div>
           <div class="foot-head">Support</div>
           <a href="support.html">Help Centre</a>
           <a href="mailto:hello@nestiq.co.za">Contact Us</a>
-          <a href="#">Privacy Policy</a>
-          <a href="#">Terms of Service</a>
+          <a href="legal.html#privacy">Privacy Policy</a>
+          <a href="legal.html#terms">Terms of Service</a>
         </div>
       </div>
       <div class="foot-divider">© 2026 NestIQ. Built with ❤️ for South African landlords.</div>
@@ -398,7 +392,7 @@
       const t = String(type||'patch').toLowerCase();
       const map = { major: ['🟢','major'], minor: ['🔵','minor'], patch: ['🟡','patch'] };
       const [icon, cls] = map[t] || ['🟡','patch'];
-      return `<span class="badge ${cls}">${icon} ${t.charAt(0).toUpperCase()+t.slice(1)}</span>`;
+      return `<span class="badge changelog-badge ${cls}">${icon} ${t.charAt(0).toUpperCase()+t.slice(1)}</span>`;
     }
 
     function pillCls(kind){
@@ -442,7 +436,7 @@
         `).join('');
 
         const sec = document.createElement('section');
-        sec.className = 'release';
+        sec.className = 'release changelog-version nq-reveal-left';
         sec.id = r.version;
         sec.setAttribute('data-version', r.version);
         sec.innerHTML = `
@@ -467,6 +461,7 @@
       });
 
       wireIntersection();
+      try{ window.nestiqInitScrollReveal?.(); }catch(_e){}
     }
 
     function wireIntersection(){
@@ -529,7 +524,7 @@
             <div class="rm-title">${it.icon} ${esc(it.title)}</div>
             <div class="rm-desc">${esc(it.desc)}</div>
             <div class="vote-row">
-              <button type="button" class="vote-btn" data-id="${it.id}" ${voted?'disabled':''}>
+              <button type="button" class="vote-btn${voted?' voted':''}" data-id="${it.id}" ${voted?'disabled':''}>
                 👍 Upvote <span id="vc-${it.id}">0</span>
               </button>
               <span class="status-pill">${esc(col.status)}</span>
@@ -553,6 +548,13 @@
               tx.set(ref, { featureId:id, count:cur+1, updatedAt:firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
             });
             localStorage.setItem('nestiq-voted-'+id,'1');
+            btn.classList.add('voted','nq-pop');
+            const countEl = document.getElementById('vc-'+id);
+            if(countEl){
+              countEl.classList.remove('nq-scale-bounce');
+              void countEl.offsetWidth;
+              countEl.classList.add('nq-scale-bounce');
+            }
           }catch(_e){ btn.disabled = false; }
         });
       });
@@ -561,8 +563,15 @@
       db.collection('roadmapVotes').onSnapshot(snap=>{
         snap.docs.forEach(d=>{
           const el = document.getElementById('vc-'+d.id);
-          if(el) el.textContent = String(d.data().count||0);
+          if(!el) return;
+          const n = Number(d.data().count||0);
+          if(!renderRoadmap._votesSeeded && typeof nestiqAnimateCounter === 'function'){
+            nestiqAnimateCounter(el, n, 900, '', '');
+          }else{
+            el.textContent = String(n);
+          }
         });
+        renderRoadmap._votesSeeded = true;
       }, ()=>{});
     }
 

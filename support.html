@@ -25,6 +25,12 @@
     .sup-label { display:block; font-size:.78rem; font-weight:600; margin-bottom:6px; }
     .sup-input,.sup-select,.sup-textarea { width:100%; padding:11px 12px; border:1px solid var(--border); border-radius:10px; font-family:inherit; font-size:.92rem; margin-bottom:14px; }
     .sup-input:focus,.sup-select:focus,.sup-textarea:focus { outline:2px solid var(--gold); outline-offset:0; }
+    #sup_help_search { transition: transform .2s ease, box-shadow .2s ease; transform-origin: center; }
+    #sup_help_search:focus { transform: scaleX(1.02); box-shadow: 0 0 0 3px rgba(196,106,58,.28); outline: none; }
+    .sup-open-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--gold); margin-right:6px; vertical-align:middle; }
+    .sup-tab-badge { display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; margin-left:6px; border-radius:999px; background:var(--gold); color:#fff; font-size:.68rem; font-weight:700; }
+    .sup-cat-card, .sup-article-link { transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; border-left: 3px solid transparent; }
+    .sup-cat-card:hover, .sup-article-link:hover { transform: translateY(-3px); border-left-color: var(--gold); box-shadow: 0 8px 20px rgba(196,106,58,.08); }
     .sup-btn-gold { background:var(--gold); color:#fff; border:none; padding:12px 24px; border-radius:10px; font-weight:600; cursor:pointer; }
     .sup-btn-outline { background:transparent; border:1px solid var(--border); padding:10px 18px; border-radius:10px; cursor:pointer; font-weight:600; }
     .sup-radio { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
@@ -81,7 +87,7 @@
       </div>
       <div class="sup-tabs" role="tablist">
         <button type="button" class="sup-tab active" data-tab="submit">Submit a Ticket</button>
-        <button type="button" class="sup-tab" data-tab="tickets">My Tickets</button>
+        <button type="button" class="sup-tab" data-tab="tickets">My Tickets <span id="supTicketsTabBadge" class="sup-tab-badge" style="display:none">0</span></button>
         <button type="button" class="sup-tab" data-tab="help">Help Centre</button>
       </div>
 
@@ -116,7 +122,7 @@
       </section>
 
       <section id="panel-tickets" class="sup-panel">
-        <div id="sup_tickets_list"></div>
+        <div id="ticketsList"></div>
       </section>
 
       <section id="panel-help" class="sup-panel">
@@ -177,8 +183,8 @@
     document.getElementById('supTicketForm').onsubmit = async e => {
       e.preventDefault();
       const btn = document.getElementById('sup_submit_btn');
-      btn.disabled = true;
-      btn.textContent = 'Submitting…';
+      nestiqSetBtnLoading?.(btn, true, 'Submitting...');
+      if(!window.nestiqSetBtnLoading){ btn.disabled = true; btn.textContent = 'Submitting…'; }
       try{
         const subject = document.getElementById('sup_subject').value.trim();
         const category = document.getElementById('sup_category').value;
@@ -208,14 +214,14 @@
       }catch(err){
         alert(err.message || 'Failed to submit ticket.');
       }finally{
-        btn.disabled = false;
-        btn.textContent = 'Submit Ticket';
+        nestiqSetBtnLoading?.(btn, false);
+        if(!window.nestiqSetBtnLoading){ btn.disabled = false; btn.textContent = 'Submit Ticket'; }
       }
     };
 
     function renderTicketCard(id, t){
       const unread = S.hasUnreadAdminReply(t);
-      return `<div class="sup-ticket-card${unread ? ' unread' : ''}" data-id="${id}">
+      return `<div class="sup-ticket-card ticket-card${unread ? ' unread' : ''}" data-id="${id}">
         <div style="margin-bottom:8px"><span class="sup-badge sup-badge-outline">${t.ticketId}</span> ${S.statusBadge(t.status)} ${S.priorityBadge(t.priority)}</div>
         <h3 style="margin:0 0 6px;font-size:1rem">${esc(t.subject)}</h3>
         <div style="font-size:.82rem;color:var(--muted)">${S.categoryBadge(t.category)} · Created ${S.formatDt(t.createdAt)} · Updated ${S.formatDt(t.lastUpdated)}</div>
@@ -227,11 +233,13 @@
 
     function listenTickets(){
       if(ticketsUnsub) ticketsUnsub();
-      const list = document.getElementById('sup_tickets_list');
-      list.innerHTML = '<p style="color:var(--muted)">Loading tickets…</p>';
+      const list = document.getElementById('ticketsList') || document.getElementById('sup_tickets_list');
+      nestiqShowSkeleton?.(list, 'row', 3);
+      if(!window.nestiqShowSkeleton) list.innerHTML = '<p style="color:var(--muted)">Loading tickets…</p>';
       ticketsUnsub = S.ticketsCol().where('landlordId','==',uid).onSnapshot(snap => {
         if(snap.empty){
-          list.innerHTML = '<div class="sup-empty"><p>No support tickets yet.</p><p>Submit a ticket above if you need help.</p></div>';
+          nestiqShowEmptyState?.(list, { icon:'🎧', title:'No support tickets', message:'Submit a ticket if you need help with anything.' });
+          if(!window.nestiqShowEmptyState) list.innerHTML = '<div class="sup-empty"><p>No support tickets yet.</p><p>Submit a ticket above if you need help.</p></div>';
           return;
         }
         const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -241,6 +249,19 @@
           return tb - ta;
         });
         list.innerHTML = docs.map(d => renderTicketCard(d.id, d)).join('');
+        const unread = docs.filter(d => S.hasUnreadAdminReply(d)).length;
+        const tabBadge = document.getElementById('supTicketsTabBadge');
+        if(tabBadge){
+          const prev = Number(tabBadge.dataset.count || 0);
+          tabBadge.style.display = unread ? 'inline-flex' : 'none';
+          tabBadge.textContent = String(unread);
+          if(unread > prev){
+            tabBadge.classList.remove('nq-pop');
+            void tabBadge.offsetWidth;
+            tabBadge.classList.add('nq-pop');
+          }
+          tabBadge.dataset.count = String(unread);
+        }
         if(activeTicketId){
           const cur = docs.find(d => d.id === activeTicketId);
           if(cur) renderDrawer(cur.id, cur);
@@ -268,11 +289,14 @@
         <p style="font-size:.88rem;margin-top:12px;white-space:pre-wrap">${esc(t.description)}</p>`;
       const thread = document.getElementById('sup_drawer_thread');
       const msgs = t.messages || [];
-      thread.innerHTML = msgs.map(m => `
-        <div class="sup-bubble ${m.sender === 'admin' ? 'admin' : 'landlord'}">
+      const prevKey = renderDrawer._tid === id ? (renderDrawer._msgLen || 0) : 0;
+      thread.innerHTML = msgs.map((m, i) => `
+        <div class="sup-bubble ${m.sender === 'admin' ? 'admin' : 'landlord'}${i >= prevKey && m.sender === 'admin' && prevKey > 0 ? ' nq-scale-bounce' : ''}">
           <strong>${esc(m.senderName || m.sender)}</strong><br>${esc(m.message)}
           <time>${S.formatDt(m.timestamp)}</time>
         </div>`).join('') || '<p style="color:var(--muted);font-size:.85rem">No replies yet.</p>';
+      renderDrawer._tid = id;
+      renderDrawer._msgLen = msgs.length;
       thread.scrollTop = thread.scrollHeight;
       const reply = document.getElementById('sup_drawer_reply');
       const closed = ['resolved','closed'].includes(String(t.status).toLowerCase());
@@ -294,19 +318,25 @@
     async function sendLandlordReply(id){
       const text = document.getElementById('sup_reply_text')?.value?.trim();
       if(!text) return;
-      const snap = await S.ticketsCol().doc(id).get();
-      if(!snap.exists) return;
-      const t = snap.data();
-      const msg = { sender:'landlord', senderName: name, message: text, timestamp: new Date().toISOString(), readByAdmin: false };
-      const messages = [...(t.messages || []), msg];
-      await S.ticketsCol().doc(id).update({ messages, lastUpdated: fv().serverTimestamp(), status: t.status === 'closed' ? 'open' : t.status });
-      await window.nestiqSupportSendEmail({
-        to: S.ADMIN_EMAIL,
-        subject: `Support ticket ${t.ticketId} — landlord reply`,
-        message: `${name} (${email}) replied:\n\n${text}`,
-        landlordId: uid
-      });
-      document.getElementById('sup_reply_text').value = '';
+      const replyBtn = document.getElementById('sup_reply_send');
+      nestiqSetBtnLoading?.(replyBtn, true, 'Sending...');
+      try{
+        const snap = await S.ticketsCol().doc(id).get();
+        if(!snap.exists) return;
+        const t = snap.data();
+        const msg = { sender:'landlord', senderName: name, message: text, timestamp: new Date().toISOString(), readByAdmin: false };
+        const messages = [...(t.messages || []), msg];
+        await S.ticketsCol().doc(id).update({ messages, lastUpdated: fv().serverTimestamp(), status: t.status === 'closed' ? 'open' : t.status });
+        await window.nestiqSupportSendEmail({
+          to: S.ADMIN_EMAIL,
+          subject: `Support ticket ${t.ticketId} — landlord reply`,
+          message: `${name} (${email}) replied:\n\n${text}`,
+          landlordId: uid
+        });
+        document.getElementById('sup_reply_text').value = '';
+      }finally{
+        nestiqSetBtnLoading?.(replyBtn, false);
+      }
     }
 
     document.getElementById('sup_drawer_close').onclick = () => {

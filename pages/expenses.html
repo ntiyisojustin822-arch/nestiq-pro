@@ -13,17 +13,13 @@
 
         <div class="eyebrow" style="justify-content:flex-start">Financial Control</div>
 
-        <h2 class="section-title reveal" style="margin-bottom:0">Expense Tracker</h2>
+        <h2 class="section-title reveal nq-reveal" style="margin-bottom:0">Expense Tracker</h2>
 
       </div>
 
       <div class="no-print" style="display:flex;gap:10px;flex-wrap:wrap">
 
-        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px">🖨️ Print</button>
-
-        <button class="btn-outline btn-sm" onclick="exportExpensesCSV()">⬇ Export CSV</button>
-
-        <button class="btn-outline btn-sm" onclick="showPage('reconcile')">🏦 Bank reconcile</button>
+        <button class="btn-outline btn-sm no-print" onclick="window.print()" style="gap:6px" title="Print this page" data-nq-tip="Print this page">🖨️ Print</button>
 
         <button class="btn-primary" onclick="document.getElementById('addExpenseForm').scrollIntoView({behavior:'smooth'})">+ Log Expense</button>
 
@@ -35,7 +31,7 @@
 
       <div>
 
-        <div class="expense-table">
+        <div class="expense-table nq-reveal">
 
           <div class="exp-table-head">
 

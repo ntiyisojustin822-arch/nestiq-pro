@@ -1,15 +1,30 @@
-function geminiModel(){ return landlordSettings?.gemini?.model || 'gemini-1.5-flash'; }
+const NESTIQ_GEMINI_MODELS=[
+  'gemini-2.5-flash',
+  'gemini-3.6-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-flash-latest'
+];
+const NESTIQ_RETIRED_GEMINI=/^gemini-1\.5|^gemini-2\.0/;
+
+function geminiModel(){
+  const saved=String(landlordSettings?.gemini?.model||'').trim();
+  if(saved && !NESTIQ_RETIRED_GEMINI.test(saved)) return saved;
+  return NESTIQ_GEMINI_MODELS[0];
+}
 function geminiKey(){ return (landlordSettings?.gemini?.apiKey || geminiApiKey || '').trim(); }
 
 function nestiqAiFeatureEnabled(key){
   const f=landlordSettings?.aiFeatures||{};
   return f[key]!==false;
 }
-function geminiEndpoint(){ return `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel()}:generateContent`; }
+function geminiEndpoint(model){
+  const m=encodeURIComponent(model||geminiModel());
+  return `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${encodeURIComponent(geminiKey())}`;
+}
 const aiCache={};
 
 function isGeminiConfigured(){ return Boolean(geminiKey()); }
-function aiConfigError(){ showNotif('Add Gemini API key in Settings', 'warning'); }
+function aiConfigError(){ nestiqShowNotif('Add Gemini API key in Settings', 'warning'); }
 function aiAttribution(){ return `<div style="font-size:.74rem;color:var(--muted);margin-top:8px">AI Powered by Gemini</div>`; }
 function aiLoadingHtml(){ return `<div style="font-size:.82rem;color:var(--muted)">Thinking...</div>${aiAttribution()}`; }
 function aiRawFallbackCard(raw){ return `<div style="border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--paper)"><div style="font-weight:700;margin-bottom:6px">AI Response</div><pre style="white-space:pre-wrap;font-size:.78rem;color:var(--muted)">${String(raw||'')}</pre>${aiAttribution()}</div>`; }
@@ -22,29 +37,75 @@ function parseGeminiJson(text){
   return {ok:false,data:null,raw};
 }
 
-async function callGemini(prompt, cacheKey=''){
-  if(typeof nestiqGuardAiRequest === 'function' && !nestiqGuardAiRequest()) return null;
+function nestiqGeminiErrorMessage(status, body){
+  const t=String(body||'').toLowerCase();
+  if(status===400 && /api key not valid|invalid api key|api_key_invalid/i.test(t))
+    return 'That Gemini API key is not valid. Create a new key at aistudio.google.com/app/apikey and paste it again.';
+  if(status===403)
+    return 'Gemini blocked this key. In Google AI Studio, enable the Generative Language API and allow this key.';
+  if(status===404 || /not found|no longer available|deprecated/i.test(t))
+    return 'That Gemini model is no longer available. NestIQ will try a current model — test again.';
+  if(status===429)
+    return 'Gemini free-tier limit reached. Wait a minute and try again.';
+  return 'AI unavailable, try again';
+}
+
+function nestiqRememberGeminiModel(model){
+  try{
+    if(typeof landlordSettings!=='object' || !landlordSettings) return;
+    landlordSettings.gemini=landlordSettings.gemini||{};
+    landlordSettings.gemini.model=model;
+  }catch(_e){}
+}
+
+async function nestiqGeminiGenerate(prompt, model){
+  const res=await fetch(geminiEndpoint(model),{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      contents:[{parts:[{text:prompt}]}],
+      generationConfig:{temperature:0.3,maxOutputTokens:1000}
+    })
+  });
+  const raw=await res.text();
+  let data=null;
+  try{ data=JSON.parse(raw); }catch(_e){}
+  if(!res.ok){
+    const err=new Error(nestiqGeminiErrorMessage(res.status, raw));
+    err.status=res.status;
+    err.body=raw;
+    throw err;
+  }
+  const txt=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
+  if(!txt){
+    const block=data?.promptFeedback?.blockReason||data?.candidates?.[0]?.finishReason||'';
+    throw new Error(block?`Gemini returned no text (${block}).`:'Gemini returned an empty reply.');
+  }
+  return txt;
+}
+
+async function callGemini(prompt, cacheKey='', opts={}){
+  const skipGuard=opts.skipGuard===true;
+  if(!skipGuard && typeof nestiqGuardAiRequest === 'function' && !nestiqGuardAiRequest()) return null;
   if(!isGeminiConfigured()){ aiConfigError(); return null; }
   if(cacheKey && aiCache[cacheKey]) return aiCache[cacheKey];
-  try{
-    const res=await fetch(geminiEndpoint(),{
-      method:'POST',
-      headers:{'Content-Type':'application/json','x-goog-api-key':geminiKey()},
-      body:JSON.stringify({
-        contents:[{parts:[{text:prompt}]}],
-        generationConfig:{temperature:0.3,maxOutputTokens:1000}
-      })
-    });
-    if(!res.ok) throw new Error('AI unavailable, try again');
-    const data=await res.json();
-    const txt=data?.candidates?.[0]?.content?.parts?.[0]?.text||'';
-    if(txt && typeof nestiqIncrementAiUsage === 'function') nestiqIncrementAiUsage();
-    if(cacheKey) aiCache[cacheKey]=txt;
-    return txt||null;
-  }catch(_err){
-    showNotif('AI unavailable, try again', 'error');
-    return null;
+  const preferred=geminiModel();
+  const models=[preferred, ...NESTIQ_GEMINI_MODELS.filter(m=>m!==preferred)];
+  let lastErr=null;
+  for(const model of models){
+    try{
+      const txt=await nestiqGeminiGenerate(prompt, model);
+      nestiqRememberGeminiModel(model);
+      if(txt && !skipGuard && typeof nestiqIncrementAiUsage === 'function') nestiqIncrementAiUsage();
+      if(cacheKey) aiCache[cacheKey]=txt;
+      return txt;
+    }catch(err){
+      lastErr=err;
+      if(err.status===400 || err.status===403) break;
+    }
   }
+  nestiqShowNotif(lastErr?.message||'AI unavailable, try again', 'error');
+  return null;
 }
 
 async function callGeminiJson(prompt, cacheKey=''){
@@ -54,13 +115,14 @@ async function callGeminiJson(prompt, cacheKey=''){
 }
 
 async function testGeminiConnection(){
-  const res=await callGemini('Reply only: ok', 'test-connection');
+  const res=await callGemini('Reply only: ok', '', { skipGuard:true });
   if(!res) throw new Error('AI unavailable, try again');
+  return res;
 }
 
 async function suggestRentPriceAI(input){
   if(!nestiqAiFeatureEnabled('rentSuggest')){
-    showNotif('Rent price suggester is off in Settings','warning');
+    nestiqShowNotif('Rent price suggester is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const prompt=`I have a ${input.bedrooms} bedroom ${input.type} property at ${input.address}, ${input.city}, South Africa. The property is ${input.amenities||'unfurnished, standard features'}.
@@ -73,7 +135,7 @@ Reply ONLY with valid JSON, no markdown, no explanation:
 
 async function assessMaintenanceIssueAI(input){
   if(!nestiqAiFeatureEnabled('maintenanceDx')){
-    showNotif('Maintenance diagnosis is off in Settings','warning');
+    nestiqShowNotif('Maintenance diagnosis is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const prompt=`A tenant in a South African rental property has reported this maintenance issue:
@@ -87,7 +149,7 @@ Assess this issue and reply ONLY with valid JSON:
 
 async function generateLeaseClausesAI(input){
   if(!nestiqAiFeatureEnabled('leaseClauses')){
-    showNotif('Lease clause generator is off in Settings','warning');
+    nestiqShowNotif('Lease clause generator is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const prompt=`Generate 6 important additional lease agreement clauses for a ${input.type} rental property in ${input.city}, South Africa.
@@ -109,7 +171,7 @@ Reply ONLY with valid JSON array:
 
 async function screenTenantAI(input){
   if(!nestiqAiFeatureEnabled('tenantScreen')){
-    showNotif('Tenant screening AI is off in Settings','warning');
+    nestiqShowNotif('Tenant screening AI is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const ratio=(Number(input.income||0)/Math.max(1,Number(input.rent||1))).toFixed(2);
@@ -129,7 +191,7 @@ Reply ONLY with valid JSON:
 
 async function analyzePortfolioAI(input){
   if(!nestiqAiFeatureEnabled('portfolioAdvisor')){
-    showNotif('Portfolio advisor is off in Settings','warning');
+    nestiqShowNotif('Portfolio advisor is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const prompt=`Analyse this South African rental property portfolio and provide actionable advice:
@@ -141,7 +203,7 @@ Provide analysis in ONLY valid JSON:
 
 async function adviseRentIncreaseAI(input){
   if(!nestiqAiFeatureEnabled('portfolioAdvisor')){
-    showNotif('Portfolio advisor is off in Settings','warning');
+    nestiqShowNotif('Portfolio advisor is off in Settings','warning');
     return {ok:false,data:null,raw:''};
   }
   const prompt=`Advise on a rent increase for a South African rental property:

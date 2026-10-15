@@ -78,6 +78,18 @@
       trigger: 'onInvitationCreated',
       delay: 0
     },
+    staffInvitation: {
+      templateId: 'nestiq_staff_invitation',
+      subject: 'You have been invited to the NestIQ staff portal',
+      trigger: 'onStaffInvitationCreated',
+      delay: 0
+    },
+    leaseReady: {
+      templateId: 'nestiq_lease_ready',
+      subject: 'Your NestIQ lease is ready to sign',
+      trigger: 'onLeaseSentForSignature',
+      delay: 0
+    },
     maintenanceSubmitted: {
       templateId: 'nestiq_maintenance_submitted',
       subject: '🔧 New maintenance request — [Property Name]',
@@ -110,7 +122,39 @@
 
   function resolveTemplateId(seq, cfg){
     const templates = cfg.templates || {};
-    return templates[seq.templateId] || templates[seq.trigger] || seq.templateId;
+    if(!seq) return '';
+    if(seq.templateId === 'nestiq_tenant_invitation'){
+      return String(
+        templates.nestiq_tenant_invitation
+        || templates.tenantInvitation
+        || templates.welcomeTenant
+        || templates.customMessage
+        || ''
+      ).trim();
+    }
+    if(seq.templateId === 'nestiq_staff_invitation'){
+      return String(
+        templates.nestiq_staff_invitation
+        || templates.staffInvitation
+        || templates.nestiq_tenant_invitation
+        || templates.tenantInvitation
+        || templates.welcomeTenant
+        || templates.customMessage
+        || ''
+      ).trim();
+    }
+    if(seq.templateId === 'nestiq_lease_ready'){
+      return String(
+        templates.nestiq_lease_ready
+        || templates.leaseReady
+        || templates.customMessage
+        || templates.welcomeTenant
+        || templates.rentReminder
+        || templates.leaseExpiry
+        || ''
+      ).trim();
+    }
+    return String(templates[seq.templateId] || templates[seq.trigger] || seq.templateId || '').trim();
   }
 
   async function hasSentSequence(lid, sequenceKey, extra){
@@ -178,17 +222,24 @@
 
       try{
         if(typeof initEmailJS === 'function') initEmailJS();
-        else window.emailjs.init(publicKey);
-      }catch(_e){}
+        else window.emailjs.init({ publicKey });
+      }catch(_e){
+        try{ window.emailjs.init(publicKey); }catch(_e2){}
+      }
 
       const params = {
         ...templateParams,
         to_email: to,
-        subject: seq.subject,
+        email: to,
+        subject: String(templateParams?.subject || seq.subject || '').trim(),
         support_email: NESTIQ_SUPPORT_EMAIL
       };
 
-      await window.emailjs.send(serviceId, templateId, params);
+      if(typeof window.nestiqEmailJsSend === 'function'){
+        await window.nestiqEmailJsSend(serviceId, templateId, params);
+      }else{
+        await window.emailjs.send(serviceId, templateId, params, { publicKey });
+      }
 
       if(lid){
         await logEmailAttempt(lid, {

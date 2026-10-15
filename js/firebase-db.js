@@ -9,6 +9,7 @@
   let storage = null;
   let nestUnsubs = [];
   let paymentUnsubs = new Map();
+  let unitUnsubs = new Map();
   let propertyUnsub = null;
   let __saveTimer = null;
   let __routerCb = null;
@@ -27,6 +28,9 @@
     window.nestiqPropertiesLoading=false;
     window.nestiqTenantsLoading=false;
     window.nestiqExpensesLoading=false;
+    window.nestiqMaintenanceLoading=false;
+    window.nestiqApplicationsLoading=false;
+    window.nestiqVendorsLoading=false;
     try{ window.normalizeDataModel?.(); }catch(_e){}
     try{ landlordFirestoreUiRefresh?.(); }catch(_e){}
   }
@@ -88,6 +92,12 @@
 
   function currentLandlordUid(){
     if(window.__nestiqLandlordUid) return window.__nestiqLandlordUid;
+    try{
+      const s=window.__nestiqSession||JSON.parse(sessionStorage.getItem('nestiq-session')||'null');
+      if(s && (s.role==='caretaker'||s.role==='contractor'||s.role==='tenant') && s.landlordId){
+        return String(s.landlordId);
+      }
+    }catch(_e){}
     return auth && auth.currentUser ? auth.currentUser.uid : null;
   }
 
@@ -104,6 +114,8 @@
     nestUnsubs = [];
     paymentUnsubs.forEach(u => { try{ u(); }catch(_e){} });
     paymentUnsubs.clear();
+    unitUnsubs.forEach(u => { try{ u(); }catch(_e){} });
+    unitUnsubs.clear();
     if(propertyUnsub){ try{ propertyUnsub(); }catch(_e){} propertyUnsub = null; }
     if(Array.isArray(window.__tenantUnsubs)){
       window.__tenantUnsubs.forEach(u => { try{ u(); }catch(_e){} });
@@ -113,13 +125,20 @@
       try{ window.__tenantPropUnsub(); }catch(_e){}
       window.__tenantPropUnsub = null;
     }
+    if(window.__tenantUnitUnsub){
+      try{ window.__tenantUnitUnsub(); }catch(_e){}
+      window.__tenantUnitUnsub = null;
+    }
     if(window.__tenantNoticesUnsub){
       try{ window.__tenantNoticesUnsub(); }catch(_e){}
       window.__tenantNoticesUnsub = null;
     }
-    window.nestiqPropertiesLoading=false;
-    window.nestiqTenantsLoading=false;
-    window.nestiqExpensesLoading=false;
+    if(Array.isArray(window.__caretakerUnsubs)){
+      window.__caretakerUnsubs.forEach(u => { try{ u(); }catch(_e){} });
+      window.__caretakerUnsubs = [];
+    }
+    // Do not force loading=false here — attachAfterProfile sets skeletons true
+    // immediately after stop, and the first snapshots clear the flags.
   }
 
   function rebuildPaymentsDataFromTenants(){
@@ -148,10 +167,20 @@
     if(d.geminiApiKey != null) window.geminiApiKey = d.geminiApiKey;
     if(d.landlordSettings && typeof d.landlordSettings === 'object'){
       Object.assign(window.landlordSettings, d.landlordSettings);
+      if(window.landlordSettings.preferredLanguage && typeof window.applySessionLanguage==='function'){
+        try{ window.applySessionLanguage(); }catch(_e){}
+      }
     }
     if(d.billing && typeof d.billing === 'object'){
       window.landlordSettings = window.landlordSettings || {};
-      window.landlordSettings.billing = { ...(window.landlordSettings.billing || {}), ...d.billing };
+      const billing = { ...(window.landlordSettings.billing || {}), ...d.billing };
+      // Normalize Firestore Timestamps so billing UI date parsing stays reliable.
+      ['currentPeriodStart', 'currentPeriodEnd', 'trialEnds', 'updatedAt', 'cancelAt'].forEach(k => {
+        const v = billing[k];
+        if(v && typeof v.toDate === 'function') billing[k] = v.toDate().toISOString();
+        else if(v && v.seconds != null) billing[k] = new Date(Number(v.seconds) * 1000).toISOString();
+      });
+      window.landlordSettings.billing = billing;
     }
     if(d.sentReminderMonths) window.sentReminderMonths = d.sentReminderMonths;
     if(d.customEvents) window.customEvents = d.customEvents;
@@ -164,12 +193,20 @@
     if(Array.isArray(d.vendors)) window.vendors = d.vendors;
     if(Number.isFinite(Number(d.vendorNextId))) window.vendorNextId = Number(d.vendorNextId);
     if(Array.isArray(d.applications) && typeof window.applications !== 'undefined'){
-      window.applications.splice(0, window.applications.length, ...d.applications);
-      if(typeof applications !== 'undefined' && Array.isArray(applications)){
-        applications.splice(0, applications.length, ...d.applications);
+      const live=typeof window.nestiqApplicationsListenerIsLive==='function' && window.nestiqApplicationsListenerIsLive();
+      if(!live){
+        const incoming=d.applications;
+        const current=(typeof applications!=='undefined'&&Array.isArray(applications)?applications:window.applications)||[];
+        const merged=typeof window.nestiqMergeApplicationListsById==='function'
+          ? window.nestiqMergeApplicationListsById(incoming, current)
+          : incoming;
+        window.applications.splice(0, window.applications.length, ...merged);
+        if(typeof applications !== 'undefined' && Array.isArray(applications)){
+          applications.splice(0, applications.length, ...merged);
+        }
+        if(typeof normalizeStoredApplications === 'function') normalizeStoredApplications();
+        try{ window.applications = applications; }catch(_e){}
       }
-      if(typeof normalizeStoredApplications === 'function') normalizeStoredApplications();
-      try{ window.applications = applications; }catch(_e){}
     }
     if(d.whatsappLog) window.whatsappLog = d.whatsappLog;
     if(d.emailLog) window.emailLog = d.emailLog;
@@ -188,13 +225,90 @@
       window.__nestiqOnboardingComplete = Boolean(d.onboardingComplete);
     }
   }
+  window.nestiqMergeSettingsPayload = mergeSettingsPayload;
+
+  function hydrateUnitsForProperty(propertyId, docs){
+    if(typeof window.nestiqBindWindowDataArrays==='function'){
+      try{ window.nestiqBindWindowDataArrays(); }catch(_e){}
+    }
+    if(!Array.isArray(window.unitsData)) window.unitsData=[];
+    const pid=String(propertyId);
+    const incoming=docs||[];
+    const localForPid=window.unitsData.filter(u=>String(u.propertyId)===pid);
+    // An empty first snapshot (listener attached before the batch commit) must not
+    // wipe units the landlord just saved — that also emptied public listing units.
+    if(!incoming.length && localForPid.length) return;
+    const keep=window.unitsData.filter(u=>String(u.propertyId)!==pid);
+    window.unitsData.length=0;
+    keep.forEach(u=>window.unitsData.push(u));
+    incoming.forEach(doc=>{
+      const d=doc.data()||{};
+      const id=d.id!=null&&d.id!==''?d.id:doc.id;
+      window.unitsData.push(stripUndefined({ ...d, id, propertyId:d.propertyId||propertyId }));
+    });
+    try{ window.nestiqBindWindowDataArrays?.(); }catch(_e){}
+  }
+
+  function syncUnitListenersLandlord(propertyIds){
+    if(nestiqIsDemo()) return;
+    const want=new Set((propertyIds||[]).map(x=>String(x)));
+    unitUnsubs.forEach((u,pid)=>{
+      if(!want.has(String(pid))){ try{ u(); }catch(_e){} unitUnsubs.delete(pid); }
+    });
+    const lid=currentLandlordUid();
+    (propertyIds||[]).forEach(pid=>{
+      const key=String(pid);
+      if(unitUnsubs.has(key)) return;
+      const col=window.nestiqFs?.units?.(db,lid);
+      if(!col) return;
+      const q=col.where('propertyId','==',key);
+      const unsub=q.onSnapshot(snap=>{
+        hydrateUnitsForProperty(pid, snap.docs);
+        try{ window.nestiqHealDraftListingIfReady?.(pid); }catch(_e){}
+        try{
+          const p=(window.propertiesData||[]).find(x=>String(x.id)===key);
+          if(p && p.publishStatus!=='draft' && p.publicListing!==false){
+            window.nestiqSyncPublicListingMirror?.(p);
+          }
+        }catch(_e){}
+        if(window.currentPage==='properties') window.renderProperties?.();
+        const wrap=document.getElementById('nestiqPropertyUnitsWrap');
+        if(wrap&&String(wrap.dataset.propertyId)===key&&typeof window.nestiqRenderUnitsTable==='function'){
+          wrap.outerHTML=window.nestiqRenderUnitsTable(pid);
+        }
+      }, err=>console.error('units listener', pid, err));
+      unitUnsubs.set(key, unsub);
+    });
+  }
 
   function hydratePropertiesFromDocs(docs){
     window.propertiesData.length = 0;
     const nextPhotos = {};
-    const sorted = docs.slice().sort((a, b) =>
-      String((a.data().name || '')).localeCompare(String((b.data().name || '')), undefined, { sensitivity: 'base' })
-    );
+    const createdMs = (data) => {
+      if (typeof window.nestiqPropertyCreatedMs === 'function') return window.nestiqPropertyCreatedMs(data || {});
+      const v = data && (data.createdAt || data.listedAt || data.updatedAt);
+      if (v == null || v === '') return 0;
+      if (typeof v === 'number' && Number.isFinite(v)) return v > 0 && v < 1e12 ? v * 1000 : v;
+      if (typeof v === 'string') {
+        const n = Number(v);
+        if (Number.isFinite(n) && n > 0) return n < 1e12 ? n * 1000 : n;
+        const d = Date.parse(v);
+        return Number.isFinite(d) ? d : 0;
+      }
+      try {
+        if (typeof v.toMillis === 'function') return Number(v.toMillis()) || 0;
+        if (typeof v.toDate === 'function') return Number(v.toDate().getTime()) || 0;
+        if (typeof v.seconds === 'number') return (Number(v.seconds) || 0) * 1000;
+      } catch (_e) {}
+      return 0;
+    };
+    const sorted = docs.slice().sort((a, b) => {
+      const da = a.data() || {};
+      const db = b.data() || {};
+      const diff = createdMs(db) - createdMs(da);
+      if (diff) return diff;
+      return String(b.id || '').localeCompare(String(a.id || ''), undefined, { numeric: true, sensitivity: 'base' });
+    });
     sorted.forEach(doc => {
       const d = doc.data();
       const id = rowIdFromDoc(doc, d);
@@ -218,14 +332,30 @@
       if (statusNorm === 'vacant' && (pub === true || pub === 'true' || pub === 1)) {
         pub = true;
       }
-      const row = stripUndefined({ ...d, id, status: statusNorm, publicListing: pub });
-      const pu = d.photoUrl || d.photoURL || d.imageUrl;
-      if(pu){
-        nextPhotos[sid(id)] = String(pu);
+      const numberOfUnits=Number.isFinite(Number(d.numberOfUnits))&&Number(d.numberOfUnits)>=1
+        ? Number(d.numberOfUnits)
+        : (Number.isFinite(Number(d.totalUnits))&&Number(d.totalUnits)>=1?Number(d.totalUnits):1);
+      const archived=d.archived===true||d.deactivated===true;
+      const row = stripUndefined({ ...d, id, status: statusNorm, publicListing: pub, numberOfUnits, archived });
+      const pu = (typeof window.nestiqUsablePhotoSrc==='function'
+        ? window.nestiqUsablePhotoSrc(d.photoUrl || d.photoURL || d.imageUrl)
+        : String(d.photoUrl || d.photoURL || d.imageUrl || '').trim());
+      if(pu && (/^https?:\/\//i.test(pu) || pu.startsWith('data:image/') || pu.startsWith('blob:'))){
+        nextPhotos[sid(id)] = pu;
+        row.photoUrl = pu;
+      }else{
+        delete row.photoUrl;
+        delete row.photoURL;
+        delete row.imageUrl;
       }
       window.propertiesData.push(row);
     });
     try{ window.nestiqSchedulePublicListingSync?.(window.propertiesData); }catch(_e){}
+    try{
+      (window.propertiesData||[]).forEach(p=>{
+        void window.nestiqHealDraftListingIfReady?.(p?.id);
+      });
+    }catch(_e){}
     const phMap = window.propertyPhotos && typeof window.propertyPhotos === 'object' ? window.propertyPhotos : null;
     if(phMap){
       Object.keys(phMap).forEach(k => { delete phMap[k]; });
@@ -234,6 +364,7 @@
       window.propertyPhotos = nextPhotos;
     }
     window.photos = window.propertyPhotos;
+    try{ window.nestiqWarmPropertyPhotoUrls?.(window.propertiesData); }catch(_e){}
   }
 
   function hydrateExpensesFromDocs(docs){
@@ -311,11 +442,24 @@
   }
 
   function hydrateMessagesFromDocs(docs){
-    window.messages = docs.map(doc => {
-      const d = doc.data();
-      const id = rowIdFromDoc(doc, d);
-      return stripUndefined({ ...d, id });
+    const next=[];
+    (docs||[]).forEach(doc=>{
+      const d=doc.data()||{};
+      const id=rowIdFromDoc(doc,d);
+      const row=stripUndefined({ ...d, id });
+      if(row.tenantId!=null&&row.tenantId!=='') row.tenantId=String(row.tenantId);
+      next.push(row);
     });
+    if(typeof window.nestiqReplaceMessages==='function'){
+      window.nestiqReplaceMessages(next);
+    }else{
+      try{ window.nestiqBindWindowDataArrays?.(); }catch(_e){}
+      if(!Array.isArray(window.messages)) window.messages=[];
+      const arr=window.messages;
+      arr.length=0;
+      next.forEach(row=>arr.push(row));
+      try{ window.nestiqBindWindowDataArrays?.(); }catch(_e){}
+    }
   }
 
   function hydrateTenantsFromDocs(docs, includePaymentsArrays){
@@ -395,9 +539,11 @@
       const d = doc.data();
       const id = rowIdFromDoc(doc, d);
       window.propertiesData.push(stripUndefined({ ...d, id }));
-      const pu = d.photoUrl || d.photoURL || d.imageUrl;
+      const pu = typeof window.nestiqUsablePhotoSrc==='function'
+        ? window.nestiqUsablePhotoSrc(d.photoUrl || d.photoURL || d.imageUrl)
+        : String(d.photoUrl || d.photoURL || d.imageUrl || '').trim();
       if(pu && window.propertyPhotos && typeof window.propertyPhotos === 'object'){
-        window.propertyPhotos[sid(id)] = String(pu);
+        window.propertyPhotos[sid(id)] = pu;
       }
       window.photos = window.propertyPhotos;
       window.renderTenantDashboard?.();
@@ -426,6 +572,8 @@
     window.renderGettingStarted?.();
     window.nestiqRenderHomeDashProps?.();
     window.updateMaintenanceBadge?.();
+    window.updateMessageBadge?.();
+    if(window.currentPage === 'renewals') window.renderRenewalsPage?.();
   }
 
   function landlordCollectionLoadError(kind, err){
@@ -450,7 +598,7 @@
         ? 'Could not load properties — Firebase permissions blocked this. Deploy the latest firestore.rules, sign in as a landlord, and disable App Check enforcement on Firestore until App Check is configured.'
         : 'Could not load '+kind+' — Firebase permissions blocked this. Deploy firestore.rules and sign in again.')
       : ('Could not load '+kind+'. Check your connection and refresh the page.');
-    window.showNotif?.(hint,'error');
+    window.nestiqShowNotif?.(hint,'error');
   }
 
   function attachLandlordColListener(colName, uid, onData, onErr){
@@ -486,6 +634,8 @@
     window.nestiqPropertiesLoading = true;
     window.nestiqTenantsLoading = true;
     window.nestiqExpensesLoading = true;
+    window.nestiqMaintenanceLoading = true;
+    window.nestiqVendorsLoading = true;
     try{ window.propertiesLoading = true; }catch(_e){}
     try{ window.tenantsLoading = true; }catch(_e){}
     try{ window.expensesLoading = true; }catch(_e){}
@@ -512,7 +662,7 @@
       }
       if(stuck){
         console.warn('NestIQ: landlord data load timed out');
-        window.showNotif?.('Some data is taking longer than expected. Showing what we have — try refreshing or check your connection.','warning');
+        window.nestiqShowNotif?.('Some data is taking longer than expected. Showing what we have — try refreshing or check your connection.','warning');
       }
     }, 12000);
     nestUnsubs.push(() => clearTimeout(loadWatchdog));
@@ -521,6 +671,7 @@
       hydratePropertiesFromDocs(snap.docs);
       window.nestiqPropertiesLoading = false;
       try{ window.propertiesLoading = false; }catch(_e){}
+      syncUnitListenersLandlord((window.propertiesData||[]).map(p=>p.id));
       window.normalizeDataModel?.();
       window.renderProperties?.();
       window.renderHomeStats?.();
@@ -578,11 +729,20 @@
 
     nestUnsubs.push(landlordCol('maintenance', uid).onSnapshot(snap => {
       hydrateMaintenanceFromDocs(snap.docs);
+      window.nestiqMaintenanceLoading = false;
       window.normalizeDataModel?.();
       window.renderKanban?.();
       window.refreshNestiqCalendar?.();
       landlordFirestoreUiRefresh();
     }, e => console.error('maintenance', e)));
+
+    if(window.nestiqFs?.inspections){
+      nestUnsubs.push(window.nestiqFs.inspections(db, uid).onSnapshot(snap => {
+        window.inspections = snap.docs.map(doc => ({ id:doc.id, ...doc.data() }))
+          .sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+        try{ window.renderInspectionsPage?.(); }catch(_e){}
+      }, e => console.error('inspections', e)));
+    }
 
     nestUnsubs.push(landlordCol('notices', uid).onSnapshot(snap => {
       hydrateNoticesFromDocs(snap.docs);
@@ -592,13 +752,16 @@
 
     nestUnsubs.push(landlordCol('messages', uid).onSnapshot(snap => {
       hydrateMessagesFromDocs(snap.docs);
-      const unread = snap.docs.filter(d => {
-        const x = d.data();
-        return x.fromRole === 'tenant' && !x.read;
-      }).length;
-      window.updateMessageBadge?.(unread);
+      window.updateMessageBadge?.(0);
+      window.__nestiqMsgListenerReady=true;
+      window.__nestiqMsgUnread=0;
       window.renderTenantDashboard?.();
       landlordFirestoreUiRefresh();
+      try{
+        if(document.getElementById('lmThread')&&window.__nestiqOpenChatTenantId!=null&&!document.getElementById('nestiqChatEditBox')){
+          window.openLandlordTenantMessages?.(window.__nestiqOpenChatTenantId,{skipMarkRead:true,skipOpen:true});
+        }
+      }catch(_e){}
     }, e => console.error('messages', e)));
 
     nestUnsubs.push(landlordCol('invitations', uid).onSnapshot(snap => {
@@ -606,11 +769,30 @@
       window.nestiqRenderInvitationsTable?.();
     }, e => console.error('invitations', e)));
 
+    attachLandlordColListener('leases', uid, snap => {
+      const rows=snap.docs.map(doc=>{
+        const d=doc.data()||{};
+        return stripUndefined({ ...d, id:String(d.id||doc.id) });
+      });
+      if(typeof window.nestiqReplaceLeases==='function') window.nestiqReplaceLeases(rows);
+      else window.leasesData=rows;
+      try{ window.nestiqRememberLeaseStatuses?.(rows); }catch(_e){}
+      try{ window.nestiqRenderLeasesPortfolioTable?.(); }catch(_e){}
+      if(window.currentPage==='renewals') window.renderRenewalsPage?.();
+    }, e => console.error('leases', e));
+
     const sref = getSettingsDocRef();
     if(sref){
       nestUnsubs.push(sref.onSnapshot(doc => {
         if(doc.exists) mergeSettingsPayload(doc.data());
+        window.nestiqVendorsLoading = false;
         window.renderSettings?.();
+        try{ window.nestiqRenderVendorsPage?.(); }catch(_e){}
+        // When PayFast ITN (or client) updates billing, refresh subscribed UI immediately.
+        try{ window.nestiqUpdateNavBillingBadge?.(); }catch(_e){}
+        if(document.getElementById('billCurrentPlanName')){
+          try{ window.nestiqRenderBillingPage?.(); }catch(_e){}
+        }
       }, e => console.error('settings', e)));
     }
   }
@@ -650,12 +832,8 @@
     }, e => console.error('notices', e)));
 
     const msgCol = landlordCol('messages', landlordId);
-    if(msgCol) nestUnsubs.push(msgCol.where('tenantId', '==', tid).onSnapshot(snap => {
-      window.messages = snap.docs.map(doc => {
-        const d = doc.data();
-        const id = Number(d.id != null ? d.id : doc.id);
-        return stripUndefined({ ...d, id });
-      });
+    if(msgCol) nestUnsubs.push(msgCol.where('tenantId', '==', sid(tid)).onSnapshot(snap => {
+      hydrateMessagesFromDocs(snap.docs);
       window.renderTenantDashboard?.();
     }, e => console.error('messages', e)));
 
@@ -664,7 +842,7 @@
       window.maintenanceData.length = 0;
       snap.docs.forEach(doc => {
         const d = doc.data();
-        const id = Number(d.id != null ? d.id : doc.id);
+        const id = rowIdFromDoc(doc, d);
         window.maintenanceData.push(stripUndefined({ ...d, id }));
         if(d.photoUrl) window.maintenancePhotos[sid(id)] = d.photoUrl;
       });
@@ -767,6 +945,40 @@
     return { role:'landlord', tenantId:null, tenantDocId:null, name:nm, email:user.email, landlordId:user.uid };
   }
 
+  async function writeStaffUserProfile(ref, user, opts){
+    opts=opts||{};
+    const role=opts.role==='caretaker'?'caretaker':'contractor';
+    const assignedPropertyIds=Array.isArray(opts.assignedPropertyIds)
+      ? opts.assignedPropertyIds.map(x=>String(x)).filter(Boolean)
+      : [];
+    const payload=deepStripUndefined(stripUndefined({
+      role,
+      name:opts.name||user.displayName||(role==='caretaker'?'Caretaker':'Contractor'),
+      email:user.email,
+      phone:opts.phone||'',
+      landlordId:opts.landlordId||null,
+      landlordName:opts.landlordName||'',
+      staffId:opts.staffId||null,
+      assignedPropertyIds,
+      vendorId:opts.vendorId||null,
+      vendorType:opts.vendorType||''
+    }));
+    await ref.set(payload,{ merge:true });
+    return {
+      role,
+      name:payload.name,
+      email:user.email,
+      phone:payload.phone||'',
+      landlordId:payload.landlordId||null,
+      landlordName:payload.landlordName||'',
+      staffId:payload.staffId||null,
+      assignedPropertyIds,
+      vendorId:payload.vendorId||null,
+      vendorType:payload.vendorType||'',
+      uid:user.uid
+    };
+  }
+
   async function writeTenantUserProfile(ref, user, opts){
     opts=opts||{};
     const tid=String(opts.tenantDocId||opts.tenantId||'').trim();
@@ -852,7 +1064,7 @@
     window.syncNavUserUi?.();
     location.hash='#home';
     if(typeof mountPage==='function') await mountPage('home');
-    window.showNotif?.('Account switched to landlord. Complete setup if prompted.','success');
+    window.nestiqShowNotif?.('Account switched to landlord. Complete setup if prompted.','success');
     return profile;
   }
   window.nestiqClaimLandlordAccount=nestiqClaimLandlordAccount;
@@ -900,9 +1112,15 @@
     const tenantIntent=nestiqGetSignInIntent()==='tenant';
     const hasLandlordSignals=await userLooksLikeLandlord(user.uid);
 
+  const cachedStaffRole=(()=>{
+    try{ return String((window.__nestiqSession||JSON.parse(sessionStorage.getItem('nestiq-session')||'null')||{}).role||''); }
+    catch(_e){ return ''; }
+  })();
+
   // Prefer tenantAccounts linkage when this uid has no landlord properties.
   // Fixes accounts that were wrongly rewritten to landlord but still have a portal link.
-  if(tenantIntent || (!hasLandlordSignals && !signInIntent)){
+  // Never run this for staff sessions — it can bounce contractors onto the public landing.
+  if(cachedStaffRole!=='contractor' && cachedStaffRole!=='caretaker' && (tenantIntent || (!hasLandlordSignals && !signInIntent))){
     try{
       const restored=await restoreTenantProfileFromAccount(ref, user);
       if(restored) return restored;
@@ -989,13 +1207,63 @@
             }, { merge:true });
           }catch(_e){}
         }
+        const status=String(d.status||window.nestiqTenantSession?.status||'').toLowerCase()||null;
         return {
           role:'tenant',
-          tenantDocId:tenantDocIdEarly,
-          tenantId:d.tenantId != null ? Number(d.tenantId) : legacyNumericTenantId(tenantDocIdEarly),
+          tenantDocId:tenantDocIdEarly || (status==='unassigned'||d.selfRegistered ? user.uid : null),
+          tenantId:d.tenantId != null ? Number(d.tenantId) : legacyNumericTenantId(tenantDocIdEarly||user.uid),
           name:d.name || user.displayName || 'User',
           email:user.email,
-          landlordId:landlordId||null
+          phone:d.phone||'',
+          landlordId:landlordId||null,
+          status:status||(d.selfRegistered?'unassigned':undefined),
+          selfRegistered:!!d.selfRegistered
+        };
+      }
+
+      if(String(d.role||'')==='contractor'){
+        return {
+          role:'contractor',
+          name:d.name || user.displayName || 'Contractor',
+          email:user.email,
+          phone:d.phone||'',
+          landlordId:d.landlordId||null,
+          landlordName:d.landlordName||'',
+          vendorId:d.vendorId||null,
+          vendorType:d.vendorType||'',
+          uid:user.uid
+        };
+      }
+
+      if(String(d.role||'')==='caretaker'){
+        let assignedPropertyIds=Array.isArray(d.assignedPropertyIds)?d.assignedPropertyIds.map(x=>String(x)).filter(Boolean):[];
+        let staffId=d.staffId||null;
+        let landlordId=d.landlordId||null;
+        let landlordName=d.landlordName||'';
+        let name=d.name || user.displayName || 'Caretaker';
+        let phone=d.phone||'';
+        try{
+          const acc=await window.nestiqFs?.staffAccount?.(db, user.uid)?.get?.();
+          if(acc&&acc.exists){
+            const a=acc.data()||{};
+            if(Array.isArray(a.assignedPropertyIds)) assignedPropertyIds=a.assignedPropertyIds.map(x=>String(x)).filter(Boolean);
+            if(a.staffId) staffId=a.staffId;
+            if(a.landlordId) landlordId=a.landlordId;
+            if(a.landlordName) landlordName=a.landlordName;
+            if(a.name) name=a.name;
+            if(a.phone) phone=a.phone;
+          }
+        }catch(_e){}
+        return {
+          role:'caretaker',
+          name,
+          email:user.email,
+          phone,
+          landlordId:landlordId||null,
+          landlordName,
+          staffId,
+          assignedPropertyIds,
+          uid:user.uid
         };
       }
 
@@ -1045,6 +1313,19 @@
       if(p.role === 'landlord'){
         return await writeLandlordUserProfile(ref,user,p);
       }
+      if(p.role === 'caretaker' || p.role === 'contractor'){
+        return await writeStaffUserProfile(ref,user,{
+          role:p.role,
+          name:p.name||user.displayName,
+          phone:p.phone||'',
+          landlordId:p.landlordId||null,
+          landlordName:p.landlordName||'',
+          staffId:p.staffId||null,
+          assignedPropertyIds:p.assignedPropertyIds,
+          vendorId:p.vendorId||null,
+          vendorType:p.vendorType||p.staffType||''
+        });
+      }
       if(p.role === 'tenant' && (p.tenantDocId != null || p.tenantId != null)){
         return await writeTenantUserProfile(ref,user,{
           tenantDocId:p.tenantDocId||p.tenantId,
@@ -1053,7 +1334,100 @@
           name:p.name||user.displayName
         });
       }
+      // Self-service signup: pendingClaims may exist before any landlord/tenantDoc link.
+      if(p.role === 'tenant' && (p.selfRegistered || String(p.status||'')==='unassigned' || tenantIntent)){
+        const acct=await nestiqVerifyTenantAccount(user);
+        const nm=p.name||acct?.name||user.displayName||'Tenant';
+        await ref.set(stripUndefined({
+          role:'tenant',
+          status:'unassigned',
+          selfRegistered:true,
+          tenantDocId:user.uid,
+          name:nm,
+          email:user.email,
+          phone:p.phone||acct?.phone||'',
+          landlordId:null
+        }),{ merge:true });
+        return {
+          role:'tenant',
+          tenantDocId:user.uid,
+          tenantId:null,
+          name:nm,
+          email:user.email,
+          phone:p.phone||acct?.phone||'',
+          landlordId:null,
+          status:'unassigned',
+          selfRegistered:true
+        };
+      }
     }
+
+    // Existing tenantAccounts without users doc (or incomplete profile)
+    if(tenantIntent){
+      const acct=await nestiqVerifyTenantAccount(user);
+      if(acct){
+        const st=String(acct.status||'').toLowerCase();
+        const nm=acct.name||user.displayName||'Tenant';
+        await ref.set(stripUndefined({
+          role:'tenant',
+          status:st||'unassigned',
+          selfRegistered:!!acct.selfRegistered || st==='unassigned',
+          tenantDocId:acct.tenantId||user.uid,
+          landlordId:acct.landlordId||null,
+          name:nm,
+          email:user.email,
+          phone:acct.phone||''
+        }),{ merge:true });
+        return {
+          role:'tenant',
+          tenantDocId:String(acct.tenantId||user.uid),
+          tenantId:null,
+          name:nm,
+          email:user.email,
+          phone:acct.phone||'',
+          landlordId:acct.landlordId||null,
+          status:st||'unassigned',
+          selfRegistered:true
+        };
+      }
+    }
+
+    // Staff account restore (caretaker/contractor) — same uid-linked pattern as tenantAccounts
+    try{
+      const staffAcc=await window.nestiqFs?.staffAccount?.(db, user.uid)?.get?.();
+      if(staffAcc&&staffAcc.exists){
+        const a=staffAcc.data()||{};
+        const role=a.role==='caretaker'?'caretaker':(a.role==='contractor'?'contractor':null);
+        if(role){
+          const assignedPropertyIds=Array.isArray(a.assignedPropertyIds)?a.assignedPropertyIds.map(x=>String(x)).filter(Boolean):[];
+          await ref.set(stripUndefined({
+            role,
+            name:a.name||user.displayName||(role==='caretaker'?'Caretaker':'Contractor'),
+            email:user.email,
+            phone:a.phone||'',
+            landlordId:a.landlordId||null,
+            landlordName:a.landlordName||'',
+            staffId:a.staffId||null,
+            assignedPropertyIds,
+            vendorId:a.linkedVendorId||a.vendorId||null,
+            vendorType:a.staffType||a.vendorType||''
+          }),{ merge:true });
+          return {
+            role,
+            name:a.name||user.displayName||(role==='caretaker'?'Caretaker':'Contractor'),
+            email:user.email,
+            phone:a.phone||'',
+            landlordId:a.landlordId||null,
+            landlordName:a.landlordName||'',
+            staffId:a.staffId||null,
+            assignedPropertyIds,
+            vendorId:a.linkedVendorId||a.vendorId||null,
+            vendorType:a.staffType||a.vendorType||'',
+            uid:user.uid
+          };
+        }
+      }
+    }catch(_e){}
 
     if(hasLandlordSignals && !tenantIntent){
       const pc=pcSnap.exists?(pcSnap.data()||{}):{};
@@ -1077,6 +1451,7 @@
 
   function nestiqBootstrapTenantFromLocalCache(){
     if(window.currentTenantData) return window.currentTenantData;
+    if(window.nestiqUseFirestore) return null;
     const u=window.currentUser;
     let tid=u?.tenantDocId||null;
     try{
@@ -1113,9 +1488,17 @@
     }catch(_e){}
   }
 
+  function nestiqHttpsPhotoUrl(v){
+    const s=String(v==null?'':v).trim().replace(/[\u200B-\u200D\uFEFF]/g,'');
+    return /^https?:\/\//i.test(s)?s:'';
+  }
+
   function tenantPayloadSansPayments(t){
     const o = { ...t };
     delete o.payments;
+    const photo=nestiqHttpsPhotoUrl(o.profilePhoto||o.photoUrl||o.photoURL);
+    if(photo) o.profilePhoto=photo;
+    else delete o.profilePhoto;
     return deepStripUndefined(stripUndefined(o));
   }
 
@@ -1166,7 +1549,11 @@
     const token=await user.getIdToken(true);
     const projectId=firestoreRestProjectId();
     const path=`projects/${projectId}/databases/(default)/documents/landlords/${encodeURIComponent(landlordId)}/tenants/${encodeURIComponent(tenantId)}`;
-    const url=`https://firestore.googleapis.com/v1/${path}`;
+    // updateMask is required: a PATCH without it replaces the whole tenant doc and
+    // drops fields the payload omits (e.g. profilePhoto uploaded from the portal).
+    const mask=Object.keys(payload||{}).filter(k=>payload[k]!==undefined);
+    const qs=mask.map(k=>'updateMask.fieldPaths='+encodeURIComponent(k)).join('&');
+    const url=`https://firestore.googleapis.com/v1/${path}${qs?'?'+qs:''}`;
     const res=await fetch(url,{
       method:'PATCH',
       headers:{
@@ -1228,6 +1615,7 @@
     let depositAmt=0;
     if(deposit&&typeof deposit==='object') depositAmt=Number(deposit.amount)||0;
     else depositAmt=Number(deposit)||0;
+    const photo=nestiqHttpsPhotoUrl(tenant.profilePhoto||tenant.photoUrl||tenant.photoURL);
     return deepStripUndefined(stripUndefined({
       id:tid,
       name:String(tenant.name||''),
@@ -1236,20 +1624,42 @@
       property:String(tenant.property||''),
       propertyId:tenant.propertyId!=null?String(tenant.propertyId):'',
       unit:String(tenant.unit||'Unit'),
+      unitId:tenant.unitId!=null&&tenant.unitId!==''?String(tenant.unitId):null,
       rent:Number(tenant.rent)||0,
       status:String(tenant.status||'due'),
       lease:String(tenant.lease||''),
       leaseStart:String(tenant.leaseStart||''),
       leaseEnd:String(tenant.leaseEnd||''),
       monthlyDueDate:Number(tenant.monthlyDueDate)||1,
+      prorateFirstMonth:Boolean(tenant.prorateFirstMonth),
+      leaseId:tenant.leaseId!=null&&tenant.leaseId!==''?String(tenant.leaseId):'',
+      leaseStatus:tenant.leaseStatus!=null&&tenant.leaseStatus!==''?String(tenant.leaseStatus):'',
+      unitNumber:String(tenant.unitNumber||tenant.unit||''),
       landlordId:String(writeLid),
       applicationId:tenant.applicationId!=null?String(tenant.applicationId):'',
       hasPortalAccess:Boolean(tenant.hasPortalAccess),
       firstLogin:Boolean(tenant.firstLogin),
       portalUid:tenant.portalUid||null,
+      tenantUid:tenant.tenantUid||tenant.portalUid||null,
       portalEmail:String(tenant.portalEmail||tenant.email||'').toLowerCase(),
       depositAmount:depositAmt,
-      notes:String(tenant.notes||'').slice(0,500)
+      depositCollected:!!(tenant.depositCollected===true || (deposit&&typeof deposit==='object'&&deposit.collected===true)),
+      deposit:(deposit&&typeof deposit==='object')?{
+        amount:depositAmt,
+        collected:deposit.collected===true,
+        collectedDate:String(deposit.collectedDate||''),
+        collectedMethod:String(deposit.collectedMethod||''),
+        status:String(deposit.status|| (deposit.collected?'held':'pending')),
+        bankName:String(deposit.bankName||''),
+        accountNumber:String(deposit.accountNumber||''),
+        interestRate:Number(deposit.interestRate)||3.5,
+        interestEarned:Number(deposit.interestEarned)||0,
+        lastInterestCalculated:String(deposit.lastInterestCalculated||''),
+        receiptIssued:deposit.receiptIssued===true,
+        receiptDate:String(deposit.receiptDate||'')
+      }:undefined,
+      notes:String(tenant.notes||'').slice(0,500),
+      profilePhoto:photo||undefined
     }));
   }
 
@@ -1274,6 +1684,7 @@
         try{ await tcol.doc(tid).set(payload,{ merge:true }); }catch(_e){}
       }
       tenant.landlordId=writeLid;
+      try{ window.nestiqEnsureTenantEmailPortalLink?.(tenant); }catch(_e){}
       return tid;
     }catch(e){
       try{ window.__nestiqPendingTenantWrites?.delete(String(tid)); }catch(_e){}
@@ -1299,6 +1710,9 @@
       if(tcol){
         try{ await tcol.doc(id).set(payload,{ merge:true }); }catch(_e){}
       }
+      tenant.landlordId=writeLid;
+      tenant.id=id;
+      try{ window.nestiqEnsureTenantEmailPortalLink?.(tenant); }catch(_e){}
       return id;
     }catch(e){
       try{ window.__nestiqPendingTenantWrites?.delete(String(id)); }catch(_e){}
@@ -1307,21 +1721,40 @@
   }
   window.nestiqCreateTenantDocInFirestore=nestiqCreateTenantDocInFirestore;
 
+  async function nestiqReleaseTenantAccount(uid){
+    if(!db||!uid) return false;
+    const acct=window.nestiqFs?.tenantAccount(db, uid);
+    if(!acct) return false;
+    try{
+      await acct.set(stripUndefined({
+        status:'unassigned',
+        propertyId:'',
+        tenantId:String(uid)
+      }),{ merge:true });
+      return true;
+    }catch(e){
+      console.warn('NestIQ: release tenant account', e);
+      return false;
+    }
+  }
+  window.nestiqReleaseTenantAccount=nestiqReleaseTenantAccount;
+
   async function nestiqUpsertTenantAccount(authUser, lid, tid, propertyId, status){
-    if(!db||!authUser||!lid||!tid) return false;
+    if(!db||!authUser) return false;
     const acct=window.nestiqFs?.tenantAccount(db, authUser.uid);
     if(!acct) return false;
+    const st=status||(lid&&tid?'active':'unassigned');
     await acct.set(stripUndefined({
-      landlordId:String(lid),
-      tenantId:String(tid),
+      landlordId:lid!=null&&String(lid)?String(lid):'',
+      tenantId:tid!=null&&String(tid)?String(tid):String(authUser.uid),
       propertyId:propertyId!=null?String(propertyId):'',
-      status:status||'active'
+      status:st
     }),{ merge:true });
     window.nestiqTenantSession={
-      landlordId:String(lid),
-      tenantId:String(tid),
+      landlordId:lid!=null&&String(lid)?String(lid):'',
+      tenantId:tid!=null&&String(tid)?String(tid):String(authUser.uid),
       propertyId:propertyId!=null?String(propertyId):'',
-      status:status||'active'
+      status:st
     };
     return true;
   }
@@ -1333,6 +1766,21 @@
       const snap=await acct.get();
       if(!snap.exists) return null;
       const d=snap.data()||{};
+      const st=String(d.status||'').toLowerCase();
+      const assigned=!!String(d.propertyId||'').trim() && st && st!=='unassigned';
+      // Self-registered tenants may exist before any landlord assignment.
+      if(!assigned && (st==='unassigned' || d.selfRegistered)){
+        window.nestiqTenantSession={
+          landlordId:d.landlordId!=null?String(d.landlordId):'',
+          tenantId:d.tenantId!=null?String(d.tenantId):String(authUser.uid),
+          propertyId:d.propertyId!=null?String(d.propertyId):'',
+          status:st||'unassigned',
+          name:d.name||'',
+          email:d.email||authUser.email||'',
+          phone:d.phone||''
+        };
+        return d;
+      }
       if(!d.landlordId||!d.tenantId) return null;
       window.nestiqTenantSession={
         landlordId:String(d.landlordId),
@@ -1380,10 +1828,43 @@
 
     const acct=await nestiqEnsureTenantAccountFromProfile(authUser, cu);
     if(acct){
-      lid=String(acct.landlordId||lid);
-      tid=String(acct.tenantId||tid);
-      cu.landlordId=lid;
-      cu.tenantDocId=tid;
+      lid=String(acct.landlordId||lid).trim();
+      tid=String(acct.tenantId||tid).trim();
+      cu.landlordId=lid||null;
+      cu.tenantDocId=tid||cu.tenantDocId;
+      if(acct.status) cu.status=acct.status;
+    }
+
+    // Self-registered / not yet assigned — do not invent a paid portal linkage.
+    const unassigned=String(cu.status||acct?.status||'').toLowerCase()==='unassigned'
+      || !!cu.selfRegistered
+      || !!acct?.selfRegistered;
+    if(unassigned && !lid){
+      try{
+        const claimed=await window.nestiqClaimTenantEmailPortalLink?.(authUser.uid, email);
+        if(claimed && claimed.landlordId && claimed.tenantId){
+          lid=String(claimed.landlordId);
+          tid=String(claimed.tenantId);
+          cu.landlordId=lid;
+          cu.tenantDocId=tid;
+          cu.status=claimed.status||'active';
+          cu.selfRegistered=false;
+        }
+      }catch(e){
+        console.warn('NestIQ: claim tenant by email', e);
+      }
+    }
+    if(unassigned && !lid){
+      window.nestiqTenantSession={
+        landlordId:'',
+        tenantId:tid||authUser.uid,
+        propertyId:'',
+        status:'unassigned',
+        name:cu.name||acct?.name||'',
+        email:email,
+        phone:cu.phone||acct?.phone||''
+      };
+      return null;
     }
 
     const lidOrAny=(t)=>!lid||String(t.landlordId||'')===String(lid);
@@ -1403,12 +1884,21 @@
       try{
         await landlordCol('tenants', lid).doc(tid).set({
           portalUid:authUser.uid,
+          tenantUid:authUser.uid,
           portalEmail:email,
           hasPortalAccess:true
         },{ merge:true });
         const tSnap=await landlordCol('tenants', lid).doc(tid).get();
-        const propId=tSnap.exists?tSnap.data().propertyId:null;
-        await nestiqUpsertTenantAccount(authUser, lid, tid, propId, 'active');
+        const tData=tSnap.exists?(tSnap.data()||{}):{};
+        const propId=tData.propertyId!=null?tData.propertyId:null;
+        const tStatus=String(tData.status||'').toLowerCase();
+        const acctStatus=(tStatus==='unassigned' || !propId)?'unassigned':'active';
+        await nestiqUpsertTenantAccount(authUser, lid, tid, propId, acctStatus);
+        if(acctStatus==='unassigned'){
+          cu.status='unassigned';
+          // Linked to a landlord stub but not yet approved — allow listings, not full portal.
+          return null;
+        }
       }catch(_e){}
       return (await nestiqVerifyTenantAccount(authUser)) ? tid : null;
     }
@@ -1443,7 +1933,7 @@
         propertyId:null,
         unit:'',
         rent:0,
-        status:'paid',
+        status:'due',
         monthlyDueDate:1,
         hasPortalAccess:true,
         portalUid:authUser.uid,
@@ -1481,7 +1971,15 @@
     const tid=String(ts.tenantId||u?.tenantDocId||'').trim();
     const tenantUid=auth?.currentUser?.uid||null;
     if(!dbi || !u || u.role !== 'tenant' || !tid || !lid){
-      window.nestiqShowTenantDashboardError?.('Your account is not linked to a tenant profile. Use your invitation code or contact your landlord.');
+      const unassigned=String(u?.status||window.nestiqTenantSession?.status||'').toLowerCase()==='unassigned'
+        || !!u?.selfRegistered;
+      if(unassigned){
+        window.nestiqShowUnassignedApplicantPortal?.(
+          'Your account is ready. Browse listings and apply — track status under My Applications. If a landlord approves you, sign in with this same account to review and sign your lease.'
+        );
+      }else{
+        window.nestiqShowTenantDashboardError?.('Your account is not linked to a tenant profile yet. Apply from Browse listings, or wait until your landlord approves your application.');
+      }
       return;
     }
     // Drop previous portal listeners before attaching new ones (logout / re-login).
@@ -1489,6 +1987,7 @@
       window.__tenantUnsubs.forEach(fn=>{ try{ fn(); }catch(_e){} });
     }
     if(window.__tenantPropUnsub){ try{ window.__tenantPropUnsub(); }catch(_e){} window.__tenantPropUnsub=null; }
+    if(window.__tenantUnitUnsub){ try{ window.__tenantUnitUnsub(); }catch(_e){} window.__tenantUnitUnsub=null; }
     if(window.__tenantNoticesUnsub){ try{ window.__tenantNoticesUnsub(); }catch(_e){} window.__tenantNoticesUnsub=null; }
 
     window.nestiqShowTenantDashboardLoading?.(true);
@@ -1496,12 +1995,14 @@
     window.__tenantUnsubs = unsubscribers;
     window.currentTenantData = null;
     window.tenantPayments = [];
+    window.__nestiqTenantPaymentsReady = false;
     window.tenantMaintenance = [];
     window.tenantUploadedDocuments = [];
     window.tenantNotices = [];
     window.tenantMessages = [];
     window.landlordInfo = null;
     window.tenantProperty = null;
+    window.tenantCaretaker = null;
 
     const tcol=landlordCol('tenants', lid);
     const payCol=landlordCol('payments', lid);
@@ -1511,6 +2012,41 @@
     const msgCol=landlordCol('messages', lid);
     const propsCol=landlordCol('properties', lid);
     const settingsRef=window.nestiqFs?.settingsRef(dbi, lid);
+
+    function attachTenantCaretaker(caretakerId){
+      if(window.__tenantCaretakerUnsub){
+        try{ window.__tenantCaretakerUnsub(); }catch(_e){}
+        window.__tenantCaretakerUnsub=null;
+      }
+      const sid=String(caretakerId||'').trim();
+      const p=window.tenantProperty||{};
+      const fallback=()=>{
+        window.tenantCaretaker=sid?{
+          id:sid,
+          name:p.caretakerName||'Caretaker',
+          uid:p.caretakerUid||null,
+          email:p.caretakerEmail||'',
+          phone:p.caretakerPhone||''
+        }:null;
+        window.renderMessagesCard?.();
+      };
+      if(!sid||!window.nestiqFs?.staff){
+        fallback();
+        return;
+      }
+      try{
+        window.__tenantCaretakerUnsub=window.nestiqFs.staff(dbi, lid).doc(sid).onSnapshot(doc=>{
+          if(doc.exists) window.tenantCaretaker={ id:doc.id, ...doc.data() };
+          else fallback();
+          window.renderMessagesCard?.();
+        }, err=>{
+          console.warn('NestIQ: tenant caretaker staff', err);
+          fallback();
+        });
+      }catch(_e){
+        fallback();
+      }
+    }
 
     function attachTenantNotices(propertyId){
       if(window.__tenantNoticesUnsub){
@@ -1536,20 +2072,69 @@
       }
     }
 
-    const unsubTenant = tcol.doc(tid).onSnapshot(doc => {
-      if(!doc.exists){
-        window.nestiqShowTenantDashboardError?.(
-          'Your tenant profile is not in Firebase yet. Your landlord must open NestIQ (signed in), confirm you appear under Tenants, then ask them to resend your portal invitation.'
-        );
+    function attachTenantOccupiedUnit(tenant){
+      if(window.__tenantUnitUnsub){
+        try{ window.__tenantUnitUnsub(); }catch(_e){}
+        window.__tenantUnitUnsub=null;
+      }
+      const unitsCol=window.nestiqFs?.units?.(dbi, lid);
+      if(!unitsCol||!tenant) return;
+      const applyRows=rows=>{
+        const next=Array.isArray(rows)?rows:[];
+        const ids=new Set(next.map(r=>String(r.id)));
+        const prev=Array.isArray(window.unitsData)?window.unitsData:[];
+        window.unitsData=prev.filter(u=>!ids.has(String(u.id))).concat(next);
+        try{ window.nestiqBindWindowDataArrays?.(); }catch(_e){}
+        try{ window.nestiqTenantRefreshVisibleSections?.(); }catch(_e){}
+      };
+      const uid=String(tenant.unitId||'').trim();
+      if(uid){
+        window.__tenantUnitUnsub=unitsCol.doc(uid).onSnapshot(doc=>{
+          applyRows(doc.exists?[{ id:doc.id, ...doc.data() }]:[]);
+        }, err=>console.warn('NestIQ: tenant unit', err));
         return;
       }
-      window.currentTenantData = { id: doc.id, ...doc.data() };
+      window.__tenantUnitUnsub=unitsCol.where('tenantId','==',String(tenant.id)).onSnapshot(snap=>{
+        applyRows((snap.docs||[]).map(d=>({ id:d.id, ...d.data() })));
+      }, err=>console.warn('NestIQ: tenant unit query', err));
+    }
+
+    const unsubTenant = tcol.doc(tid).onSnapshot(doc => {
+      if(!doc.exists){
+        window.currentTenantData = null;
+        try{
+          if(window.nestiqTenantSession){
+            window.nestiqTenantSession.status='unassigned';
+            window.nestiqTenantSession.propertyId='';
+            window.nestiqTenantSession.tenantId=String(tenantUid||tid);
+          }
+          if(window.currentUser) window.currentUser.status='unassigned';
+        }catch(_e){}
+        void (async()=>{
+          try{
+            if(tenantUid && typeof window.nestiqReleaseTenantAccount==='function'){
+              await window.nestiqReleaseTenantAccount(tenantUid);
+            }
+          }catch(_e){}
+        })();
+        window.nestiqShowUnassignedApplicantPortal?.();
+        return;
+      }
+      const raw={ id: doc.id, ...doc.data() };
+      // Occupancy `status: paid` and any payments[] copied onto the tenant doc are not
+      // proof of this month's rent. Portal status comes from the payments collection.
+      delete raw.payments;
+      if(window.__nestiqTenantPaymentsReady){
+        raw.payments=(window.tenantPayments||[]).slice();
+      }
+      window.currentTenantData = raw;
       window.nestiqShowTenantDashboardLoading?.(false);
       window.renderTenantDashboard?.();
       window.renderGettingStartedTenant?.();
       window.renderNoticesCard?.();
       window.updateNoticesBadge?.();
       attachTenantNotices(window.currentTenantData?.propertyId||ts.propertyId);
+      attachTenantOccupiedUnit(window.currentTenantData);
       const pid=window.currentTenantData?.propertyId;
       if(pid!=null&&String(pid).trim()!==''){
         if(window.__tenantPropUnsub){ try{ window.__tenantPropUnsub(); }catch(_e){} }
@@ -1560,10 +2145,13 @@
             window.tenantProperty=null;
           }
           window.renderPropertyInfoCard?.();
+          attachTenantCaretaker(window.tenantProperty?.caretakerId);
         }, err=>console.error('Property error:', err));
       }else{
         window.tenantProperty=null;
+        window.tenantCaretaker=null;
         window.renderPropertyInfoCard?.();
+        window.renderMessagesCard?.();
       }
     }, err => {
       console.error('Tenant doc error:', err);
@@ -1577,6 +2165,8 @@
     });
     unsubscribers.push(()=>{
       if(window.__tenantPropUnsub){ try{ window.__tenantPropUnsub(); }catch(_e){} window.__tenantPropUnsub=null; }
+      if(window.__tenantUnitUnsub){ try{ window.__tenantUnitUnsub(); }catch(_e){} window.__tenantUnitUnsub=null; }
+      if(window.__tenantCaretakerUnsub){ try{ window.__tenantCaretakerUnsub(); }catch(_e){} window.__tenantCaretakerUnsub=null; }
     });
 
     // Prefer Auth uid (portal) rows; also merge legacy tenantId-only rows when needed.
@@ -1600,35 +2190,104 @@
       }
     };
 
-    bindTenantScoped(payCol, rows=>{
-      window.tenantPayments = rows.map(x=>{
-        const pid=Number(x.id!=null?x.id:0);
-        return { ...x, id:pid };
+    const payById=new Map();
+    const ingestTenantPayments=rows=>{
+      (rows||[]).forEach(x=>{
+        const id=String(x.id||'');
+        if(!id) return;
+        payById.set(id,{ ...x, id });
       });
+      window.tenantPayments=Array.from(payById.values()).sort((a,b)=>
+        String(b.date||b.paidAt||'').localeCompare(String(a.date||a.paidAt||''))
+      );
+      window.__nestiqTenantPaymentsReady=true;
+      if(window.currentTenantData){
+        window.currentTenantData.payments=window.tenantPayments.slice();
+      }
       window.renderRentStatusCard?.();
       window.renderPaymentHistoryCard?.();
       window.renderFinancesCard?.();
       window.renderDocumentsCard?.();
       window.renderTenantCalendar?.();
-    }, 'Tenant payments');
+      window.renderTenantHomeStatusBanner?.();
+      window.nestiqTenantRefreshVisibleSections?.();
+    };
+    unsubscribers.push(payCol.where('tenantId','==',tid).onSnapshot(snap=>{
+      ingestTenantPayments((snap.docs||[]).map(d=>({ id:d.id, ...d.data() })));
+    }, function(e){
+      console.error('Tenant payments error:', e);
+      window.__nestiqTenantPaymentsReady=true;
+    }));
+    if(tenantUid){
+      unsubscribers.push(payCol.where('tenantUid','==',tenantUid).onSnapshot(snap=>{
+        ingestTenantPayments((snap.docs||[]).map(d=>({ id:d.id, ...d.data() })));
+      }, function(err){ console.warn('NestIQ: payments by tenantUid', err && (err.code||err.message)||err); }));
+    }
 
     bindTenantScoped(maintCol, rows=>{
       window.tenantMaintenance = rows
         .sort((a,b)=>String(b.createdAt?.seconds||b.date||'').localeCompare(String(a.createdAt?.seconds||a.date||'')));
       window.renderMaintenanceCard?.();
+      window.nestiqTenantRefreshVisibleSections?.();
     }, 'Tenant maintenance');
 
-    bindTenantScoped(docsCol, rows=>{
-      window.tenantUploadedDocuments = rows;
-      window.renderDocumentsCard?.();
-    }, 'Tenant documents');
+    if(docsCol){
+      unsubscribers.push(docsCol.where('tenantId','==',tid).onSnapshot(snap=>{
+        window.tenantUploadedDocuments = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        window.renderDocumentsCard?.();
+      }, e=>console.error('Tenant documents error:', e)));
+    }
 
-    bindTenantScoped(msgCol, rows=>{
-      window.tenantMessages = rows
-        .sort((a,b)=>String(a.createdAt?.seconds||a.date||'').localeCompare(String(b.createdAt?.seconds||b.date||'')));
+    const leasesCol=window.nestiqFs?.leases?.(dbi, lid);
+    if(leasesCol){
+      const leaseById=new Map();
+      const applyLeases=rows=>{
+        if(typeof window.nestiqReplaceLeases==='function') window.nestiqReplaceLeases(rows);
+        else window.leasesData=rows;
+        try{ window.renderTenantLeaseCard?.(window.currentTenantData); }catch(_e){}
+        try{ window.nestiqTenantRefreshVisibleSections?.(); }catch(_e){}
+        try{ window.renderGettingStartedTenant?.(); }catch(_e){}
+      };
+      const ingestLeaseSnap=snap=>{
+        (snap.docs||[]).forEach(d=>leaseById.set(d.id,{ id:d.id, ...d.data() }));
+        applyLeases(Array.from(leaseById.values()));
+      };
+      unsubscribers.push(leasesCol.where('tenantId','==',tid).onSnapshot(ingestLeaseSnap, e=>console.error('Tenant leases error:', e)));
+      if(tenantUid){
+        unsubscribers.push(leasesCol.where('tenantUid','==',tenantUid).onSnapshot(ingestLeaseSnap, err=>{
+          console.warn('NestIQ: Tenant leases by tenantUid', err?.code||err?.message||err);
+        }));
+      }
+    }
+
+    const msgById=new Map();
+    const applyTenantMessages=()=>{
+      window.tenantMessages=Array.from(msgById.values()).sort((a,b)=>
+        String(a.createdAt?.seconds||a.date||'').localeCompare(String(b.createdAt?.seconds||b.date||''))
+      );
       window.renderMessagesCard?.();
-      window.markLandlordMessagesRead?.();
-    }, 'Tenant messages');
+      if(typeof window.nestiqOnTenantMessagesUpdated==='function'){
+        window.nestiqOnTenantMessagesUpdated();
+      }else{
+        window.nestiqUpdateTenantBadges?.();
+      }
+    };
+    const ingestMsgSnap=snap=>{
+      (snap.docs||[]).forEach(d=>msgById.set(d.id,{ id:d.id, ...d.data() }));
+      applyTenantMessages();
+    };
+    if(msgCol){
+      if(tenantUid){
+        unsubscribers.push(msgCol.where('tenantUid','==',tenantUid).onSnapshot(ingestMsgSnap, err=>{
+          console.warn('NestIQ: Tenant messages by tenantUid failed', err?.code||err?.message||err);
+        }));
+      }
+      unsubscribers.push(msgCol.where('tenantId','==',tid).onSnapshot(ingestMsgSnap, e=>console.error('Tenant messages error:', e)));
+      const tidNum=Number(tid);
+      if(Number.isFinite(tidNum)&&String(tidNum)===String(tid)){
+        unsubscribers.push(msgCol.where('tenantId','==',tidNum).onSnapshot(ingestMsgSnap, ()=>{}));
+      }
+    }
 
     if(settingsRef){
       const unsubSettings = settingsRef.onSnapshot(doc => {
@@ -1638,7 +2297,14 @@
           window.landlordInfo={
             ...sd,
             name:sd.name||ls.name||'Landlord',
-            phone:sd.phone||ls.phone||''
+            phone:sd.phone||ls.phone||'',
+            logoBase64:sd.logoBase64||ls.logoBase64||'',
+            profilePhoto:sd.profilePhoto||ls.profilePhoto||sd.logoUrl||ls.logoUrl||sd.logoBase64||ls.logoBase64||'',
+            portal:ls.portal&&typeof ls.portal==='object'?ls.portal:{},
+            bankName:ls.portal?.bankName||ls.bankName||sd.bankName||'',
+            accountNumber:ls.portal?.accountNumber||ls.accountNumber||sd.accountNumber||'',
+            branchCode:ls.portal?.branchCode||ls.branchCode||sd.branchCode||'',
+            accountType:ls.portal?.accountType||ls.accountType||'Cheque'
           };
           window.renderPropertyInfoCard?.();
         }
@@ -1652,6 +2318,121 @@
         window.nestiqShowTenantDashboardLoading?.(false);
       }
     }, 12000);
+  }
+
+  function startCaretakerListeners(){
+    const dbi=db;
+    const u=window.currentUser;
+    const lid=String(u?.landlordId||'').trim();
+    const assigned=(Array.isArray(u?.assignedPropertyIds)?u.assignedPropertyIds:[]).map(x=>String(x)).filter(Boolean);
+    if(!dbi || !u || u.role!=='caretaker' || !lid){
+      window.nestiqShowTenantDashboardError?.('Your caretaker account is not linked to a landlord yet.');
+      return;
+    }
+    if(Array.isArray(window.__caretakerUnsubs)){
+      window.__caretakerUnsubs.forEach(fn=>{ try{ fn(); }catch(_e){} });
+    }
+    const unsubscribers=[];
+    window.__caretakerUnsubs=unsubscribers;
+    window.caretakerProperties=[];
+    window.caretakerUnits=[];
+    window.caretakerTenants=[];
+    window.caretakerMaintenance=[];
+    window.caretakerInspections=[];
+    window.caretakerStaff=[];
+    window.caretakerMessages=[];
+    const assignedKey=assigned.slice().sort().join('|');
+    try{
+      const accRef=window.nestiqFs?.staffAccount?.(dbi, u.uid);
+      if(accRef){
+        unsubscribers.push(accRef.onSnapshot(doc=>{
+          if(!doc.exists) return;
+          const a=doc.data()||{};
+          const next=Array.isArray(a.assignedPropertyIds)?a.assignedPropertyIds.map(x=>String(x)).filter(Boolean):[];
+          if(window.currentUser) window.currentUser.assignedPropertyIds=next;
+          try{
+            const s=window.__nestiqSession||{};
+            if(s&&s.role==='caretaker'){
+              s.assignedPropertyIds=next;
+              window.__nestiqSession=s;
+              sessionStorage.setItem('nestiq-session', JSON.stringify(s));
+            }
+          }catch(_e){}
+          const nextKey=next.slice().sort().join('|');
+          if(nextKey!==assignedKey){
+            startCaretakerListeners();
+            return;
+          }
+          window.renderCaretakerDashboard?.();
+        }, err=>console.error('caretaker staffAccount', err)));
+      }
+    }catch(_e){}
+    const propsCol=window.nestiqFs?.caretakerProperties?.(dbi,lid);
+    const unitsCol=window.nestiqFs?.caretakerUnits?.(dbi,lid);
+    const tenantsCol=window.nestiqFs?.caretakerTenants?.(dbi,lid);
+    const maintCol=window.nestiqFs?.maintenance?.(dbi,lid);
+    const inspCol=window.nestiqFs?.inspections?.(dbi,lid);
+    const staffCol=window.nestiqFs?.staff?.(dbi,lid);
+    const byId=(rows)=>rows.sort((a,b)=>String(a.name||a.propertyName||a.label||'').localeCompare(String(b.name||b.propertyName||b.label||''),undefined,{sensitivity:'base'}));
+    const bindAssignedDocs=(col, targetKey)=>{
+      if(!col) return;
+      const map=new Map();
+      const refresh=()=>{
+        window[targetKey]=byId(Array.from(map.values()));
+        window.renderCaretakerDashboard?.();
+      };
+      (assigned||[]).forEach(pid=>{
+        try{
+          unsubscribers.push(col.doc(String(pid)).onSnapshot(doc=>{
+            if(doc.exists) map.set(String(pid), { id:doc.id, ...doc.data() });
+            else map.delete(String(pid));
+            refresh();
+          }, err=>console.error(targetKey, err)));
+        }catch(err){
+          console.error(targetKey, err);
+        }
+      });
+    };
+    const bindPropertyScoped=(col, targetKey, sortKey)=>{
+      if(!col) return;
+      const map=new Map();
+      const refresh=()=>{
+        const rows=Array.from(map.values());
+        window[targetKey]=sortKey
+          ? rows.sort((a,b)=>String(b[sortKey]||b.createdAt?.seconds||'').localeCompare(String(a[sortKey]||a.createdAt?.seconds||'')))
+          : byId(rows);
+        window.renderCaretakerDashboard?.();
+      };
+      (assigned||[]).forEach(pid=>{
+        try{
+          unsubscribers.push(col.where('propertyId','==',String(pid)).onSnapshot(snap=>{
+            const ids=new Set(snap.docs.map(d=>d.id));
+            [...map.keys()].forEach(k=>{
+              const row=map.get(k);
+              if(row&&String(row.propertyId||'')===String(pid)&&!ids.has(k)) map.delete(k);
+            });
+            snap.docs.forEach(doc=>map.set(doc.id,{ id:doc.id, ...doc.data() }));
+            refresh();
+          }, err=>console.error(targetKey, err)));
+        }catch(err){
+          console.error(targetKey, err);
+        }
+      });
+    };
+    bindAssignedDocs(propsCol,'caretakerProperties');
+    bindPropertyScoped(unitsCol,'caretakerUnits');
+    bindPropertyScoped(tenantsCol,'caretakerTenants');
+    if(staffCol){
+      unsubscribers.push(staffCol.onSnapshot(snap=>{
+        window.caretakerStaff=snap.docs.map(d=>({ id:d.id, ...d.data() })).filter(row=>String(row.role||'')==='contractor' && String(row.accountStatus||'')==='active');
+        window.renderCaretakerDashboard?.();
+      }, err=>console.error('caretaker staff', err)));
+    }
+    bindPropertyScoped(maintCol,'caretakerMaintenance','date');
+    bindPropertyScoped(inspCol,'caretakerInspections','date');
+    const msgCol=window.nestiqFs?.messages?.(dbi,lid);
+    bindPropertyScoped(msgCol,'caretakerMessages','date');
+    setTimeout(()=>window.renderCaretakerDashboard?.(),200);
   }
 
   function persistedPhotoUrlFromSources(rawFromMap, row){
@@ -1694,11 +2475,85 @@
       }
       batch.set(pcol.doc(sid(p.id)), payload, { merge:true });
       n++; push();
+      const cprop=window.nestiqFs?.caretakerProperties?.(db, lid);
+      if(cprop){
+        batch.set(cprop.doc(sid(p.id)), stripUndefined({
+          propertyId:sid(p.id),
+          caretakerId:p.caretakerId!=null&&p.caretakerId!==''?String(p.caretakerId):null,
+          name:p.name||'',
+          addr:p.addr||'',
+          status:p.status||'',
+          type:p.type||'',
+          bedrooms:Number(p.bedrooms||0)||0,
+          bathrooms:Number(p.bathrooms||0)||0,
+          parkingBays:Number(p.parkingBays||0)||0,
+          floorSize:p.floorSize||null,
+          photoUrl:photoUrl||null,
+          autoApproveLimit:Number(p?.maintenanceSettings?.repairApprovalLimit??window.landlordSettings?.caretakerAutoApproveLimit??1000)||1000,
+          caretakerCanManage:p?.maintenanceSettings?.caretakerCanManage!==false,
+          maintenanceSettings:p?.maintenanceSettings||null,
+          landlordId:lid
+        }), { merge:true });
+        n++; push();
+      }
+    });
+
+    (window.unitsData || []).forEach(u => {
+      if(!u || u.propertyId == null || u.propertyId === '' || u.id == null || u.id === '') return;
+      const ucol=window.nestiqFs?.units?.(db, lid, u.propertyId);
+      if(!ucol) return;
+      const payload=typeof window.nestiqUnitCloudPayload==='function'
+        ? window.nestiqUnitCloudPayload(u, u.propertyId, { landlordId:lid })
+        : stripUndefined({
+            landlordId:lid,
+            propertyId:u.propertyId,
+            label:u.label||u.unitNumber||'',
+            unitNumber:u.unitNumber||u.label||'',
+            status:u.status||'available',
+            tenantId:u.tenantId!=null&&u.tenantId!==''?u.tenantId:null
+          });
+      batch.set(ucol.doc(sid(u.id)), payload, { merge:true });
+      n++; push();
+      const cuid=window.nestiqFs?.caretakerUnits?.(db, lid);
+      if(cuid){
+        batch.set(cuid.doc(sid(u.id)), stripUndefined({
+          unitId:sid(u.id),
+          propertyId:String(u.propertyId),
+          label:u.label||u.unitNumber||'',
+          unitNumber:u.unitNumber||u.label||'',
+          bedrooms:Number(u.bedrooms||0)||0,
+          bathrooms:Number(u.bathrooms||0)||0,
+          status:u.status||'vacant',
+          tenantId:u.tenantId!=null&&u.tenantId!==''?String(u.tenantId):null,
+          tenantName:u.tenantName||null,
+          notes:u.notes||'',
+          landlordId:lid
+        }),{ merge:true });
+        n++; push();
+      }
     });
 
     window.tenantsData.forEach(t => {
       batch.set(landlordCol('tenants', lid).doc(sid(t.id)), tenantPayloadSansPayments({ ...t, moveOutChecklist:t.moveOutChecklist || null, landlordId:t.landlordId || lid }), { merge:true });
       n++; push();
+      const cten=window.nestiqFs?.caretakerTenants?.(db, lid);
+      if(cten){
+        batch.set(cten.doc(sid(t.id)), stripUndefined({
+          tenantId:sid(t.id),
+          propertyId:t.propertyId!=null&&t.propertyId!==''?String(t.propertyId):null,
+          property:t.property||'',
+          unit:t.unit||t.unitNumber||'',
+          name:t.name||'',
+          email:t.email||'',
+          phone:t.phone||'',
+          status:t.status||'',
+          leaseStart:t.leaseStart||t.moveInDate||t.moveIn||null,
+          moveInDate:t.moveInDate||t.leaseStart||t.moveIn||null,
+          landlordId:lid,
+          portalUid:t.portalUid||null
+        }), { merge:true });
+        n++; push();
+      }
     });
 
     window.tenantsData.forEach(t => {
@@ -1739,12 +2594,20 @@
       const fromMap=window.maintenancePhotos&&window.maintenancePhotos[sid(m.id)];
       const photoUrl=persistedPhotoUrlFromSources(fromMap,m);
       const payload=stripUndefined({ ...m, landlordId:m.landlordId || lid });
+      if(m.vendorId!=null&&m.vendorId!=='') payload.vendorId=String(m.vendorId);
       if(photoUrl){
         payload.photoUrl=photoUrl;
       }else{
         delete payload.photoUrl;
       }
       batch.set(landlordCol('maintenance', lid).doc(sid(m.id)), payload, { merge:true });
+      n++; push();
+    });
+
+    (window.inspections || []).forEach(insp => {
+      const icol=window.nestiqFs?.inspections?.(db, lid);
+      if(!icol) return;
+      batch.set(icol.doc(sid(insp.id)), stripUndefined({ ...insp, landlordId:lid, propertyId:insp.propertyId!=null?String(insp.propertyId):null }), { merge:true });
       n++; push();
     });
 
@@ -1827,32 +2690,85 @@
     if(profile.role === 'landlord'){
       window.__nestiqLandlordUid = auth.currentUser.uid;
       window.nestiqTenantSession = null;
-      await ensureLandlordRootDoc(auth.currentUser.uid);
-      const sref = getSettingsDocRef();
-      if(sref){
-        try{
-          const ss = await Promise.race([
-            sref.get(),
-            new Promise((_, rej) => setTimeout(() => rej(new Error('settings read timeout')), 8000))
-          ]);
-          if(ss.exists) mergeSettingsPayload(ss.data());
-          window.landlordSettings = window.landlordSettings || {};
-        }catch(_e){
-          console.warn('NestIQ: landlord settings read failed', _e?.message || _e);
-        }
-      }
-      if(typeof window.nestiqCheckTrialStatus === 'function'){
-        try{ await window.nestiqCheckTrialStatus(); }catch(_e){}
-      }
-      if(typeof window.nestiqInitSupportWidget === 'function'){
-        try{ window.nestiqInitSupportWidget(); }catch(_e){}
-      }
-      if(typeof window.nestiqUpdateLandlordLastActive === 'function'){
-        try{ window.nestiqUpdateLandlordLastActive(); }catch(_e){}
-      }
+
+      // Show skeletons immediately so Properties/Tenants never flash "empty".
+      window.nestiqPropertiesLoading = true;
+      window.nestiqTenantsLoading = true;
+      window.nestiqExpensesLoading = true;
+      window.nestiqMaintenanceLoading = true;
+      window.nestiqVendorsLoading = true;
+      try{ window.propertiesLoading = true; }catch(_e){}
+      try{ window.tenantsLoading = true; }catch(_e){}
+      try{ window.expensesLoading = true; }catch(_e){}
+      try{ window.renderProperties?.(); }catch(_e){}
+      try{ window.renderTenants?.(); }catch(_e){}
+      try{ window.renderHomeStats?.(); }catch(_e){}
+
+      // Minimal setup, then attach live data listeners BEFORE settings/billing awaits.
+      try{ await ensureLandlordRootDoc(auth.currentUser.uid); }catch(_e){}
       attachLandlordListeners();
       try{ window.nestiqEnsureApplicationsFirestoreListener?.(); }catch(_e){}
       try{ window.nestiqUpdateApplicationsBadge?.(); }catch(_e){}
+
+      // Settings / trial / PayFast sync — run after listeners so portfolio paints first.
+      (async ()=>{
+        try{
+          const sref = getSettingsDocRef();
+          if(sref){
+            try{
+              const ss = await Promise.race([
+                sref.get(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error('settings read timeout')), 8000))
+              ]);
+              if(ss.exists) mergeSettingsPayload(ss.data());
+              window.landlordSettings = window.landlordSettings || {};
+            }catch(_e){
+              console.warn('NestIQ: landlord settings read failed', _e?.message || _e);
+            }
+          }
+          if(typeof window.nestiqCheckTrialStatus === 'function'){
+            try{ await window.nestiqCheckTrialStatus(); }catch(_e){}
+          }
+          if(typeof window.nestiqSyncSubscriptionAfterLogin === 'function'){
+            try{ await window.nestiqSyncSubscriptionAfterLogin(); }catch(_e){}
+          }
+          if(typeof window.nestiqInitSupportWidget === 'function'){
+            try{ window.nestiqInitSupportWidget(); }catch(_e){}
+          }
+          if(typeof window.nestiqUpdateLandlordLastActive === 'function'){
+            try{ window.nestiqUpdateLandlordLastActive(); }catch(_e){}
+          }
+        }catch(bgErr){
+          console.warn('NestIQ: landlord background setup', bgErr);
+        }
+      })();
+    }else if(profile.role === 'contractor'){
+      window.__nestiqLandlordUid = null;
+      window.currentUser = {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        role: 'contractor',
+        landlordId: profile.landlordId || null,
+        landlordName: profile.landlordName || '',
+        name: profile.name || 'Contractor',
+        phone: profile.phone || '',
+        vendorId: profile.vendorId || null,
+        vendorType: profile.vendorType || ''
+      };
+    }else if(profile.role === 'caretaker'){
+      window.__nestiqLandlordUid = null;
+      window.currentUser = {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        role: 'caretaker',
+        landlordId: profile.landlordId || null,
+        landlordName: profile.landlordName || '',
+        name: profile.name || 'Caretaker',
+        phone: profile.phone || '',
+        staffId: profile.staffId || null,
+        assignedPropertyIds: Array.isArray(profile.assignedPropertyIds)?profile.assignedPropertyIds.map(x=>String(x)).filter(Boolean):[]
+      };
+      startCaretakerListeners();
     }else{
       window.__nestiqLandlordUid = null;
       window.currentUser = {
@@ -1861,27 +2777,56 @@
         role: 'tenant',
         tenantDocId: profile.tenantDocId || (profile.tenantId != null ? String(profile.tenantId) : null),
         landlordId: profile.landlordId || null,
-        name: profile.name || 'Tenant'
+        name: profile.name || 'Tenant',
+        phone: profile.phone || '',
+        status: profile.status || null,
+        selfRegistered: !!profile.selfRegistered
       };
       window.currentTenantData = null;
       try{
+        const unassigned=String(profile.status||'').toLowerCase()==='unassigned'
+          || !!profile.selfRegistered
+          || String(window.nestiqTenantSession?.status||'').toLowerCase()==='unassigned';
         const linked=await nestiqEnsureTenantPortalReady(window.currentUser, auth.currentUser);
         if(linked && window.nestiqTenantSession){
           window.currentUser.landlordId = window.nestiqTenantSession.landlordId;
           window.currentUser.tenantDocId = window.nestiqTenantSession.tenantId;
+          if(window.nestiqTenantSession.status) window.currentUser.status=window.nestiqTenantSession.status;
         }
-        if(!linked){
+        const stillUnassigned=String(window.currentUser.status||window.nestiqTenantSession?.status||'').toLowerCase()==='unassigned'
+          || (!window.currentUser.landlordId && (unassigned || !!profile.selfRegistered));
+        if(stillUnassigned && !linked){
+          // Self-registered / not yet assigned — browse listings; no portal listeners yet.
+          window.nestiqTenantSession=window.nestiqTenantSession||{
+            landlordId:'',
+            tenantId:String(window.currentUser.tenantDocId||auth.currentUser.uid),
+            propertyId:'',
+            status:'unassigned'
+          };
+          window.nestiqShowUnassignedApplicantPortal?.();
+        }else if(!linked){
           window.nestiqShowTenantDashboardError?.(
-            'We could not find your tenant record in the cloud. Ask your landlord to open NestIQ while signed in (Tenants page), confirm you are listed, then try again or use a new invitation code.'
+            'We could not find your tenant record. Apply from Browse listings, or wait until your landlord approves your application — then sign in with the same email.'
           );
         }else{
           startTenantListeners();
         }
       }catch(ensureErr){
         console.error('NestIQ: tenant portal ensure', ensureErr);
-        window.nestiqShowTenantDashboardError?.(
-          'Could not link your account to a tenant record ('+(ensureErr?.code||ensureErr?.message||'permissions')+'). Deploy the latest Firestore rules, then log out and try again.'
-        );
+        const unassigned=String(profile.status||'').toLowerCase()==='unassigned'||!!profile.selfRegistered;
+        if(unassigned){
+          window.nestiqTenantSession=window.nestiqTenantSession||{
+            landlordId:'',
+            tenantId:String(profile.tenantDocId||auth.currentUser.uid),
+            propertyId:'',
+            status:'unassigned'
+          };
+          window.nestiqShowUnassignedApplicantPortal?.();
+        }else{
+          window.nestiqShowTenantDashboardError?.(
+            'Could not link your account to a tenant record ('+(ensureErr?.code||ensureErr?.message||'permissions')+'). Deploy the latest Firestore rules, then log out and try again.'
+          );
+        }
       }
     }
     try{
@@ -1943,26 +2888,41 @@
       window.nestiqAuthBootDone = true;
       if(!user){
         // Intentional logout: clear immediately (skip persisted-auth grace).
-        if(window.__nestiqLoggingOut){
+        if(window.__nestiqLoggingOut || window.__nestiqLogoutUiDone){
           window.__nestiqLoggingOut=false;
+          window.__nestiqLogoutUiDone=false;
           window.__nestiqSession = null;
           nestiqClearSignInIntent();
           stopNestiqFirestoreListeners();
           try{ sessionStorage.removeItem('nestiq-session'); }catch(_e){}
           window.nestiqClearRedirectLoop?.();
           try{ window.syncNavUserUi?.(); }catch(_e){}
-          if(typeof window.showLandingPage === 'function') window.showLandingPage();
-          else window.showLoginScreen?.();
-          window.nestiqHandleAuthEntryFlow?.();
           try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
+          // logoutSession already painted the signed-out screen — don't flash landing again.
+          window.__nestiqLogoutDest='';
           return;
         }
         // On refresh Firebase can briefly report null before restoring persisted auth.
+        const cachedSess=(()=>{
+          try{
+            const s=window.__nestiqSession||JSON.parse(sessionStorage.getItem('nestiq-session')||'null');
+            return s && s.role ? s : null;
+          }catch(_e){ return null; }
+        })();
         if(!window.__nestiqAuthNullGraceDone){
           window.__nestiqAuthNullGraceDone = true;
-          await new Promise(r => setTimeout(r, 600));
+          const waitMs=cachedSess?2500:800;
+          await new Promise(r => setTimeout(r, waitMs));
           if(handlerGen !== __authHandlerGen) return;
           if(firebase.auth().currentUser) return;
+        }
+        // A stored session means the chooser must not flash while Auth is still restoring.
+        if(cachedSess && firebase.auth().currentUser) return;
+        // Staff/tenant portals already painted from sessionStorage — do not flash the
+        // marketing landing while persisted Auth is still restoring.
+        if(cachedSess && (cachedSess.role==='contractor'||cachedSess.role==='caretaker'||cachedSess.role==='tenant')){
+          try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
+          return;
         }
         window.__nestiqSession = null;
         nestiqClearSignInIntent();
@@ -1991,11 +2951,26 @@
             new Promise((_, rej) => setTimeout(() => rej(new Error('token timeout')), 8000))
           ]);
         }catch(_tok){}
-        try{ await user.reload(); }catch(_e){}
+        try{
+          const cachedRole=(()=>{
+            try{ return String((window.__nestiqSession||JSON.parse(sessionStorage.getItem('nestiq-session')||'null')||{}).role||''); }
+            catch(_e){ return ''; }
+          })();
+          if(cachedRole!=='contractor' && cachedRole!=='caretaker'){
+            await Promise.race([
+              user.reload(),
+              new Promise((_, rej) => setTimeout(() => rej(new Error('reload timeout')), 4000))
+            ]);
+          }
+        }catch(_e){}
         const profile = await resolveUserProfile(user);
         if(!profile){
+          if(window.__nestiqStaffInviteLinking){
+            try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
+            return;
+          }
           await firebase.auth().signOut();
-          if(typeof window.showLandingPage === 'function') window.showLandingPage('Profile not linked. Use an invitation code or ask your landlord.');
+          if(typeof window.showLandingPage === 'function') window.showLandingPage('Profile not linked yet. Apply from Browse listings, then sign in with the same account.');
           else window.showLoginScreen?.('Profile not linked.');
           window.nestiqHandleAuthEntryFlow?.();
           try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
@@ -2003,15 +2978,27 @@
         }
         window.__nestiqSession = {
           role:profile.role,
-          userId: profile.role === 'tenant' ? (profile.tenantDocId || null) : profile.tenantId,
-          tenantDocId: profile.role === 'tenant' ? (profile.tenantDocId || null) : null,
+          userId: profile.role === 'tenant' ? (profile.tenantDocId || user.uid || null) : (profile.role === 'contractor' || profile.role === 'caretaker') ? user.uid : profile.tenantId,
+          tenantDocId: profile.role === 'tenant' ? (profile.tenantDocId || user.uid || null) : null,
           landlordId: profile.landlordId || null,
+          landlordName: profile.landlordName || '',
+          staffId: profile.staffId || null,
+          assignedPropertyIds: Array.isArray(profile.assignedPropertyIds)?profile.assignedPropertyIds.map(x=>String(x)).filter(Boolean):[],
+          vendorId: profile.vendorId || null,
+          vendorType: profile.vendorType || '',
           name:profile.name,
           email:user.email,
+          phone:profile.phone||'',
           uid:user.uid,
+          profilePhoto: profile.profilePhoto || profile.photoURL || '',
+          status: profile.status || null,
+          selfRegistered: !!profile.selfRegistered,
           loggedInAt:new Date().toISOString()
         };
         try{ sessionStorage.setItem('nestiq-session', JSON.stringify(window.__nestiqSession)); }catch(_e){}
+        if(profile.role!=='tenant'){
+          try{ window.nestiqClearPortalSessionState?.(); }catch(_e){}
+        }
 
         const needLandlordVerify = window.NESTIQ_REQUIRE_LANDLORD_EMAIL_VERIFICATION !== false;
         if(profile.role === 'landlord' && needLandlordVerify && !user.emailVerified){
@@ -2023,7 +3010,7 @@
 
         const landlordSignInAttempt=nestiqIsLandlordSignInIntent();
 
-        if(landlordSignInAttempt&&profile.role==='tenant'){
+        if(landlordSignInAttempt&&profile.role==='tenant'&&!window.__nestiqHoldAuthEntry){
           window.syncNavUserUi?.();
           window.nestiqShowLandlordRoleConflictModal?.();
           try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
@@ -2040,7 +3027,8 @@
         }
         // Prefer #home for landlords so hashchange + bootstrap don't fight over auth hashes,
         // and never land on leftover #tenant-dashboard from a prior tenant session.
-        if(profile.role==='landlord'){
+        // Explicit Sign In from the marketing landing must not skip the account chooser.
+        if(profile.role==='landlord' && !window.__nestiqHoldAuthEntry){
           try{
             const h=(location.hash||'').replace('#','').trim().toLowerCase();
             if(!h || h==='auth-signin' || h==='auth-signup' || h==='signin' || h==='signup' || h==='login' || h==='tenant-dashboard'){
@@ -2048,19 +3036,46 @@
             }
           }catch(_e){}
         }
+        if(window.__nestiqHoldAuthEntry){
+          window.nestiqHandleAuthEntryFlow?.();
+          try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
+          await attachAfterProfile(profile);
+          return;
+        }
         // Tenants must always land on the portal — never the landlord marketing Home.
+        // Unassigned / self-registered tenants browse listings until approved.
         if(profile.role==='tenant'){
           try{
             const h=(location.hash||'').replace('#','').trim().toLowerCase();
-            if(h!=='listings'&&h!=='map'&&h!=='settings'){
+            if(h!=='listings'&&h!=='map'&&h!=='settings'&&h!=='tenant-dashboard'){
               history.replaceState(null,'',location.pathname+location.search+'#tenant-dashboard');
             }
+            window.__nestiqHoldAuthEntry=false;
+            try{ sessionStorage.removeItem('nestiq-auth-flow'); }catch(_e2){}
+          }catch(_e){}
+        }
+        if(profile.role==='contractor'){
+          try{
+            history.replaceState(null,'',location.pathname+location.search+'#contractor-dashboard');
+          }catch(_e){}
+        }
+        if(profile.role==='caretaker'){
+          try{
+            history.replaceState(null,'',location.pathname+location.search+'#caretaker-dashboard');
           }catch(_e){}
         }
         setTimeout(() => { if(__routerCb) __routerCb(profile); }, 0);
 
         await attachAfterProfile(profile);
         if(handlerGen !== __authHandlerGen) return;
+        if(profile.role==='tenant'){
+          try{ await window.nestiqFavMergeOnTenantLogin?.(); }catch(_e){}
+          try{
+            if(document.getElementById('page-listings')?.classList.contains('active')){
+              window.nestiqRenderListingsPage?.();
+            }
+          }catch(_e){}
+        }
 
         if(profile.role === 'landlord'){
           nestiqClearSignInIntent();
@@ -2133,13 +3148,18 @@
         }
 
         if(profile.role==='tenant'){
-          try{ location.hash='#tenant-dashboard'; }catch(_h){}
+          try{
+            const h=(location.hash||'').replace('#','').trim().toLowerCase();
+            if(h!=='listings'&&h!=='map'&&h!=='settings'){
+              location.hash='#tenant-dashboard';
+            }
+          }catch(_h){}
         }
       }catch(err){
         console.error('NestIQ auth bootstrap', err);
         const detail = (err && err.message) ? err.message : String(err);
         const isPerm=String(err?.code||detail).toLowerCase().includes('permission');
-        window.showNotif?.(
+        window.nestiqShowNotif?.(
           isPerm
             ? 'Firebase permissions blocked sign-in. Deploy firestore.rules from NestIQ, then log in again.'
             : ('Firebase sync failed: ' + detail),
@@ -2177,10 +3197,88 @@
     });
   };
 
+  function nestiqPropertyHasListableVacancy(p){
+    if(!p || typeof p!=='object') return false;
+    const openFn=typeof window.nestiqUnitIsOpenForApplication==='function'
+      ? window.nestiqUnitIsOpenForApplication
+      : (u)=>{
+          if(!u||(u.tenantId!=null&&String(u.tenantId).trim()!=='')) return false;
+          const us=String(u.status||'').toLowerCase();
+          return us===''||us==='available'||us==='vacant';
+        };
+    try{
+      const units=typeof window.nestiqUnitsForProperty==='function'?window.nestiqUnitsForProperty(p.id):[];
+      if((units||[]).length) return units.some(openFn);
+    }catch(_e){}
+    if(Array.isArray(p.availableUnits)){
+      return p.availableUnits.some(u=>openFn({ ...u, status:u?.status||'vacant', tenantId:u?.tenantId||null }));
+    }
+    const st=String(p.status||'').trim().toLowerCase();
+    return st===''||st==='vacant'||st==='available';
+  }
+
   function nestiqIsPubliclyListedProperty(p){
     if(!p || typeof p!=='object') return false;
-    if(String(p.status||'').trim().toLowerCase()!=='vacant') return false;
+    if(p.archived===true||p.deactivated===true||p.publishStatus==='archived') return false;
+    if(p.publishStatus==='draft') return false;
+    if(p.publishStatus==='published'){
+      return p.publicListing !== false && p.publicListing !== 'false' && p.publicListing !== 0;
+    }
+    // Legacy properties without publishStatus
     return p.publicListing !== false && p.publicListing !== 'false' && p.publicListing !== 0;
+  }
+
+  const __nestiqListingHealInflight=new Set();
+  async function nestiqHealDraftListingIfReady(propertyId){
+    const pid=String(propertyId||'').trim();
+    if(!pid || __nestiqListingHealInflight.has(pid)) return false;
+    if(window.__nestiqPendingUnitConfig && String(window.__nestiqPendingUnitConfig.propertyId)===pid) return false;
+    const p=(Array.isArray(window.propertiesData)?window.propertiesData:[]).find(x=>String(x.id)===pid);
+    if(!p) return false;
+    if(p.archived===true||p.deactivated===true||p.publishStatus==='archived') return false;
+    if(p.publicListing===true && (p.publishStatus==='published' || !p.publishStatus)) return false;
+    const units=typeof window.nestiqUnitsForProperty==='function'?window.nestiqUnitsForProperty(pid):[];
+    const ready=(units||[]).some(u=>{
+      const st=String(u?.status||'').toLowerCase();
+      const open=st==='available'||st==='vacant'||st==='';
+      return open && (u.tenantId==null||u.tenantId==='') && Number(u.rent)>0;
+    });
+    if(!ready) return false;
+    __nestiqListingHealInflight.add(pid);
+    try{
+      p.publishStatus='published';
+      p.publicListing=true;
+      p.archived=false;
+      p.deactivated=false;
+      if(!p.status || String(p.status).toLowerCase()==='draft') p.status='vacant';
+      try{ window.nestiqApplyListingStatsFromUnits?.(p); }catch(_e){}
+      const lid=String(p.landlordId||currentLandlordUid()||'').trim();
+      if(lid && db && window.nestiqFs?.properties){
+        const patch={
+          publishStatus:'published',
+          publicListing:true,
+          archived:false,
+          deactivated:false,
+          status:'vacant',
+          rent:p.rent||p.rentMin||null,
+          rentMin:p.rentMin||null,
+          rentMax:p.rentMax||null,
+          bedrooms:Number(p.bedrooms)||0,
+          bathrooms:Number(p.bathrooms)||0
+        };
+        if(typeof firebase!=='undefined'&&firebase.firestore?.FieldValue?.serverTimestamp){
+          patch.updatedAt=firebase.firestore.FieldValue.serverTimestamp();
+        }
+        await window.nestiqFs.properties(db, lid).doc(pid).set(patch, { merge:true });
+      }
+      await nestiqSyncPublicListingMirror(p);
+      return true;
+    }catch(err){
+      console.warn('NestIQ: listing heal failed', pid, err);
+      return false;
+    }finally{
+      __nestiqListingHealInflight.delete(pid);
+    }
   }
 
   function nestiqResolvePropertyPhotoForMirror(property){
@@ -2209,23 +3307,40 @@
   function nestiqPublicListingMirrorPayload(property, landlordId){
     const lid=String(landlordId||property.landlordId||'').trim();
     const photo=nestiqResolvePropertyPhotoForMirror(property);
+    try{ window.nestiqApplyListingStatsFromUnits?.(property); }catch(_e){}
     // Only URL amenity images — base64 galleries blow past Firestore's 1MB doc limit and break public sync.
     const amenityPhotos=Array.isArray(property.amenityPhotos)
       ? nestiqNormalizeAmenityPhotosForMirror(property.amenityPhotos)
       : [];
     const amenities=Array.isArray(property.amenities)?property.amenities.slice(0,24):[];
+    const loc=typeof window.nestiqPublicLocationForListing==='function'
+      ? window.nestiqPublicLocationForListing(property)
+      : { displayAddr:String(property.addr||''), city:String(property.city||''), lat:property.lat, lng:property.lng, exact:true };
+    const range=typeof window.nestiqPropertyRentRange==='function'
+      ? window.nestiqPropertyRentRange(property)
+      : { min:Number(property.rent)||0, max:Number(property.rent)||0, label:'' };
+    const rentMin=Number(property.rentMin||range.min||property.rent)||0;
+    const rentMax=Number(property.rentMax||range.max||property.rent)||rentMin;
     const payload={
       landlordId:lid,
       name:String(property.name||'Rental'),
-      addr:String(property.addr||''),
-      city:String(property.city||''),
-      rent:Number(property.rent)||0,
+      addr:String(loc.displayAddr||property.addr||''),
+      city:String(loc.city||property.city||''),
+      suburb:String(property.suburb||''),
+      province:String(property.province||''),
+      street:loc.exact?String(property.street||''):'',
+      showExactLocation:loc.exact!==false,
+      rent:rentMin,
+      rentMin,
+      rentMax,
+      rentLabel:range.label||'',
       bedrooms:Number(property.bedrooms)||0,
       bathrooms:Number(property.bathrooms)||0,
       leaseEnd:String(property.leaseEnd||'Available'),
       icon:String(property.icon||'🏢'),
       type:String(property.type||'apartment'),
       status:'vacant',
+      publishStatus:'published',
       publicListing:true,
       amenities,
       garage:Boolean(property.garage),
@@ -2234,9 +3349,62 @@
       petFriendly:Boolean(property.petFriendly),
       photoUrl:photo||null,
       amenityPhotos,
+      description:String(property.description||'').slice(0,800),
+      notes:'', // never mirror landlord private notes
+      floorSize:Number(property.floorSize)||0,
+      parkingBays:Number(property.parkingBays??property.parking)||0,
+      deposit:Number(property.deposit)||0,
+      levy:Number(property.levy)||0,
+      lat:Number.isFinite(Number(loc.lat))?Number(loc.lat):null,
+      lng:Number.isFinite(Number(loc.lng))?Number(loc.lng):null,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+    const created=nestiqTimestampForPublicListingWrite(property.createdAt);
+    if(created) payload.createdAt=created;
+    const listed=nestiqTimestampForPublicListingWrite(property.listedAt||property.publishedAt);
+    if(listed) payload.listedAt=listed;
+    try{
+      const pid=String(property.id||'');
+      const allLive=typeof window.nestiqUnitsForProperty==='function'?window.nestiqUnitsForProperty(pid):[];
+      const hasInventory=Array.isArray(allLive)&&allLive.length>0;
+      const units=typeof window.nestiqListingAvailableUnits==='function'
+        ? window.nestiqListingAvailableUnits({ ...property, availableUnits:property.availableUnits })
+        : [];
+      const mapped=(units||[])
+        .filter(u=>u && !u.synthetic && (String(u.id||'').trim()||String(u.label||u.unitNumber||'').trim()))
+        .slice(0,40)
+        .map(u=>({
+          id:String(u.id||''),
+          label:String(u.label||u.unitNumber||'Unit'),
+          bedrooms:Number(u.bedrooms)||0,
+          bathrooms:Number(u.bathrooms)||0,
+          rent:Number(u.rent)||0,
+          deposit:Number(u.deposit||u.rent)||0,
+          availableFrom:String(u.availableFrom||property.leaseEnd||'Available'),
+          status:'vacant'
+        }));
+      if(mapped.length){
+        payload.availableUnits=mapped;
+      }else if(hasInventory){
+        payload.availableUnits=[];
+      }
+      // If units are not in memory yet, omit availableUnits so merge does not
+      // wipe a listing that already has vacant rooms.
+    }catch(_e){}
     return stripUndefined(payload);
+  }
+
+  function nestiqTimestampForPublicListingWrite(value){
+    if(value==null||value==='') return null;
+    if(typeof value.toMillis==='function') return value;
+    if(typeof value.seconds==='number') return value;
+    if(typeof value._seconds==='number') return value;
+    if(value instanceof Date && !Number.isNaN(value.getTime())) return value;
+    if(typeof value==='number' && Number.isFinite(value) && value>0){
+      return new Date(value<1e12?value*1000:value);
+    }
+    if(typeof value==='object' && (value._methodName || value.isEqual)) return value;
+    return null;
   }
 
   function nestiqNormalizeAmenityPhotosForMirror(list){
@@ -2272,6 +3440,7 @@
         }catch(_e){}
       }
       const payload=nestiqPublicListingMirrorPayload(row, lid);
+      await nestiqPreservePublicListingCreatedAt(ref, payload);
       await ref.set(payload, { merge:true });
       return true;
     }catch(err){
@@ -2280,6 +3449,7 @@
       try{
         if(nestiqIsPubliclyListedProperty(row) && lid){
           const slim=nestiqPublicListingMirrorPayload({...row, amenityPhotos:[]}, lid);
+          await nestiqPreservePublicListingCreatedAt(ref, slim);
           await ref.set(slim, { merge:true });
           return true;
         }
@@ -2287,6 +3457,24 @@
         console.warn('NestIQ: publicListings slim sync failed', id, err2);
       }
       return false;
+    }
+  }
+
+  async function nestiqPreservePublicListingCreatedAt(ref, payload){
+    try{
+      const snap=await ref.get();
+      if(snap.exists){
+        const existing=snap.data()||{};
+        if(existing.createdAt) delete payload.createdAt;
+        if(existing.listedAt) delete payload.listedAt;
+        else delete payload.listedAt;
+        return;
+      }
+      if(!payload.createdAt) payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      if(!payload.listedAt) payload.listedAt=firebase.firestore.FieldValue.serverTimestamp();
+    }catch(_e){
+      if(!payload.createdAt) payload.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+      if(!payload.listedAt) payload.listedAt=firebase.firestore.FieldValue.serverTimestamp();
     }
   }
 
@@ -2317,6 +3505,7 @@
   window.nestiqSyncAllPublicListingMirrors = nestiqSyncAllPublicListingMirrors;
   window.nestiqSchedulePublicListingSync = nestiqSchedulePublicListingSync;
   window.nestiqIsPubliclyListedProperty = nestiqIsPubliclyListedProperty;
+  window.nestiqHealDraftListingIfReady = nestiqHealDraftListingIfReady;
 })();
 
 window.nestiqFirebaseInit && window.nestiqFirebaseInit();

@@ -47,5 +47,8 @@ window.NESTIQ_APP_BASE_URL = 'https://nestiq-pro.web.app/';
 /** PayFast ITN URL — Cloud Function (set after `firebase deploy --only functions`). */
 window.NESTIQ_PAYFAST_ITN_URL = 'https://us-central1-nestiq-pro.cloudfunctions.net/payfastWebhook';
 
+/** PayFast ITN for tenant rent payments. */
+window.NESTIQ_PAYFAST_RENT_ITN_URL = 'https://us-central1-nestiq-pro.cloudfunctions.net/payfastRentWebhook';
+
 /** Support ticket notifications to platform admin */
 window.NESTIQ_SUPPORT_ADMIN_EMAIL = 'admin@nestiq.co.za';

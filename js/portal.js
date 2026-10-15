@@ -38,14 +38,7 @@ function switchPortalTab(tab,el){
 async function submitPortalMaintRequest(){
   // Map legacy portal form ids into the tenant dashboard handler.
   const type=document.getElementById('pm_issue')?.value||'Other';
-  const urgMap={
-    'Low — Not urgent':'Low — Minor issue',
-    'Medium — Needs attention':'Medium — Needs attention',
-    'High — Urgent':'High — Affects daily living'
-  };
-  const urgency=document.getElementById('pm_urgency')?.value||'Medium — Needs attention';
   const desc=document.getElementById('pm_desc')?.value?.trim()||'';
-  const preferredDate=(document.getElementById('pm_time')?.value||'').slice(0,10);
   const ensure=(id, val)=>{
     let el=document.getElementById(id);
     if(!el){
@@ -57,29 +50,26 @@ async function submitPortalMaintRequest(){
     el.value=val;
   };
   ensure('portal_maint_type', type);
-  ensure('portal_maint_urgency', urgMap[urgency]||urgency);
   ensure('portal_maint_desc', desc);
-  ensure('portal_maint_date', preferredDate);
   await window.submitTenantMaintenance?.();
 }
 
 async function runPortalMaintAiAssess(){
   if(!isGeminiConfigured()){ aiConfigError(); return; }
   const desc=document.getElementById('pm_desc')?.value?.trim()||'';
-  if(!desc){ showNotif('Add a maintenance description first','warning'); return; }
+  if(!desc){ nestiqShowNotif('Add a maintenance description first','warning'); return; }
   const loading=document.getElementById('pmAiLoading');
   const out=document.getElementById('pmAiResult');
+  const aiBtn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="runPortalMaintAiAssess"]');
+  nestiqSetBtnLoading?.(aiBtn,true,'Diagnosing...');
   if(loading) loading.style.display='inline';
   try{
     const data=await assessMaintenanceIssueAI(desc);
     const urg=String(data.urgency||'Medium');
     const select=document.getElementById('pm_urgency');
     if(select){
-      select.value=urg.toLowerCase().includes('emergency')||urg.toLowerCase().includes('high')
-        ? 'High — Urgent'
-        : urg.toLowerCase().includes('low')
-          ? 'Low — Not urgent'
-          : 'Medium — Needs attention';
+      const mapped=typeof nestiqMaintNormalizePriority==='function'?nestiqMaintNormalizePriority(urg):urg;
+      select.value=['Emergency','High','Medium','Low'].includes(mapped)?mapped:'Medium';
     }
     if(out){
       out.innerHTML=`
@@ -92,9 +82,10 @@ async function runPortalMaintAiAssess(){
       `;
     }
   }catch(_err){
-    showNotif('AI unavailable, try again','error');
+    nestiqShowNotif('AI unavailable, try again','error');
   }finally{
     if(loading) loading.style.display='none';
+    nestiqSetBtnLoading?.(aiBtn,false);
   }
 }
 

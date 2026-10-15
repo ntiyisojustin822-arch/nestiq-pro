@@ -47,6 +47,8 @@
       { "source": "/onboarding.html", "destination": "/onboarding.html" },
       { "source": "/support.html", "destination": "/support.html" },
       { "source": "/changelog.html", "destination": "/changelog.html" },
+      { "source": "/legal.html", "destination": "/legal.html" },
+      { "source": "/landing.html", "destination": "/landing.html" },
       { "source": "**", "destination": "/index.html" }
     ]
   },

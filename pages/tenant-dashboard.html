@@ -3,29 +3,33 @@
     <!-- Sidebar first so desktop flex puts it on the left -->
     <nav class="tenant-tab-bar" id="tenantTabBar" aria-label="Tenant portal">
       <button class="tab-btn active" data-tab="home"        onclick="nestiqSwitchTenantTab('home')">
-        <span class="tab-icon">🏠</span><span class="tab-label">Home</span>
+        <span class="tab-icon" data-nq-icon="house" data-nq-size="20"></span><span class="tab-label">Home</span>
+      </button>
+      <button class="tab-btn" data-tab="applications" onclick="nestiqSwitchTenantTab('applications')">
+        <span class="tab-icon" data-nq-icon="clipboard-list" data-nq-size="20"></span><span class="tab-label">Applications</span>
+        <span class="tab-badge" id="tabBadge-applications" style="display:none"></span>
       </button>
       <button class="tab-btn" data-tab="payments"    onclick="nestiqSwitchTenantTab('payments')">
-        <span class="tab-icon">💳</span><span class="tab-label">Payments</span>
+        <span class="tab-icon" data-nq-icon="credit-card" data-nq-size="20"></span><span class="tab-label">Payments</span>
         <span class="tab-badge" id="tabBadge-payments" style="display:none"></span>
       </button>
       <button class="tab-btn" data-tab="maintenance" onclick="nestiqSwitchTenantTab('maintenance')">
-        <span class="tab-icon">🔧</span><span class="tab-label">Maintenance</span>
+        <span class="tab-icon" data-nq-icon="wrench" data-nq-size="20"></span><span class="tab-label">Maintenance</span>
         <span class="tab-badge" id="tabBadge-maintenance" style="display:none"></span>
       </button>
       <button class="tab-btn" data-tab="documents"   onclick="nestiqSwitchTenantTab('documents')">
-        <span class="tab-icon">📄</span><span class="tab-label">Documents</span>
+        <span class="tab-icon" data-nq-icon="folder" data-nq-size="20"></span><span class="tab-label">Documents</span>
         <span class="tab-badge" id="tabBadge-documents" style="display:none"></span>
       </button>
       <button class="tab-btn" data-tab="messages"    onclick="nestiqSwitchTenantTab('messages')">
-        <span class="tab-icon">💬</span><span class="tab-label">Messages</span>
+        <span class="tab-icon" data-nq-icon="message-square" data-nq-size="20"></span><span class="tab-label">Messages</span>
         <span class="tab-badge" id="tabBadge-messages" style="display:none"></span>
       </button>
       <button class="tab-btn" data-tab="profile"     onclick="nestiqSwitchTenantTab('profile')">
-        <span class="tab-icon">👤</span><span class="tab-label">Profile</span>
+        <span class="tab-icon" data-nq-icon="user" data-nq-size="20"></span><span class="tab-label">Profile</span>
       </button>
       <button type="button" class="tab-btn tenant-tab-logout" onclick="nestiqTenantLogout()">
-        <span class="tab-icon">↪</span><span class="tab-label">Sign Out</span>
+        <span class="tab-icon" data-nq-icon="log-out" data-nq-size="20"></span><span class="tab-label">Sign Out</span>
       </button>
     </nav>
 
@@ -53,6 +57,7 @@
             <div id="portalSidebarStatus"></div>
           </div>
         </div>
+        <div id="tTab-applications" class="tenant-tab-page"></div>
         <div id="tTab-payments"    class="tenant-tab-page"></div>
         <div id="tTab-maintenance" class="tenant-tab-page"></div>
         <div id="tTab-documents"   class="tenant-tab-page"></div>
@@ -62,3 +67,4 @@
     </div>
   </div>
 </div>
+<!-- In-app payment: js/payment-modal.js + nestiqShowPayConfirmModal in tenant-dashboard.js -->

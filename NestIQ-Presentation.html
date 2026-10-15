@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NestIQ Pro — Project Presentation</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #0E1117;
+      --ink-2: #1a1f2e;
+      --cream: #F5F0E8;
+      --paper: #FFFcf8;
+      --gold: #C9A84C;
+      --gold-deep: #B8943E;
+      --sage: #5A7A60;
+      --muted: #5c5a56;
+      --line: rgba(14,17,23,.10);
+      --white: #FFFFFF;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #d9d2c6;
+      color: var(--ink);
+      font-family: "DM Sans", "Segoe UI", sans-serif;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    @page { size: A4 landscape; margin: 0; }
+    .deck { padding: 18px 0; }
+    .slide {
+      width: 297mm;
+      height: 210mm;
+      margin: 0 auto 18px;
+      background: var(--paper);
+      position: relative;
+      overflow: hidden;
+      page-break-after: always;
+      break-after: page;
+      break-inside: avoid;
+    }
+    .slide:last-child { page-break-after: auto; margin-bottom: 0; }
+    .pad { padding: 14mm 18mm 12mm; height: 100%; display: flex; flex-direction: column; }
+    .kicker {
+      font-size: 9pt;
+      font-weight: 700;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      color: var(--gold-deep);
+      margin: 0 0 7px;
+    }
+    h1, h2 {
+      font-family: "Playfair Display", Georgia, serif;
+      font-weight: 600;
+      margin: 0;
+      letter-spacing: -0.02em;
+    }
+    h1 { font-size: 34pt; line-height: 1.12; max-width: 18ch; }
+    h2 { font-size: 24pt; line-height: 1.18; max-width: 24ch; }
+    .lead {
+      margin: 10px 0 0;
+      font-size: 12.5pt;
+      line-height: 1.5;
+      color: var(--muted);
+      max-width: 54ch;
+    }
+    .gold-rule {
+      width: 52px;
+      height: 3px;
+      background: var(--gold);
+      border-radius: 2px;
+      margin: 12px 0 0;
+      flex-shrink: 0;
+    }
+    .grow { flex: 1; display: flex; flex-direction: column; min-height: 0; padding-top: 18px; gap: 14px; }
+    .foot {
+      margin-top: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      font-size: 8pt;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+    .brand-mark { display: flex; align-items: center; gap: 8px; font-weight: 700; color: var(--ink); letter-spacing: .12em; }
+    .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--gold); }
+
+    .slide.cover {
+      background:
+        radial-gradient(ellipse 70% 55% at 100% 0%, rgba(201,168,76,.22), transparent 55%),
+        linear-gradient(155deg, #0E1117 0%, #171c28 52%, #1c2333 100%);
+      color: #F7F4EF;
+    }
+    .slide.cover .pad { padding: 22mm 22mm 18mm; }
+    .cover-brand {
+      display: flex; align-items: center; gap: 10px;
+      font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+      font-size: 11pt; color: #e8d49a;
+    }
+    .cover h1 { font-size: 44pt; max-width: 13ch; color: #F7F4EF; margin-top: 28px; }
+    .cover h1 em { font-style: italic; color: #e8d49a; }
+    .cover .lead { color: rgba(247,244,239,.72); font-size: 14pt; max-width: 42ch; }
+    .cover .gold-rule { background: var(--gold); }
+    .cover-meta {
+      margin-top: auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1.15fr;
+      gap: 18px;
+      border-top: 1px solid rgba(247,244,239,.14);
+      padding-top: 18px;
+    }
+    .cover-meta .k { font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: #e8c4a8; margin-bottom: 4px; }
+    .cover-meta .v { font-size: 12pt; font-weight: 500; color: #F7F4EF; }
+    .cover .foot { display: none; }
+
+    .slide.close {
+      background:
+        radial-gradient(ellipse 60% 50% at 0% 100%, rgba(201,168,76,.18), transparent 50%),
+        linear-gradient(165deg, #0E1117 0%, #171c28 100%);
+      color: #F7F4EF;
+    }
+    .slide.close h1 { color: #F7F4EF; font-size: 42pt; }
+    .slide.close .lead { color: rgba(247,244,239,.7); max-width: 46ch; }
+    .slide.close .foot { border-color: rgba(247,244,239,.14); color: rgba(247,244,239,.45); }
+    .slide.close .brand-mark { color: #F7F4EF; }
+
+    .agenda { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .agenda-item {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 16px 18px 15px;
+      display: flex; gap: 14px; align-items: flex-start;
+    }
+    .num {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 17pt; color: var(--gold-deep); min-width: 1.7ch; line-height: 1;
+    }
+    .agenda-item strong { display: block; font-size: 12.5pt; margin-bottom: 3px; }
+    .agenda-item span { font-size: 10.5pt; color: var(--muted); line-height: 1.4; }
+
+    .split { display: grid; grid-template-columns: 1.08fr .92fr; gap: 22px; align-items: center; }
+    .problem-list { list-style: none; padding: 0; margin: 0; }
+    .problem-list li {
+      padding: 11px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12.5pt;
+      line-height: 1.45;
+    }
+    .problem-list li:first-child { border-top: 1px solid var(--line); }
+    .callout {
+      background: var(--ink);
+      color: #F7F4EF;
+      border-radius: 18px;
+      padding: 22px 22px 20px;
+    }
+    .callout .kicker { color: #e8d49a; }
+    .callout p { margin: 10px 0 0; font-size: 13.5pt; line-height: 1.5; }
+    .callout em { font-family: "Playfair Display", Georgia, serif; font-style: italic; color: #e8d49a; }
+
+    .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .role {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 16px 16px 14px;
+    }
+    .role .who { font-size: 8.5pt; letter-spacing: .12em; text-transform: uppercase; color: var(--gold-deep); font-weight: 700; }
+    .role h3 { font-family: "Playfair Display", Georgia, serif; font-size: 16pt; margin: 5px 0 6px; font-weight: 600; }
+    .role p { margin: 0; font-size: 11pt; color: var(--muted); line-height: 1.42; }
+
+    .cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    .cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tile {
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 14px 13px;
+    }
+    .tile h3 { font-size: 12.5pt; margin: 0 0 7px; }
+    .tile p { margin: 0; font-size: 10.5pt; color: var(--muted); line-height: 1.45; }
+
+    .flow { display: flex; align-items: stretch; gap: 7px; }
+    .step {
+      flex: 1;
+      background: var(--white);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px 12px;
+    }
+    .step .n { font-family: "Playfair Display", Georgia, serif; font-size: 18pt; color: var(--gold-deep); }
+    .step strong { display: block; margin: 4px 0 4px; font-size: 11.5pt; }
+    .step span { font-size: 10pt; color: var(--muted); line-height: 1.38; }
+    .arrow { display: flex; align-items: center; color: var(--gold); font-size: 16pt; }
+
+    .note {
+      margin-top: 14px;
+      font-size: 11pt;
+      color: var(--muted);
+      background: rgba(201,168,76,.10);
+      border: 1px solid rgba(201,168,76,.28);
+      border-radius: 12px;
+      padding: 12px 14px;
+    }
+
+    .sa-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 11px; }
+    .stack { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .honest { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .honest .box { border-radius: 16px; padding: 16px 16px 14px; }
+    .honest .live { background: rgba(90,122,96,.10); border: 1px solid rgba(90,122,96,.28); }
+    .honest .sim { background: rgba(201,168,76,.10); border: 1px solid rgba(201,168,76,.32); }
+    .honest h3 { margin: 0 0 8px; font-size: 13pt; }
+    .honest ul { margin: 0; padding-left: 16px; font-size: 11.5pt; line-height: 1.5; color: var(--ink); }
+
+    .demo-ol { margin: 0; padding: 0; list-style: none; counter-reset: demo; }
+    .demo-ol li {
+      counter-increment: demo;
+      display: grid;
+      grid-template-columns: 36px 1fr;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--line);
+      font-size: 12.5pt;
+      line-height: 1.4;
+    }
+    .demo-ol li::before {
+      content: counter(demo, decimal-leading-zero);
+      font-family: "Playfair Display", Georgia, serif;
+      color: var(--gold-deep);
+      font-size: 14pt;
+    }
+
+    .pill-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .pill {
+      font-size: 9.5pt;
+      font-weight: 600;
+      letter-spacing: .04em;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: var(--white);
+      border: 1px solid var(--line);
+      color: var(--ink);
+    }
+
+    @media print {
+      html, body { background: white; width: 297mm; height: auto; }
+      .deck { padding: 0; width: 297mm; }
+      .slide {
+        margin: 0 !important;
+        box-shadow: none;
+        width: 297mm;
+        height: 210mm;
+        overflow: hidden;
+        page-break-after: always;
+        break-after: page;
+        break-inside: avoid;
+      }
+      .slide:last-child { page-break-after: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div class="deck">
+
+    <section class="slide cover">
+      <div class="pad">
+        <div class="cover-brand"><span class="dot"></span> NestIQ Pro</div>
+        <h1>Rental management, <em>in one place.</em></h1>
+        <p class="lead">A South African web app for landlords, tenants, caretakers, and contractors — from rent and repairs to payouts and receipts.</p>
+        <div class="gold-rule"></div>
+        <div class="cover-meta">
+          <div><div class="k">Presented by</div><div class="v">Ntiyiso Justin</div></div>
+          <div><div class="k">Project</div><div class="v">School product demo · 2026</div></div>
+          <div><div class="k">Live</div><div class="v">nestiq-pro.web.app</div></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">01 — Agenda</p>
+        <h2>What we will walk through</h2>
+        <div class="gold-rule"></div>
+        <div class="grow">
+          <div class="agenda">
+            <div class="agenda-item"><div class="num">01</div><div><strong>The problem</strong><span>WhatsApp, Excel, and no single record of money or repairs.</span></div></div>
+            <div class="agenda-item"><div class="num">02</div><div><strong>The product</strong><span>Four roles, one system, amounts in Rand throughout.</span></div></div>
+            <div class="agenda-item"><div class="num">03</div><div><strong>The loop</strong><span>Report a repair → contractor completes → pay → receipt.</span></div></div>
+            <div class="agenda-item"><div class="num">04</div><div><strong>South Africa</strong><span>ZAR, local banks, lease habits, and languages on key screens.</span></div></div>
+            <div class="agenda-item"><div class="num">05</div><div><strong>How it is built</strong><span>Vanilla JS, Firebase, rules that actually constrain writes.</span></div></div>
+            <div class="agenda-item"><div class="num">06</div><div><strong>Honesty + demo</strong><span>What is live versus simulated — then two browsers, one loop.</span></div></div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 02</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">02 — Problem</p>
+        <h2>Small landlords run rentals in fragments.</h2>
+        <div class="grow">
+          <div class="split">
+            <ul class="problem-list">
+              <li>Rent due dates live in a spreadsheet — if they live anywhere.</li>
+              <li>Repairs are a WhatsApp thread with no status, photos, or cost.</li>
+              <li>Tenants cannot see whether they are paid, overdue, or waiting.</li>
+              <li>Contractors get paid offline, with no receipt in the same system.</li>
+            </ul>
+            <div class="callout">
+              <div class="kicker">The cost</div>
+              <p>Not a missing feature. A missing <em>record</em> — who paid, who fixed it, and what it cost.</p>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 03</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">03 — Solution</p>
+        <h2>One system for the people who actually run a building.</h2>
+        <p class="lead">The landlord owns the portfolio. Everyone else is invited in — they only see their work.</p>
+        <div class="grow">
+          <div class="roles">
+            <div class="role"><div class="who">Landlord</div><h3>Command centre</h3><p>Properties, tenants, leases, rent roll, expenses, maintenance board, and contractor payouts.</p></div>
+            <div class="role"><div class="who">Tenant</div><h3>Self-service portal</h3><p>Pay rent, report a fault, chat, and download a receipt — without another WhatsApp group.</p></div>
+            <div class="role"><div class="who">Caretaker</div><h3>On-site ops</h3><p>Log issues, review urgency, and assign a contractor within the landlord’s spend limit.</p></div>
+            <div class="role"><div class="who">Contractor</div><h3>Job portal</h3><p>Accept, start, complete with parts and photos — then wait for payment. They cannot mark themselves paid.</p></div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 04</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">04 — Landlord</p>
+        <h2>The dashboard is the portfolio.</h2>
+        <p class="lead">Built for a South African landlord who still answers the phone — not for an enterprise ERP.</p>
+        <div class="grow">
+          <div class="cols-3">
+            <div class="tile"><h3>Portfolio</h3><p>Properties, units, listings, applications, deposits, and a map of the book.</p></div>
+            <div class="tile"><h3>Money</h3><p>Rent roll, late fees, expenses, reconcile, tax pack, ROI, and valuation — amounts in Rand.</p></div>
+            <div class="tile"><h3>Work</h3><p>Maintenance kanban, inspections, calendar, renewals, and vendor bank details.</p></div>
+            <div class="tile"><h3>People</h3><p>Tenants, staff, caretakers, and contractors — each invited with a role, not a shared password.</p></div>
+            <div class="tile"><h3>Messages</h3><p>In-app chat with unread badges so a tenant is not lost in a personal WhatsApp inbox.</p></div>
+            <div class="tile"><h3>Proof</h3><p>Pay the contractor from the completed job. Download a NestIQ receipt for the file.</p></div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 05</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">05 — Tenant portal</p>
+        <h2>The tenant is a user, not a spreadsheet row.</h2>
+        <div class="gold-rule"></div>
+        <div class="grow">
+          <div class="cols-3">
+            <div class="tile"><h3>Invitation, not a public signup</h3><p>The landlord sends a code or link. The tenant sees only their unit, their rent, and their messages.</p></div>
+            <div class="tile"><h3>Pay rent in-app</h3><p>Card or EFT wizard, then a downloadable receipt. Status updates to paid for the month.</p></div>
+            <div class="tile"><h3>Report a repair</h3><p>Priority, unit or common area, photos. The landlord sets the official urgency the contractor sees.</p></div>
+          </div>
+          <div class="note">The tenant can suggest Low, Medium, High, or Emergency. The contractor never sees that first guess as gospel — they see the landlord’s official priority.</div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 06</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">06 — Maintenance</p>
+        <h2>A job has a life, not a status emoji.</h2>
+        <p class="lead">The contractor portal owns the work. The landlord board still reads Open / In progress / Done.</p>
+        <div class="grow">
+          <div class="flow">
+            <div class="step"><div class="n">1</div><strong>Assigned</strong><span>Landlord or caretaker picks a contractor.</span></div>
+            <div class="arrow">→</div>
+            <div class="step"><div class="n">2</div><strong>Accept</strong><span>Or decline, with a reason — the job is not silently ignored.</span></div>
+            <div class="arrow">→</div>
+            <div class="step"><div class="n">3</div><strong>Start</strong><span>Work is in progress. The timeline stamps every step.</span></div>
+            <div class="arrow">→</div>
+            <div class="step"><div class="n">4</div><strong>Complete</strong><span>What was done, parts, labour, before/after photos.</span></div>
+          </div>
+          <div class="note">Complete requires a description of the work. Parts line items add up to the amount the landlord later pays.</div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 07</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">07 — Payouts &amp; receipts</p>
+        <h2>When the job is done, pay the contractor in the same app.</h2>
+        <div class="grow">
+          <div class="split">
+            <ul class="problem-list">
+              <li>Pay contractor uses the same card / EFT wizard as rent.</li>
+              <li>Payee name and masked bank details come from the vendor profile.</li>
+              <li>Success screen: Download receipt — then Done.</li>
+              <li>The contractor sees Awaiting payment or Paid. They cannot mark themselves paid.</li>
+            </ul>
+            <div class="callout">
+              <div class="kicker">What the PDF holds</div>
+              <p>Amount, NestIQ receipt number, payment reference, contractor, job, property, who paid, and the date. Clearly <em>not</em> a SARS tax invoice.</p>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 08</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">08 — South Africa</p>
+        <h2>Designed for this market, not translated later.</h2>
+        <div class="grow">
+          <div class="sa-grid">
+            <div class="tile"><h3>Rand, always</h3><p>Rent, expenses, late fees, and contractor payouts display in ZAR. PayFast is the intended checkout for a live launch.</p></div>
+            <div class="tile"><h3>Local lease language</h3><p>Notice periods and rent-increase copy follow Rental Housing Act habits — a calendar month, in writing.</p></div>
+            <div class="tile"><h3>Languages</h3><p>English, Afrikaans, isiZulu, isiXhosa, and Sesotho on key screens — the landlord can switch.</p></div>
+            <div class="tile"><h3>WhatsApp, honestly</h3><p>Reminders open WhatsApp with a filled message. The landlord still taps send. We did not build a blaster.</p></div>
+            <div class="tile"><h3>Banks they know</h3><p>FNB, Standard Bank, Absa, Nedbank, Capitec, and others in the EFT step.</p></div>
+            <div class="tile"><h3>Hosted here</h3><p>Firebase project nestiq-pro. Live at nestiq-pro.web.app.</p></div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 09</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">09 — Architecture</p>
+        <h2>Firebase is the infrastructure. The product logic is ours.</h2>
+        <div class="grow">
+          <div class="stack">
+            <div class="tile"><h3>Client</h3><p>HTML, CSS, vanilla JavaScript. Hash routing. No React build for the core app — easy to host, honest tradeoff on globals.</p></div>
+            <div class="tile"><h3>Auth &amp; data</h3><p>Firebase Auth. Cloud Firestore with landlord-scoped collections. Storage for photos. Hosting for the site.</p></div>
+            <div class="tile"><h3>Security</h3><p>Rules, not hidden menus. Tenants, caretakers, and contractors may only write the fields their role allows. Passwords never sit in our database.</p></div>
+            <div class="tile"><h3>Realtime</h3><p>Listeners refresh chat, jobs, and dashboards. A contractor completing a job shows on the landlord board without a reload.</p></div>
+          </div>
+          <div class="pill-row">
+            <span class="pill">Firebase Auth</span>
+            <span class="pill">Cloud Firestore</span>
+            <span class="pill">Storage</span>
+            <span class="pill">Hosting</span>
+            <span class="pill">Cloud Functions</span>
+            <span class="pill">Service worker cache</span>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 10</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">10 — Honesty</p>
+        <h2>What is live, and what is a school simulation.</h2>
+        <div class="grow">
+          <div class="honest">
+            <div class="box live">
+              <h3>Working in the product</h3>
+              <ul>
+                <li>Accounts, invitations, and role split</li>
+                <li>Properties, tenants, leases, applications</li>
+                <li>Chat with unread badges</li>
+                <li>Full contractor job workflow</li>
+                <li>In-app receipts after rent and payouts</li>
+                <li>Firestore rules on the server</li>
+              </ul>
+            </div>
+            <div class="box sim">
+              <h3>Designed, not charging a bank</h3>
+              <ul>
+                <li>Card / EFT wizard does not debit FNB or Capitec</li>
+                <li>PayFast is the intended gateway — not live charging</li>
+                <li>WhatsApp is pre-filled, not automated</li>
+                <li>AI suggests; it does not replace a credit check</li>
+                <li>Receipts are NestIQ proof of payment, not tax invoices</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 11</div></div>
+      </div>
+    </section>
+
+    <section class="slide">
+      <div class="pad">
+        <p class="kicker">11 — Demo</p>
+        <h2>Two browsers. One loop. That is the presentation.</h2>
+        <div class="grow">
+          <div class="split">
+            <ol class="demo-ol">
+              <li>Landlord: open a tenant, send a chat. Tenant window: unread badge, reply.</li>
+              <li>Tenant: report a leak, set urgency. Landlord: confirm official priority.</li>
+              <li>Contractor: Accept → Start → Complete with parts and a total.</li>
+              <li>Landlord: Pay contractor. Download the payout receipt. Tenant: pay rent, download theirs.</li>
+            </ol>
+            <div class="callout">
+              <div class="kicker">How to run it</div>
+              <p>Keep the live site on one window as landlord. Open a second window for tenant or contractor. The loop is the product — do not click every menu.</p>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 12</div></div>
+      </div>
+    </section>
+
+    <section class="slide close">
+      <div class="pad">
+        <p class="kicker" style="color:#e8d49a">Thank you</p>
+        <h1>Questions.</h1>
+        <p class="lead">If we only remember one sentence: NestIQ turns WhatsApp and Excel into a record — who paid, who fixed it, and what it cost.</p>
+        <div class="gold-rule"></div>
+        <div class="cover-meta" style="margin-top:auto">
+          <div><div class="k">Live demo</div><div class="v">nestiq-pro.web.app</div></div>
+          <div><div class="k">Q&amp;A pack</div><div class="v">NestIQ-Presentation-QA.pdf</div></div>
+          <div><div class="k">Closer</div><div class="v">Honesty scores higher than overselling.</div></div>
+        </div>
+        <div class="foot"><div class="brand-mark"><span class="dot"></span> NestIQ Pro</div><div>Slide 13</div></div>
+      </div>
+    </section>
+
+  </div>
+</body>
+</html>

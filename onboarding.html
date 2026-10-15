@@ -339,11 +339,11 @@
     </aside>
 
     <div class="ob-main">
-      <div class="ob-progress-wrap"><div class="ob-progress-bar" id="obProgressBar"></div></div>
+      <div class="ob-progress-wrap"><div class="ob-progress-bar onboarding-progress-bar" id="obProgressBar"></div></div>
       <div class="ob-mobile-label" id="obMobileLabel"></div>
       <div class="ob-content">
         <div id="obError" class="ob-error"></div>
-        <div id="obStepContent" class="ob-card"></div>
+        <div id="obStepContent" class="ob-card onboarding-step-content"></div>
       </div>
       <div class="ob-footer">
         <button type="button" class="ob-btn ob-btn-outline" id="obBackBtn" style="display:none">Back</button>
@@ -521,7 +521,7 @@
       renderStepNav();
       showError('');
       const box = document.getElementById('obStepContent');
-      box.className = 'ob-card';
+      box.className = 'ob-card onboarding-step-content';
       void box.offsetWidth;
       box.style.animation = 'none';
       void box.offsetWidth;
@@ -606,7 +606,7 @@
           <div class="ob-row">
             <div><label class="ob-label">Property type</label>
               <select class="ob-select" id="ob_ptype">
-                ${['Apartment','House','Townhouse','Bachelor','Commercial','Other'].map(t =>
+                ${['Apartment','House','Townhouse','Bachelor Apartment','Backroom / Garden Flat','Commercial','Other'].map(t =>
                   `<option ${p.typeLabel===t?'selected':''}>${t}</option>`).join('')}
               </select></div>
             <div><label class="ob-label">Bedrooms</label>
@@ -789,7 +789,9 @@
             <a href="index.html#tenants">👥 Invite your tenant</a>
             <a href="index.html">📊 Explore your dashboard</a>
           </div>`;
-        if(typeof confetti === 'function'){
+        if(typeof nestiqConfetti === 'function'){
+          nestiqConfetti({ count: 120, spread: 80 });
+        }else if(typeof confetti === 'function'){
           confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ['#C46A3A','#F5F0E8','#0E1117','#A63D2F','#ffffff'] });
         }
       }
@@ -858,12 +860,12 @@
       const rent = parseFloat(document.getElementById('ob_rent').value);
       if(!name || !addr || !rent){ shakeInvalid(['ob_pname','ob_paddr','ob_rent']); throw new Error('validation'); }
       const typeLabel = document.getElementById('ob_ptype').value;
-      const typeMap = { Apartment:'apartment', House:'house', Townhouse:'apartment', Bachelor:'apartment', Commercial:'commercial', Other:'apartment' };
+      const typeMap = { Apartment:'apartment', House:'house', Townhouse:'townhouse', 'Bachelor Apartment':'bachelor', Bachelor:'bachelor', 'Backroom / Garden Flat':'backroom', Commercial:'commercial', Other:'other' };
       const beds = document.getElementById('ob_beds').value;
       const statusBtn = document.querySelector('#ob_status_toggle button.active');
       const status = statusBtn?.dataset.v === 'vacant' ? 'vacant' : 'occupied';
       const leaseEnd = document.getElementById('ob_lease_end').value;
-      const icon = typeLabel === 'House' ? '🏠' : '🏢';
+      const icon = typeLabel === 'House' ? '🏠' : typeLabel === 'Backroom / Garden Flat' ? '🏡' : typeLabel === 'Bachelor Apartment' || typeLabel === 'Bachelor' ? '🛏️' : '🏢';
       const row = {
         name, addr, city: '', rent, status,
         type: typeMap[typeLabel] || 'apartment',

@@ -1,608 +1,765 @@
-/* ============================================
-   NESTIQ GLOBAL ANIMATIONS
-   ============================================ */
+/* ============================================================
+   NESTIQ PRO — GLOBAL ANIMATION SYSTEM
+   ============================================================ */
 
-/* ---- Keyframes ---- */
-
-@keyframes nestiq-fade-in {
-  from { opacity: 0; transform: translateY(16px); }
+/* ---- Keyframe Definitions ---- */
+@keyframes nq-fade-in {
+  from { opacity: 0.94; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes nestiq-fade-in-up {
-  from { opacity: 0; transform: translateY(32px); }
+@keyframes nq-fade-up {
+  from { opacity: 0; transform: translateY(36px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes nestiq-fade-in-down {
-  from { opacity: 0; transform: translateY(-20px); }
+@keyframes nq-fade-down {
+  from { opacity: 0; transform: translateY(-22px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes nestiq-fade-in-left {
-  from { opacity: 0; transform: translateX(-24px); }
+@keyframes nq-fade-left {
+  from { opacity: 0; transform: translateX(-28px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-
-@keyframes nestiq-fade-in-right {
-  from { opacity: 0; transform: translateX(24px); }
+@keyframes nq-fade-right {
+  from { opacity: 0; transform: translateX(28px); }
   to   { opacity: 1; transform: translateX(0); }
 }
-
-@keyframes nestiq-scale-in {
-  from { opacity: 0; transform: scale(0.92); }
+@keyframes nq-scale-in {
+  from { opacity: 0; transform: scale(0.88); }
   to   { opacity: 1; transform: scale(1); }
 }
-
-@keyframes nestiq-scale-bounce {
-  0%   { transform: scale(0.85); opacity: 0; }
-  60%  { transform: scale(1.04); opacity: 1; }
-  100% { transform: scale(1); }
+@keyframes nq-scale-bounce {
+  0%   { transform: scale(0.80); opacity: 0; }
+  55%  { transform: scale(1.06); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
 }
-
-@keyframes nestiq-slide-up {
+@keyframes nq-pop {
+  0%   { transform: scale(0); opacity: 0; }
+  60%  { transform: scale(1.18); }
+  80%  { transform: scale(0.96); }
+  100% { transform: scale(1); opacity: 1; }
+}
+@keyframes nq-shimmer {
+  0%   { background-position: -1200px 0; }
+  100% { background-position:  1200px 0; }
+}
+@keyframes nq-pulse-gold {
+  0%, 100% { box-shadow: 0 0 0 0   rgba(196,106,58,0.45); }
+  50%       { box-shadow: 0 0 0 12px rgba(196,106,58,0); }
+}
+@keyframes nq-spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes nq-float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-9px); }
+}
+@keyframes nq-shake {
+  0%, 100% { transform: translateX(0); }
+  18%       { transform: translateX(-7px); }
+  36%       { transform: translateX(7px); }
+  54%       { transform: translateX(-5px); }
+  72%       { transform: translateX(5px); }
+}
+@keyframes nq-toast-in {
+  from { opacity: 0; transform: translateX(110%) scale(0.9); }
+  to   { opacity: 1; transform: translateX(0)   scale(1); }
+}
+@keyframes nq-toast-out {
+  from { opacity: 1; transform: translateX(0)   scale(1); }
+  to   { opacity: 0; transform: translateX(110%) scale(0.9); }
+}
+@keyframes nq-modal-in {
+  from { opacity: 0; transform: scale(0.90) translateY(28px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+@keyframes nq-modal-out {
+  from { opacity: 1; transform: scale(1)    translateY(0); }
+  to   { opacity: 0; transform: scale(0.90) translateY(28px); }
+}
+@keyframes nq-overlay-in {
+  from { opacity: 0; backdrop-filter: blur(0px); }
+  to   { opacity: 1; backdrop-filter: blur(4px); }
+}
+@keyframes nq-progress {
+  from { width: 0%; }
+  to   { width: var(--nq-target, 100%); }
+}
+@keyframes nq-ripple {
+  from { transform: scale(0); opacity: 0.5; }
+  to   { transform: scale(4); opacity: 0; }
+}
+@keyframes nq-slide-up {
   from { opacity: 0; transform: translateY(100%); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes nestiq-slide-down {
-  from { opacity: 0; transform: translateY(-100%); }
+@keyframes nq-gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50%       { background-position: 100% 50%; }
+}
+@keyframes nq-count {
+  from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
-
-@keyframes nestiq-shimmer {
-  0%   { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+@keyframes nq-border-glow {
+  0%, 100% { border-color: rgba(196,106,58,0.3); }
+  50%       { border-color: rgba(196,106,58,1); }
 }
 
-@keyframes nestiq-pulse-gold {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(196,106,58,0.4); }
-  50%       { box-shadow: 0 0 0 10px rgba(196,106,58,0); }
-}
+/* ---- Utility Classes ---- */
+.nq-fade-in       { animation: nq-fade-in   0.45s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-fade-up       { animation: nq-fade-up   0.55s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-fade-down     { animation: nq-fade-down 0.40s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-fade-left     { animation: nq-fade-left 0.42s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-fade-right    { animation: nq-fade-right 0.42s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-scale-in      { animation: nq-scale-in  0.35s cubic-bezier(.25,.46,.45,.94) both; }
+.nq-scale-bounce  { animation: nq-scale-bounce 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+.nq-pop           { animation: nq-pop  0.5s  cubic-bezier(.34,1.56,.64,1) both; }
+.nq-float         { animation: nq-float 3.2s ease-in-out infinite; }
+.nq-shake         { animation: nq-shake 0.42s ease; }
+.nq-pulse-gold    { animation: nq-pulse-gold 2.2s infinite; }
+.nq-spin          { animation: nq-spin  1s linear infinite; }
+.nq-progress      { width: 0; animation: nq-progress 1.15s cubic-bezier(.25,.46,.45,.94) both; }
 
-@keyframes nestiq-spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@keyframes nestiq-bounce-in {
-  0%   { transform: scale(0); opacity: 0; }
-  50%  { transform: scale(1.15); }
-  75%  { transform: scale(0.95); }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes nestiq-count-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes nestiq-float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-8px); }
-}
-
-@keyframes nestiq-gradient-shift {
-  0%   { background-position: 0% 50%; }
-  50%  { background-position: 100% 50%; }
-  100% { background-position: 0% 50%; }
-}
-
-@keyframes nestiq-shake {
-  0%, 100% { transform: translateX(0); }
-  20%       { transform: translateX(-6px); }
-  40%       { transform: translateX(6px); }
-  60%       { transform: translateX(-4px); }
-  80%       { transform: translateX(4px); }
-}
-
-@keyframes nestiq-progress-fill {
-  from { width: 0%; }
-  to   { width: var(--target-width); }
-}
-
-@keyframes nestiq-notification-slide {
-  from { opacity: 0; transform: translateX(110%); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-
-@keyframes nestiq-notification-out {
-  from { opacity: 1; transform: translateX(0); }
-  to   { opacity: 0; transform: translateX(110%); }
-}
-
-@keyframes nestiq-overlay-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
-@keyframes nestiq-modal-in {
-  from { opacity: 0; transform: scale(0.94) translateY(20px); }
-  to   { opacity: 1; transform: scale(1) translateY(0); }
-}
-
-@keyframes nestiq-modal-out {
-  from { opacity: 1; transform: scale(1) translateY(0); }
-  to   { opacity: 0; transform: scale(0.94) translateY(20px); }
-}
-
-@keyframes nestiq-tab-indicator {
-  from { transform: scaleX(0); }
-  to   { transform: scaleX(1); }
-}
-
-@keyframes nestiq-ripple {
-  from { transform: scale(0); opacity: 0.4; }
-  to   { transform: scale(4); opacity: 0; }
-}
-
-@keyframes nestiq-badge-pop {
-  0%   { transform: scale(0); }
-  60%  { transform: scale(1.3); }
-  100% { transform: scale(1); }
-}
-
-/* ---- Utility Animation Classes ---- */
-
-.na-fade-in       { animation: nestiq-fade-in 0.45s ease both; }
-.na-fade-in-up    { animation: nestiq-fade-in-up 0.5s ease both; }
-.na-fade-in-down  { animation: nestiq-fade-in-down 0.4s ease both; }
-.na-fade-in-left  { animation: nestiq-fade-in-left 0.4s ease both; }
-.na-fade-in-right { animation: nestiq-fade-in-right 0.4s ease both; }
-.na-scale-in      { animation: nestiq-scale-in 0.35s ease both; }
-.na-scale-bounce  { animation: nestiq-scale-bounce 0.5s cubic-bezier(.34,1.56,.64,1) both; }
-.na-slide-up      { animation: nestiq-slide-up 0.4s cubic-bezier(.25,.46,.45,.94) both; }
-.na-float         { animation: nestiq-float 3s ease-in-out infinite; }
-.na-shake         { animation: nestiq-shake 0.4s ease; }
-.na-pulse-gold    { animation: nestiq-pulse-gold 2s infinite; }
-.na-spin          { animation: nestiq-spin 1s linear infinite; }
-.na-bounce-in     { animation: nestiq-bounce-in 0.6s cubic-bezier(.34,1.56,.64,1) both; }
-
-.na-delay-1  { animation-delay: 0.05s; }
-.na-delay-2  { animation-delay: 0.10s; }
-.na-delay-3  { animation-delay: 0.15s; }
-.na-delay-4  { animation-delay: 0.20s; }
-.na-delay-5  { animation-delay: 0.25s; }
-.na-delay-6  { animation-delay: 0.30s; }
-.na-delay-7  { animation-delay: 0.35s; }
-.na-delay-8  { animation-delay: 0.40s; }
+/* Stagger delays */
+.nq-d1  { animation-delay: 0.04s; }
+.nq-d2  { animation-delay: 0.08s; }
+.nq-d3  { animation-delay: 0.12s; }
+.nq-d4  { animation-delay: 0.16s; }
+.nq-d5  { animation-delay: 0.20s; }
+.nq-d6  { animation-delay: 0.24s; }
+.nq-d7  { animation-delay: 0.28s; }
+.nq-d8  { animation-delay: 0.32s; }
+.nq-d9  { animation-delay: 0.36s; }
+.nq-d10 { animation-delay: 0.40s; }
 
 /* ---- Page Transitions ---- */
-
-/* Router mounts pages with `.page.active` and `js/animations.js` may also toggle `.page-active`.
-   Always animate on active so pages never remain "invisible" due to class mismatches. */
-.page.active,
+@keyframes nq-page-in {
+  from { opacity: 0.97; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
 .page.page-active,
-.page.active.page-active {
+.page.active {
+  animation: nq-page-in 0.28s cubic-bezier(.22,1,.36,1);
   opacity: 1;
-  animation: nestiq-fade-in 0.4s ease;
+  transform: none;
 }
 
-/* ---- Card Animations ---- */
-
+/* ---- Card Interactions ---- */
 .card,
 .portal-card,
 .prop-card,
 .nestiq-app-card,
 .stat-card,
-[data-stat-card] {
+.kanban-card,
+.vendor-card {
   transition:
-    transform 0.22s cubic-bezier(.25,.46,.45,.94),
-    box-shadow 0.22s ease,
-    border-color 0.22s ease;
-  will-change: transform;
+    transform    0.22s cubic-bezier(.25,.46,.45,.94),
+    box-shadow   0.22s cubic-bezier(.25,.46,.45,.94),
+    border-color 0.18s ease,
+    background   0.18s ease;
 }
-
 .card:hover,
 .portal-card:hover,
 .prop-card:hover,
 .nestiq-app-card:hover,
-.stat-card:hover,
-[data-stat-card]:hover {
+.stat-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 12px 32px rgba(0,0,0,0.10);
+  box-shadow: 0 14px 36px rgba(14,17,23,0.10), 0 4px 12px rgba(14,17,23,0.04);
+}
+.kanban-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(14,17,23,0.10);
+}
+.kanban-card:active {
+  transform: scale(0.97) rotate(-0.3deg);
+  cursor: grabbing;
+}
+.kanban-card.is-contractor-locked:hover,
+.kanban-card.is-landlord-locked:hover {
+  transform: none;
+  box-shadow: var(--shadow);
+}
+.kanban-card.is-contractor-locked:active,
+.kanban-card.is-landlord-locked:active {
+  transform: none;
+  cursor: pointer;
+}
+.vendor-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px rgba(196,106,58,0.12);
+  border-color: rgba(196,106,58,0.4) !important;
 }
 
 /* ---- Button Animations ---- */
-
 .btn-primary,
 .btn-outline,
 .btn-gold,
-.btn-sm {
-  transition:
-    transform 0.15s ease,
-    box-shadow 0.15s ease,
-    background 0.2s ease,
-    border-color 0.2s ease,
-    color 0.2s ease;
+.btn-sm,
+button[class*="btn"] {
   position: relative;
   overflow: hidden;
+  transition:
+    transform    0.16s cubic-bezier(.34,1.56,.64,1),
+    box-shadow   0.16s ease,
+    background   0.22s ease,
+    border-color 0.22s ease,
+    color        0.22s ease,
+    opacity      0.16s ease;
+  -webkit-tap-highlight-color: transparent;
 }
-
 .btn-primary:hover,
 .btn-gold:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(196,106,58,0.35);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 22px rgba(201,168,76,0.32);
 }
-
 .btn-outline:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(14,17,23,0.08);
 }
-
 .btn-primary:active,
-.btn-outline:active,
 .btn-gold:active,
+.btn-outline:active,
 .btn-sm:active {
-  transform: scale(0.96);
-  box-shadow: none;
+  transform: scale(0.985) !important;
+  box-shadow: none !important;
+  transition-duration: 0.08s !important;
 }
 
-.btn-ripple {
+/* Ripple */
+.nq-ripple {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255,255,255,0.35);
+  background: rgba(255,255,255,0.38);
   pointer-events: none;
-  animation: nestiq-ripple 0.55s ease-out forwards;
+  animation: nq-ripple 0.58s ease-out forwards;
 }
 
 /* ---- Modal Animations ---- */
-
-#modalOverlay.open,
-.modal-overlay.open,
-.nestiq-lightbox.open {
-  animation: nestiq-overlay-in 0.25s ease both;
+#modalOverlay,
+.modal-overlay,
+.nestiq-lightbox {
+  animation: nq-overlay-in 0.28s ease both;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
-
-#modalOverlay.open .modal,
 #modalContent,
 .modal-content,
 .modal-box {
-  animation: nestiq-modal-in 0.3s cubic-bezier(.34,1.2,.64,1) both;
+  animation: nq-modal-in 0.34s cubic-bezier(.34,1.15,.64,1) both;
 }
-
-.modal-closing#modalOverlay,
-.modal-closing.modal-overlay {
-  animation: nestiq-overlay-in 0.2s ease reverse both;
-}
-
-.modal-closing#modalOverlay .modal,
+.modal-closing #modalContent,
 .modal-closing .modal-content {
-  animation: nestiq-modal-out 0.2s ease both;
+  animation: nq-modal-out 0.22s cubic-bezier(.25,.46,.45,.94) both;
+}
+.modal-closing #modalOverlay {
+  animation: none;
+  opacity: 0;
+  transition: opacity 0.22s ease;
 }
 
-/* ---- Navigation Animations ---- */
-
-.nav-link,
-.sidebar-link,
-.nestiq-nav-item {
+/* ---- Sidebar Navigation ---- */
+.sidebar-nav-item,
+.nav-tab {
   transition:
-    color 0.18s ease,
-    background 0.18s ease,
-    transform 0.18s ease,
-    padding-left 0.18s ease;
-  position: relative;
+    background    0.18s ease,
+    color         0.18s ease,
+    padding-left  0.22s cubic-bezier(.25,.46,.45,.94),
+    border-color  0.18s ease,
+    box-shadow    0.18s ease;
+  border-left: 3px solid transparent;
+}
+.sidebar-nav-item:hover {
+  padding-left: 22px !important;
+  background: rgba(196,106,58,0.07) !important;
+  color: var(--gold) !important;
+}
+.sidebar-nav-item.active {
+  border-left-color: var(--gold) !important;
+  background: rgba(196,106,58,0.10) !important;
+  color: var(--gold) !important;
+  padding-left: 22px !important;
+  box-shadow: inset 0 0 0 1px rgba(196,106,58,0.12);
 }
 
-.nav-link::after,
-.sidebar-link::after {
-  content: '';
-  position: absolute;
-  bottom: -2px;
-  left: 0;
-  width: 0;
-  height: 2px;
-  background: var(--gold);
-  transition: width 0.25s ease;
-  border-radius: 2px;
-}
-
-.nav-link:hover::after,
-.nav-link.active::after { width: 100%; }
-
-/* ---- Form Input Animations ---- */
-
-.form-input,
-.form-select,
-.form-textarea,
-input[type="text"],
-input[type="email"],
-input[type="number"],
-input[type="password"],
+/* ---- Form Inputs ---- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
 select,
 textarea {
   transition:
     border-color 0.2s ease,
-    box-shadow 0.2s ease,
-    background 0.2s ease;
+    box-shadow   0.2s ease,
+    background   0.2s ease,
+    transform    0.15s ease;
 }
-
-.form-input:focus,
-.form-select:focus,
-.form-textarea:focus,
 input:focus,
 select:focus,
 textarea:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(196,106,58,0.12);
-  outline: none;
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 0 3.5px rgba(196,106,58,0.15) !important;
+  outline: none !important;
+  transform: scale(1.005);
+}
+input.nq-error,
+select.nq-error,
+textarea.nq-error {
+  animation: nq-shake 0.42s ease;
+  border-color: var(--rust) !important;
+  box-shadow: 0 0 0 3px rgba(166,61,47,0.14) !important;
 }
 
-.form-input.error,
-input.error,
-select.error,
-textarea.error {
-  animation: nestiq-shake 0.4s ease;
-  border-color: var(--rust);
-  box-shadow: 0 0 0 3px rgba(166,61,47,0.12);
+/* ---- Toast Notifications ---- */
+.nq-toast {
+  animation: nq-toast-in 0.38s cubic-bezier(.34,1.2,.64,1) both;
+  border-radius: 14px !important;
+  backdrop-filter: blur(8px);
 }
-
-/* ---- Notification Toast Animations ---- */
-
-.notif,
-.toast,
-[class*="notif-"] {
-  animation: nestiq-notification-slide 0.35s cubic-bezier(.25,.46,.45,.94) both;
-}
-
-.notif.hiding,
-.toast.hiding {
-  animation: nestiq-notification-out 0.25s ease forwards;
+.nq-toast.nq-toast-out {
+  animation: nq-toast-out 0.28s cubic-bezier(.25,.46,.45,.94) forwards;
 }
 
 /* ---- Skeleton Loading ---- */
-
-.skeleton {
+.nq-skeleton {
   background: linear-gradient(
     90deg,
-    var(--border) 25%,
-    var(--cream) 50%,
-    var(--border) 75%
+    var(--border, #e5e7eb) 0%,
+    var(--cream,  #f5f0e8) 40%,
+    var(--border, #e5e7eb) 80%
   );
-  background-size: 1000px 100%;
-  animation: nestiq-shimmer 1.6s infinite linear;
+  background-size: 1200px 100%;
+  animation: nq-shimmer 1.8s ease-in-out infinite;
   border-radius: 8px;
-  color: transparent;
+  color: transparent !important;
   pointer-events: none;
   user-select: none;
 }
+.nq-sk-text    { height: 14px; border-radius: 4px; margin-bottom: 8px; }
+.nq-sk-title   { height: 22px; border-radius: 6px; width: 55%; margin-bottom: 12px; }
+.nq-sk-card    { height: 130px; border-radius: 14px; margin-bottom: 14px; }
+.nq-sk-avatar  { height: 44px; width: 44px; border-radius: 50%; flex-shrink: 0; }
+.nq-sk-btn     { height: 38px; width: 110px; border-radius: 10px; display: inline-block; }
+.nq-sk-img     { aspect-ratio: 16/9; border-radius: 12px; }
 
-.skeleton-text  { height: 14px; border-radius: 4px; margin-bottom: 8px; }
-.skeleton-title { height: 22px; border-radius: 6px; width: 60%; margin-bottom: 12px; }
-.skeleton-card  { height: 120px; border-radius: 14px; margin-bottom: 16px; }
-.skeleton-avatar{ height: 44px; width: 44px; border-radius: 50%; flex-shrink: 0; }
-.skeleton-btn   { height: 38px; width: 120px; border-radius: 10px; }
-.skeleton-img   { aspect-ratio: 16/9; border-radius: 12px; }
-
-/* ---- Status Badge Animations ---- */
-
-.badge,
-.status-badge,
-[class*="-badge"] {
-  animation: nestiq-bounce-in 0.4s cubic-bezier(.34,1.56,.64,1) both;
-  transition: transform 0.15s ease, background 0.2s ease;
+/* ---- Scroll Reveal ---- */
+.nq-reveal {
+  opacity: 0;
+  transform: translateY(26px);
+  transition: opacity 0.58s ease, transform 0.58s ease;
 }
+.nq-reveal.nq-revealed,
+.nq-reveal.visible         { opacity: 1; transform: translateY(0); }
+.nq-reveal-left                { opacity: 0; transform: translateX(-26px); transition: opacity 0.58s ease, transform 0.58s ease; }
+.nq-reveal-left.nq-revealed,
+.nq-reveal-left.visible    { opacity: 1; transform: translateX(0); }
+.nq-reveal-right               { opacity: 0; transform: translateX(26px);  transition: opacity 0.58s ease, transform 0.58s ease; }
+.nq-reveal-right.nq-revealed,
+.nq-reveal-right.visible   { opacity: 1; transform: translateX(0); }
+.nq-reveal-scale               { opacity: 0; transform: scale(0.92); transition: opacity 0.5s ease, transform 0.5s ease; }
+.nq-reveal-scale.nq-revealed   { opacity: 1; transform: scale(1); }
 
-/* ---- Progress Bar Animations ---- */
-
+/* ---- Progress & Status Bars ---- */
 .progress-bar,
 .lease-fill,
 [class*="progress-fill"],
-[class*="-bar-fill"] {
-  transition: width 1.2s cubic-bezier(.25,.46,.45,.94);
+[class*="-bar-fill"],
+[class*="usage-fill"] {
+  transition: width 1.4s cubic-bezier(.25,.46,.45,.94);
 }
 
-.progress-animate {
-  animation: nestiq-progress-fill 1.2s cubic-bezier(.25,.46,.45,.94) both;
-}
-
-/* ---- Dropdown / Menu Animations ---- */
-
+/* ---- Dropdown Menus ---- */
 .dropdown-menu,
-.wa-menu,
-.theme-mini-menu,
 [id*="Menu"],
-[id*="Dropdown"] {
-  animation: nestiq-fade-in-down 0.2s ease both;
+[id*="Dropdown"],
+.wa-menu,
+.theme-mini-menu {
+  animation: nq-fade-down 0.22s cubic-bezier(.25,.46,.45,.94) both;
   transform-origin: top center;
 }
 
-/* ---- Tab Switching Animation ---- */
-
+/* ---- Tab Switching ---- */
 .tab-content-enter {
-  animation: nestiq-fade-in 0.3s ease both;
+  animation: none;
 }
-
 .tab-indicator {
-  transition: left 0.3s cubic-bezier(.25,.46,.45,.94),
-              width 0.3s cubic-bezier(.25,.46,.45,.94);
-}
-
-/* ---- Scroll Reveal (applied by JS) ---- */
-
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 0.55s ease,
-    transform 0.55s ease;
-}
-
-.reveal.revealed,
-.reveal.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-.reveal-left {
-  opacity: 0;
-  transform: translateX(-24px);
-  transition: opacity 0.55s ease, transform 0.55s ease;
-}
-
-.reveal-left.revealed,
-.reveal-left.visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.reveal-right {
-  opacity: 0;
-  transform: translateX(24px);
-  transition: opacity 0.55s ease, transform 0.55s ease;
-}
-
-.reveal-right.revealed,
-.reveal-right.visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* ---- Chart Animations ---- */
-
-.chart-wrap {
-  animation: nestiq-fade-in 0.6s ease both;
-}
-
-/* ---- Tenant Portal Tab Bar Animation ---- */
-
-.tenant-tab-bar .tab-btn {
-  transition: color 0.2s ease, transform 0.2s ease;
-}
-
-.tenant-tab-bar .tab-btn.active {
-  color: var(--gold);
-  transform: translateY(-2px);
-}
-
-.tenant-tab-bar .tab-btn .tab-icon {
-  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
-}
-
-.tenant-tab-bar .tab-btn.active .tab-icon {
-  transform: scale(1.2);
+  transition: left 0.32s cubic-bezier(.25,.46,.45,.94), width 0.32s cubic-bezier(.25,.46,.45,.94);
 }
 
 /* ---- Floating Action Button ---- */
-
 .fab,
 .support-fab {
-  transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), box-shadow 0.2s ease;
-  animation: nestiq-bounce-in 0.6s cubic-bezier(.34,1.56,.64,1) 0.5s both;
+  animation: none;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
 }
-
 .fab:hover,
 .support-fab:hover {
-  transform: scale(1.12) rotate(5deg);
-  box-shadow: 0 8px 28px rgba(196,106,58,0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(196,106,58,0.28);
+}
+.fab:active,
+.support-fab:active {
+  transform: translateY(0);
 }
 
-/* ---- Accordion Sections ---- */
-
-.nestiq-edit-section-body {
-  transition: max-height 0.35s cubic-bezier(.25,.46,.45,.94),
-              padding 0.2s ease,
-              opacity 0.25s ease;
-  opacity: 0;
-}
-
-.nestiq-edit-section-body.open {
-  opacity: 1;
-}
-
-/* ---- Map Marker Pulse ---- */
-
-.map-pulse {
-  animation: nestiq-pulse-gold 2s infinite;
-  border-radius: 50%;
-}
-
-/* ---- Logo Animation ---- */
-
-.nav-logo,
-.logo-dot {
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.nav-logo:hover { transform: scale(1.04); }
-
-/* ---- Landing Page Hero ---- */
-
-.hero-headline {
-  animation: nestiq-fade-in-up 0.7s ease both;
-}
-
-.hero-sub {
-  animation: nestiq-fade-in-up 0.7s ease 0.15s both;
-}
-
-.hero-cta {
-  animation: nestiq-fade-in-up 0.7s ease 0.28s both;
-}
-
-.hero-mockup {
-  animation: nestiq-fade-in-right 0.8s ease 0.2s both;
-}
-
-.stats-bar-item {
-  animation: nestiq-fade-in-up 0.5s ease both;
-}
-
-.feature-card {
-  animation: nestiq-scale-in 0.4s ease both;
-}
-
-/* ---- Number Counter Animation ---- */
-
-.count-up {
-  animation: nestiq-count-up 0.5s ease both;
-  display: inline-block;
-}
-
-/* ---- Onboarding Wizard ---- */
-
-.onboarding-step-content {
-  animation: nestiq-fade-in 0.35s ease both;
-}
-
-.onboarding-step-indicator .step-circle {
-  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
-}
-
-.onboarding-step-indicator .step-circle.done {
-  animation: nestiq-bounce-in 0.4s cubic-bezier(.34,1.56,.64,1) both;
-}
-
-/* ---- Chat Messages ---- */
-
+/* ---- Chat Bubbles ---- */
 .chat-bubble {
-  animation: nestiq-scale-bounce 0.3s cubic-bezier(.34,1.56,.64,1) both;
+  animation: nq-fade-in 0.28s ease;
   transform-origin: bottom left;
 }
+.chat-bubble.sent { transform-origin: bottom right; }
 
-.chat-bubble.sent {
-  transform-origin: bottom right;
+/* ---- Kanban Columns ---- */
+.kanban-col {
+  transition: background 0.18s ease, box-shadow 0.18s ease;
+}
+.kanban-col.drag-over {
+  background: rgba(196,106,58,0.06) !important;
+  box-shadow: inset 0 0 0 2px rgba(196,106,58,0.35);
 }
 
-/* ---- Sidebar Navigation ---- */
-
-.sidebar-nav-item {
-  transition: background 0.18s ease, color 0.18s ease, padding-left 0.18s ease;
-  border-left: 3px solid transparent;
+.nq-dragging {
+  opacity: 0.55;
+  transform: scale(0.96) rotate(1.5deg) !important;
+  box-shadow: 0 20px 48px rgba(0,0,0,0.22) !important;
+  cursor: grabbing;
+  z-index: 999;
 }
 
-.sidebar-nav-item:hover {
-  padding-left: 20px;
-  background: rgba(196,106,58,0.06);
+/* ---- Status Badges ---- */
+.status-badge,
+.badge,
+[class*="-badge"] {
+  transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+}
+[class*="-badge"]:hover { transform: none; }
+
+/* ---- Property Slideshow ---- */
+.nestiq-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.02);
+  transition: opacity 1.15s cubic-bezier(.22,.61,.36,1), transform 1.15s cubic-bezier(.22,.61,.36,1);
+  pointer-events: none;
+}
+.nestiq-slide.active {
+  opacity: 1;
+  transform: scale(1);
+  pointer-events: auto;
+}
+.nestiq-slide-arrow {
+  opacity: 0;
+  transition: opacity 0.28s ease, background 0.28s ease, transform 0.28s ease;
+}
+.nestiq-slideshow:hover .nestiq-slide-arrow { opacity: 1; }
+.nestiq-slide-arrow:hover { transform: translateY(-50%) scale(1.06) !important; }
+.nestiq-slide-dot {
+  transition: background 0.45s ease, transform 0.45s ease, width 0.45s ease;
+}
+.nestiq-slide-dot.active {
+  background: #fff;
+  transform: none;
 }
 
-.sidebar-nav-item.active {
-  border-left-color: var(--gold);
-  background: rgba(196,106,58,0.08);
-  padding-left: 20px;
+/* ---- Lightbox ---- */
+.nestiq-lightbox {
+  transition: opacity 0.28s ease;
+}
+.nestiq-lightbox-img {
+  animation: nq-scale-in 0.32s cubic-bezier(.25,.46,.45,.94) both;
+  transition: transform 0.3s ease;
+}
+.nestiq-lightbox-thumb {
+  transition: border-color 0.2s ease, opacity 0.2s ease, transform 0.18s ease;
+}
+.nestiq-lightbox-thumb:hover { transform: scale(1.08); }
+.nestiq-lightbox-thumb.active {
+  border-color: var(--gold);
+  opacity: 1;
+  transform: scale(1.06);
 }
 
-/* ---- Marketing / standalone page nav reset ---- */
+/* ---- Landing Page Hero ---- */
+.hero-headline,
+.hero-sub,
+.hero-cta,
+.hero-mockup,
+.hero-title,
+.hero-actions,
+.hero-visual,
+.hero-eyebrow,
+.hero-badge,
+.stats-bar-item {
+  animation: none;
+}
+
+/* ---- Tenant Tab Bar ---- */
+.tenant-tab-bar .tab-btn {
+  transition: color 0.22s ease, transform 0.22s cubic-bezier(.34,1.56,.64,1);
+}
+.tenant-tab-bar .tab-btn.active {
+  color: var(--gold);
+  transform: translateY(-3px);
+}
+.tenant-tab-bar .tab-btn .tab-icon {
+  transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
+  display: inline-block;
+}
+.tenant-tab-bar .tab-btn.active .tab-icon { transform: scale(1.25); }
+.tab-badge {
+  animation: nq-pop 0.42s cubic-bezier(.34,1.56,.64,1) both;
+  transition: transform 0.15s ease;
+}
+
+/* ---- Onboarding ---- */
+.onboarding-step-content { animation: nq-fade-in 0.38s ease both; }
+.onboarding-step-indicator .step-circle {
+  transition: background 0.32s ease, border-color 0.32s ease, transform 0.32s cubic-bezier(.34,1.56,.64,1);
+}
+.onboarding-step-indicator .step-circle.done {
+  animation: nq-pop 0.45s cubic-bezier(.34,1.56,.64,1) both;
+}
+.onboarding-progress-bar { transition: width 0.55s cubic-bezier(.25,.46,.45,.94); }
+
+/* ---- Accordion Sections ---- */
+.nestiq-edit-section-body {
+  max-height: 0;
+  overflow: hidden;
+  opacity: 0;
+  transition:
+    max-height 0.38s cubic-bezier(.25,.46,.45,.94),
+    opacity    0.28s ease,
+    padding    0.22s ease;
+}
+.nestiq-edit-section-body.open {
+  max-height: 2400px;
+  opacity: 1;
+}
+.nestiq-edit-section-chevron {
+  transition: transform 0.28s cubic-bezier(.34,1.56,.64,1);
+  display: inline-block;
+}
+.nestiq-edit-section-header.open .nestiq-edit-section-chevron {
+  transform: rotate(90deg);
+}
+
+/* ---- Theme Switch Flash ---- */
+.nq-theme-flash {
+  position: fixed;
+  inset: 0;
+  background: var(--gold);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 99999;
+  transition: opacity 0.18s ease;
+}
+
+/* ---- Navigation Logo ---- */
+.nav-logo { transition: transform 0.2s cubic-bezier(.34,1.56,.64,1), opacity 0.2s ease; }
+.nav-logo:hover { transform: scale(1.05); }
+
+/* ---- Map Markers ---- */
+.leaflet-marker-icon {
+  transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), filter 0.18s ease;
+}
+.leaflet-marker-icon:hover { transform: scale(1.22) translateY(-4px) !important; }
+
+/* ---- Chart Wrappers ---- */
+.chart-wrap, [class*="chart-container"] {
+  animation: nq-fade-in 0.65s ease both;
+}
+
+/* ---- Admin Table Rows ---- */
+.nestiq-table tr {
+  transition: background 0.15s ease;
+}
+.nestiq-table tr:hover td { background: rgba(196,106,58,0.04) !important; }
+
+/* ---- Notification Bell ---- */
+#notifBell, .notif-bell {
+  transition: transform 0.2s cubic-bezier(.34,1.56,.64,1);
+}
+#notifBell:hover, .notif-bell:hover { transform: rotate(18deg) scale(1.12); }
+
+/* ---- Amenity Chips ---- */
+.nestiq-amenity-chip {
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
+}
+.nestiq-amenity-chip:hover { transform: scale(1.06); }
+.nestiq-amenity-chip.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: white;
+  transform: scale(1.04);
+}
+
+/* ---- Maintenance Status Timeline ---- */
+.maintenance-step {
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s cubic-bezier(.34,1.56,.64,1);
+}
+.maintenance-step.done { animation: nq-pop 0.45s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ---- QR Code ---- */
+.qr-container { animation: nq-scale-in 0.4s cubic-bezier(.25,.46,.45,.94) both; }
+
+/* ---- Invite Code Display ---- */
+.invite-code-display {
+  animation: nq-pop 0.55s cubic-bezier(.34,1.56,.64,1) both;
+  letter-spacing: 0.12em;
+}
+
+/* ---- Billing Plan Cards ---- */
+.billing-plan-card {
+  transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.billing-plan-card:hover {
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 20px 48px rgba(0,0,0,0.12);
+}
+.billing-plan-card.recommended {
+  animation: nq-border-glow 2.5s ease-in-out infinite;
+}
+
+/* ---- Support Ticket ---- */
+.ticket-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.ticket-card:hover { transform: translateX(4px); box-shadow: -4px 0 0 var(--gold), 0 4px 16px rgba(0,0,0,0.08); }
+
+/* ---- Changelog Version Blocks ---- */
+.changelog-version { animation: none; }
+.changelog-badge   { animation: none; }
+
+/* ---- Roadmap Vote Button ---- */
+.vote-btn { transition: transform 0.18s cubic-bezier(.34,1.56,.64,1), background 0.18s ease; }
+.vote-btn:hover  { transform: scale(1.10); }
+.vote-btn:active { transform: scale(0.92); transition-duration: 0.08s; }
+.vote-btn.voted  { animation: nq-pop 0.4s cubic-bezier(.34,1.56,.64,1) both; }
+
+/* ---- Reduce Motion (Accessibility) ---- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration:       0.01ms !important;
+    animation-iteration-count: 1     !important;
+    transition-duration:       0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .nq-dragging {
+    opacity: 1 !important;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}
+
+/* ---- Mobile adjustments ---- */
+@media (max-width: 600px) {
+  .nq-reveal       { transform: translateY(14px); }
+  .nq-reveal-left  { transform: translateX(-14px); }
+  .nq-reveal-right { transform: translateX(14px); }
+  .card:hover,
+  .portal-card:hover,
+  .prop-card:hover,
+  .nestiq-app-card:hover,
+  .stat-card:hover,
+  .kanban-card:hover,
+  .vendor-card:hover,
+  .bill-card:hover,
+  .bill-plan-card:hover,
+  .feat-card:hover,
+  .feature-card:hover,
+  .ui-card:hover,
+  [data-stat-card]:hover,
+  .sup-ticket-card:hover {
+    transform: translateY(-2px);
+  }
+  .leaflet-marker-icon:hover { transform: translateY(-2px) !important; }
+}
+
+/* ============================================================
+   COMPATIBILITY — keep existing markup visible and working
+   ============================================================ */
+.page.active,
+.page.page-active,
+.page.active.page-active {
+  animation: nq-page-in 0.28s cubic-bezier(.22,1,.36,1);
+  opacity: 1;
+  transform: none;
+}
+#modalOverlay:not(.open),
+.modal-overlay:not(.open),
+.nestiq-lightbox:not(.open) {
+  animation: none;
+}
+#modalOverlay:not(.open) #modalContent,
+.modal-overlay:not(.open) .modal-content {
+  animation: none;
+}
+
+.reveal { opacity: 0; transform: translateY(26px); transition: opacity 0.58s ease, transform 0.58s ease; }
+.reveal.nq-revealed,
+.reveal.revealed,
+.reveal.visible { opacity: 1; transform: translateY(0); }
+.reveal-left { opacity: 0; transform: translateX(-26px); transition: opacity 0.58s ease, transform 0.58s ease; }
+.reveal-left.nq-revealed,
+.reveal-left.revealed { opacity: 1; transform: translateX(0); }
+.reveal-right { opacity: 0; transform: translateX(26px); transition: opacity 0.58s ease, transform 0.58s ease; }
+.reveal-right.nq-revealed,
+.reveal-right.revealed { opacity: 1; transform: translateX(0); }
+
+.page.active .section.reveal,
+.page.page-active .section.reveal {
+  opacity: 1;
+  transform: none;
+}
+#nestiqMarketingHome .reveal {
+  opacity: 0;
+  transform: translateY(26px);
+}
+#nestiqMarketingHome .reveal.visible,
+#nestiqMarketingHome .reveal.revealed,
+#nestiqMarketingHome .reveal.nq-revealed {
+  opacity: 1;
+  transform: none;
+}
+
+.notif, .toast { animation: nq-toast-in 0.38s cubic-bezier(.34,1.2,.64,1) both; }
+.notif.hiding, .toast.hiding { animation: nq-toast-out 0.28s cubic-bezier(.25,.46,.45,.94) forwards; }
+.skeleton { background: linear-gradient(90deg, var(--border, #e5e7eb) 0%, var(--cream, #f5f0e8) 40%, var(--border, #e5e7eb) 80%); background-size: 1200px 100%; animation: nq-shimmer 1.8s ease-in-out infinite; border-radius: 8px; color: transparent !important; }
+.btn-ripple { position: absolute; border-radius: 50%; background: rgba(255,255,255,0.38); pointer-events: none; animation: nq-ripple 0.58s ease-out forwards; }
+.na-fade-in { animation: nq-fade-in 0.45s cubic-bezier(.25,.46,.45,.94) both; }
+.na-scale-bounce { animation: nq-scale-bounce 0.55s cubic-bezier(.34,1.56,.64,1) both; }
+.na-delay-1 { animation-delay: 0.05s; }
+.na-delay-2 { animation-delay: 0.10s; }
+.na-delay-3 { animation-delay: 0.15s; }
+.na-delay-4 { animation-delay: 0.20s; }
+
+.bill-card,
+.bill-plan-card,
+.feat-card,
+.feature-card,
+.ui-card,
+[data-stat-card] {
+  transition: transform 0.22s cubic-bezier(.25,.46,.45,.94), box-shadow 0.22s cubic-bezier(.25,.46,.45,.94), border-color 0.18s ease;
+}
+.bill-card:hover,
+.feat-card:hover,
+.feature-card:hover,
+.ui-card:hover,
+[data-stat-card]:hover {
+  transform: translateY(-4px) scale(1.005);
+  box-shadow: 0 16px 40px rgba(0,0,0,0.11), 0 4px 12px rgba(0,0,0,0.06);
+}
+.bill-plan-card { transition: transform 0.22s cubic-bezier(.34,1.56,.64,1), box-shadow 0.22s ease, border-color 0.22s ease; }
+.bill-plan-card:hover { transform: translateY(-6px) scale(1.01); box-shadow: 0 20px 48px rgba(0,0,0,0.12); }
+.bill-plan-popular { animation: none; }
+
+.ob-step-item.done .ob-step-circle { animation: nq-pop 0.45s cubic-bezier(.34,1.56,.64,1) both; }
+.ob-card { animation: nq-fade-in 0.38s ease both; }
+.invite-code { animation: nq-pop 0.55s cubic-bezier(.34,1.56,.64,1) both; letter-spacing: 0.12em; }
+.sup-ticket-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.sup-ticket-card:hover { transform: translateX(4px); box-shadow: -4px 0 0 var(--gold), 0 4px 16px rgba(0,0,0,0.08); }
+.release { animation: none; }
+.data-table tbody tr,
+.admin-table tbody tr { transition: background 0.15s ease; }
+.data-table tbody tr:hover td,
+.admin-table tbody tr:hover td { background: rgba(196,106,58,0.04); }
+.page-section.active { animation: nq-page-in 0.28s cubic-bezier(.22,1,.36,1); opacity: 1; transform: none; }
 
 header#siteNav nav,
 nav.admin-nav,
@@ -618,17 +775,50 @@ nav.mobile-tabs {
   z-index: auto;
 }
 
-header#siteNav.scrolled {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+[data-nq-tip] {
+  position: relative;
+}
+[data-nq-tip]::after {
+  content: attr(data-nq-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.88);
+  background: var(--ink);
+  color: white;
+  font-size: 0.75rem;
+  font-family: 'DM Sans', sans-serif;
+  padding: 5px 10px;
+  border-radius: 7px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s ease, transform 0.18s cubic-bezier(.34,1.56,.64,1);
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.18);
+}
+[data-nq-tip]:hover::after {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
 
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.28s;
+  animation-timing-function: cubic-bezier(.22,1,.36,1);
+}
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+  *, *::before, *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+  .page, .nq-reveal, .reveal, .nq-reveal-left, .reveal-left, .nq-reveal-right, .reveal-right,
+  .hero-eyebrow, .hero-title, .hero-sub, .hero-actions, .hero-stats, .hero-visual,
+  .page-section.active, .onboarding-step-content, .ob-card {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
   }
 }

@@ -33,13 +33,34 @@ function nestiqExpenseTotalsByMonth(){
   return b;
 }
 
+function nestiqChartSkeleton(canvasId, show){
+  const canvas=document.getElementById(canvasId);
+  const wrap=canvas?.closest('.chart-wrap')||canvas?.parentElement;
+  if(!wrap) return;
+  let sk=wrap.querySelector('.nq-chart-skel');
+  if(show){
+    if(!sk){
+      sk=document.createElement('div');
+      sk.className='nq-chart-skel';
+      sk.style.cssText='position:absolute;inset:8px;z-index:2;pointer-events:none';
+      wrap.style.position='relative';
+      wrap.appendChild(sk);
+    }
+    nestiqShowSkeleton?.(sk,'card',1);
+    return;
+  }
+  sk?.remove();
+}
+
 function initCharts(){
   const emptyEl=document.getElementById('chartsEmptyState');
   const grid=document.getElementById('chartsGrid');
   const statsRow=document.getElementById('chartStatsRow');
+  ['revenueChart','occupancyChart','expenseDonut','cashflowChart'].forEach(id=>nestiqChartSkeleton(id,true));
   const noData=(!(propertiesData||[]).length&&!(tenantsData||[]).length);
 
   if(noData){
+    ['revenueChart','occupancyChart','expenseDonut','cashflowChart'].forEach(id=>nestiqChartSkeleton(id,false));
     if(emptyEl) emptyEl.style.display='block';
     if(grid) grid.style.display='none';
     if(statsRow) statsRow.innerHTML='';
@@ -129,12 +150,16 @@ function initCharts(){
     });
   }
   if(typeof nestiqInitChartsMaintenanceTab==='function') nestiqInitChartsMaintenanceTab();
+  ['revenueChart','occupancyChart','expenseDonut','cashflowChart'].forEach(id=>nestiqChartSkeleton(id,false));
 }
 
 async function runAiPortfolioAnalysis(){
   if(!isGeminiConfigured()){ aiConfigError(); return; }
+  const aiBtn=nestiqBtnFromEvent?.()||document.querySelector('[onclick*="runAiPortfolioAnalysis"]');
+  nestiqSetBtnLoading?.(aiBtn,true,'Analysing...');
   const out=document.getElementById('aiPortfolioResult');
   if(out) out.innerHTML=aiLoadingHtml();
+  try{
   const totalProps=propertiesData.length;
   const occupied=propertiesData.filter(p=>p.status==='occupied').length;
   const vacant=propertiesData.filter(p=>p.status==='vacant').length;
@@ -180,6 +205,9 @@ Open maintenance: ${openMaint} requests`;
     <div style="display:flex;gap:8px;flex-wrap:wrap"><span class="badge badge-amber">Best: ${d.bestPerformingProperty||'—'}</span><span class="badge badge-amber">Underperforming: ${d.underperformingProperty||'—'}</span><span class="badge badge-amber">Vacancy Risk: ${d.vacancyRisk||'—'}</span><span class="badge badge-amber">Cash Flow: ${d.cashFlowTrend||'—'}</span></div>
     ${aiAttribution()}
   </div>`;
+  }finally{
+    nestiqSetBtnLoading?.(aiBtn,false);
+  }
 }
 
 window.runAiPortfolioAnalysis=runAiPortfolioAnalysis;

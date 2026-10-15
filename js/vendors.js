@@ -115,7 +115,8 @@ function nestiqSwitchMaintSubtab(tab){
     if(ven) ven.style.display='none';
     if(ta) ta.style.display='flex';
     if(va) va.style.display='none';
-    renderKanban?.();
+    if(typeof nestiqSwitchMaintView==='function') nestiqSwitchMaintView(window.__nestiqMaintView||'board');
+    else renderKanban?.();
   }
 }
 
@@ -199,7 +200,7 @@ function nestiqExportVendorsCSV(){
     a.download='nestiq-vendors.csv';
     a.click();
   }
-  showNotif?.('Vendors CSV exported','success');
+  nestiqShowNotif?.('Vendors CSV exported','success');
 }
 
 function nestiqRenderVendorsPage(){
@@ -208,6 +209,7 @@ function nestiqRenderVendorsPage(){
   nestiqRenderVendorStats();
   nestiqRenderVendorFilterChips();
   nestiqRenderVendorList();
+  if(typeof nestiqStaggerChildren==='function') nestiqStaggerChildren(document.getElementById('vendorsList') || nestiqVendorGridEl(), 48);
 }
 
 function nestiqRenderVendorList(skipFullNormalize){
@@ -234,16 +236,14 @@ function nestiqRenderVendorList(skipFullNormalize){
     nestiqRenderVendorFilterChips();
   }
   if(!grid) return;
+  if(window.nestiqVendorsLoading){
+    nestiqShowSkeleton?.(grid, 'card', 3);
+    if(empty) empty.style.display='none';
+    return;
+  }
   if(!all.length){
-    grid.innerHTML='';
-    if(empty){
-      empty.style.display='block';
-      empty.innerHTML=`
-        <div style="font-size:2.4rem;margin-bottom:10px">🛠️</div>
-        <div style="font-weight:700;font-size:1.1rem;margin-bottom:6px">No vendors yet</div>
-        <p style="color:var(--muted);font-size:0.88rem;max-width:36ch;margin:0 auto 16px">Add plumbers, electricians and other contractors so you can assign them on maintenance jobs.</p>
-        <button type="button" class="btn-gold btn-sm" onclick="nestiqOpenAddVendorModal()">Add Your First Vendor</button>`;
-    }
+    if(empty) empty.style.display='none';
+    nestiqShowEmptyState?.(grid, { icon:'🛠️', title:'No vendors yet', message:'Add your trusted contractors and tradespeople for quick assignment to maintenance jobs.', action:{ label:'+ Add Vendor', fn:'nestiqOpenAddVendorModal' } });
     return;
   }
   if(empty) empty.style.display='none';
@@ -276,6 +276,7 @@ function nestiqVendorCardHtml(v){
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:8px">
       <button type="button" class="btn-outline btn-sm" onclick='nestiqOpenAddVendorModal(${idJson})'>✏️ Edit</button>
       <button type="button" class="btn-outline btn-sm" style="border-color:var(--rust);color:var(--rust)" onclick='nestiqDeleteVendorConfirm(${idJson})'>🗑️ Remove</button>
+      ${v.accountStatus==='active'?'<span class="badge badge-green" style="font-size:0.68rem;align-self:center">Portal ✓</span>':v.accountStatus==='invited'?'<span class="badge badge-amber" style="font-size:0.68rem;align-self:center">Invited</span>':`<button type="button" class="btn-outline btn-sm" style="border-color:var(--sage);color:var(--sage)" onclick='nestiqInviteContractorToPortal(${idJson})'>🔑 Invite to portal</button>`}
     </div>
   </div>`;
 }
@@ -356,6 +357,11 @@ function nestiqOpenVendorDetail(vid){
             ${!v.bankName&&!v.accountNumber?'<div style="color:var(--muted)">Not set</div>':''}
           </div>
           <button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="nestiqVendorPaymentRequestPrint(${v.id})">Generate Payment Request</button>
+        </div>
+        <div class="settings-card" style="margin:0">
+          <h3 class="settings-card-title">Portal access</h3>
+          ${v.accountStatus==='active'?'<span class="badge badge-green">Portal active</span>':v.accountStatus==='invited'?`<span class="badge badge-amber">Invited</span><div id="nestiqVendorInvCode_${v.id}" style="margin-top:8px;font-size:0.82rem;color:var(--muted)">Loading code…</div><script>nestiqShowVendorInviteCode(${v.id})<\/script>`:`<button type="button" class="btn-outline btn-sm" onclick="nestiqInviteContractorToPortal(${v.id})">Send portal invitation</button>`}
+          <!-- accountStatus could later gain a 'verified' value for landlord-approved contractor verification -->
         </div>
         <div class="settings-card" style="margin:0">
           <h3 class="settings-card-title">Actions</h3>
@@ -464,12 +470,12 @@ function nestiqVendorPaymentRequestPrint(vid){
 
 function nestiqDeactivateVendor(id){
   const v=(vendors||[]).find(x=>Number(x.id)===Number(id));
-  if(v){ v.active=false; saveData(); normalizeDataModel?.(); showNotif('Vendor deactivated','success'); nestiqOpenVendorDetail(id); }
+  if(v){ v.active=false; saveData(); normalizeDataModel?.(); nestiqShowNotif('Vendor deactivated','success'); nestiqOpenVendorDetail(id); }
 }
 
 function nestiqActivateVendor(id){
   const v=(vendors||[]).find(x=>Number(x.id)===Number(id));
-  if(v){ v.active=true; saveData(); normalizeDataModel?.(); showNotif('Vendor activated','success'); nestiqOpenVendorDetail(id); }
+  if(v){ v.active=true; saveData(); normalizeDataModel?.(); nestiqShowNotif('Vendor activated','success'); nestiqOpenVendorDetail(id); }
 }
 
 function nestiqDeleteVendorConfirm(id){
@@ -477,7 +483,7 @@ function nestiqDeleteVendorConfirm(id){
   vendors=(vendors||[]).filter(x=>Number(x.id)!==Number(id));
   saveData();
   normalizeDataModel?.();
-  showNotif('Vendor deleted','warning');
+  nestiqShowNotif('Vendor deleted','warning');
   nestiqCloseVendorDetail();
   if(document.getElementById('vendorsList')||document.getElementById('vendorStatsRow')) nestiqRenderVendorsPage();
   else nestiqRenderVendorList();
@@ -518,8 +524,19 @@ function nestiqOpenAddVendorModal(existingId){
       <div class="form-group"><label>VAT number</label><input class="form-input" id="nv_vat" value="${nestiqVEsc(v?.vatNumber||'')}"></div>
     </div>
     <button type="button" class="btn-primary" style="width:100%;justify-content:center;margin-top:14px" onclick="nestiqSaveVendorForm(${isNew?'null':v.id})">${isNew?'Add Vendor':'Save'}</button>
-    <button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="closeModal()">Cancel</button>`;
-  document.getElementById('modalOverlay').classList.add('open');
+    <button type="button" class="btn-gold" id="nv_save_invite_btn" style="width:100%;justify-content:center;margin-top:8px;display:none" onclick="nestiqSaveVendorAndInvite(${isNew?'null':v.id})">Save & Send Invitation</button>
+    <button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="nestiqCloseModalAnimated()">Cancel</button>`;
+  // Show/hide invite button based on email field
+  const emailInput=document.getElementById('nv_email');
+  const invBtn=document.getElementById('nv_save_invite_btn');
+  const toggleInvBtn=()=>{
+    const hasEmail=!!(emailInput?.value||'').trim();
+    const alreadyActive=v?.accountStatus==='active';
+    if(invBtn) invBtn.style.display=(hasEmail&&!alreadyActive)?'':'none';
+  };
+  emailInput?.addEventListener('input', toggleInvBtn);
+  toggleInvBtn();
+  nestiqOpenModalAnimated();
 }
 
 function nestiqVendorStarPick(n){
@@ -530,9 +547,9 @@ function nestiqVendorStarPick(n){
 
 function nestiqSaveVendorForm(existingId){
   const name=document.getElementById('nv_name')?.value?.trim()||'';
-  if(!name){ showNotif('Name required','error'); return; }
+  if(!name){ nestiqShowNotif('Name required','error'); return; }
   const phone=document.getElementById('nv_phone')?.value?.trim()||'';
-  if(!phone){ showNotif('Phone required','error'); return; }
+  if(!phone){ nestiqShowNotif('Phone required','error'); return; }
   const type=document.getElementById('nv_type')?.value||'Other';
   const wa=document.getElementById('nv_wa')?.value?.trim()||phone;
   const prefs=[...document.querySelectorAll('.v_pref_prop:checked')].map(c=>Number(c.value)).filter(Number.isFinite);
@@ -562,8 +579,8 @@ function nestiqSaveVendorForm(existingId){
     }
     saveData();
     normalizeDataModel?.();
-    closeModal();
-    showNotif('Vendor updated','success');
+    nestiqCloseModalAnimated();
+    nestiqShowNotif('Vendor updated','success');
   }else{
     const id=vendorNextId++;
     vendors.push({
@@ -576,8 +593,8 @@ function nestiqSaveVendorForm(existingId){
     try{ window.vendorNextId=vendorNextId; }catch(e){}
     saveData();
     normalizeDataModel?.();
-    closeModal();
-    showNotif(`🔧 ${name} added to your vendor network`,'success');
+    nestiqCloseModalAnimated();
+    nestiqShowNotif(`🔧 ${name} added to your vendor network`,'success');
   }
   if(document.getElementById('vendorsList')||document.getElementById('vendorStatsRow')) nestiqRenderVendorsPage();
   else nestiqRenderVendorList();
@@ -597,8 +614,8 @@ function nestiqOpenVendorRatingModal(maintId){
     </div>
     <div class="form-group"><label>How did the job go?</label><textarea class="form-input" id="rate_notes" rows="3"></textarea></div>
     <button type="button" class="btn-primary" style="width:100%;justify-content:center" onclick="nestiqSubmitJobRating(${m.id})">Submit Rating</button>
-    <button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="closeModal()">Cancel</button>`;
-  document.getElementById('modalOverlay').classList.add('open');
+    <button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:8px" onclick="nestiqCloseModalAnimated()">Cancel</button>`;
+  nestiqOpenModalAnimated();
 }
 
 function nestiqRateJobStarPick(n){
@@ -608,7 +625,7 @@ function nestiqRateJobStarPick(n){
 }
 
 function nestiqSubmitJobRating(maintId){
-  if(!__nestiqVendorStarsDraft||__nestiqVendorStarsDraft<1){ showNotif('Pick a star rating','error'); return; }
+  if(!__nestiqVendorStarsDraft||__nestiqVendorStarsDraft<1){ nestiqShowNotif('Pick a star rating','error'); return; }
   const m=(maintenanceData||[]).find(x=>Number(x.id)===Number(maintId));
   if(!m) return;
   m.vendorRating=__nestiqVendorStarsDraft;
@@ -618,8 +635,8 @@ function nestiqSubmitJobRating(maintId){
   if(v) v.lastUsed=m.ratedDate;
   saveData();
   normalizeDataModel?.();
-  closeModal();
-  showNotif('Thanks — rating saved','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Thanks — rating saved','success');
   renderKanban?.();
   nestiqRenderVendorList();
   const d=document.getElementById('nestiqVendorDetailView');
@@ -662,7 +679,7 @@ function nestiqPickMaintVendor(maintId,vid){
   const m=(maintenanceData||[]).find(x=>Number(x.id)===Number(maintId));
   const v=(vendors||[]).find(x=>Number(x.id)===Number(vid));
   if(!m||!v) return;
-  m.vendorId=v.id;
+  m.vendorId=String(v.id);
   m.vendorName=v.name;
   m.vendorPhone=v.phone||'';
   m.vendorType=v.type||'';
@@ -761,6 +778,48 @@ function nestiqVendorReportPrint(){
     </body></html>`);
   w.document.close();
 }
+
+async function nestiqSaveVendorAndInvite(existingId){
+  const email=(document.getElementById('nv_email')?.value||'').trim();
+  if(!email){ nestiqShowNotif?.('Email is required to send an invitation','error'); return; }
+  nestiqSaveVendorForm(existingId);
+  // Find the vendor that was just saved (last added if new, or the edited one)
+  const v=existingId!=null&&existingId!=='null'
+    ?(vendors||[]).find(x=>Number(x.id)===Number(existingId))
+    :(vendors||[])[(vendors||[]).length-1];
+  if(!v){ nestiqShowNotif?.('Vendor not found after save','error'); return; }
+  if(v.accountStatus==='active'){
+    nestiqShowNotif?.('This contractor already has portal access.','info');
+    return;
+  }
+  v.email=email;
+  const inv=await nestiqCreateContractorInvitation?.(v);
+  if(inv?.code){
+    try{ await navigator.clipboard?.writeText?.(inv.code); }catch(_e){}
+    nestiqShowContractorInviteModal?.(inv, v);
+  }
+  if(document.getElementById('vendorsList')||document.getElementById('vendorStatsRow')) nestiqRenderVendorsPage();
+}
+window.nestiqSaveVendorAndInvite=nestiqSaveVendorAndInvite;
+
+async function nestiqShowVendorInviteCode(vid){
+  const el=document.getElementById('nestiqVendorInvCode_'+vid);
+  if(!el) return;
+  const db=window.nestiqDb;
+  const lid=window.nestiqCurrentLandlordUid?.();
+  if(!db||!lid){ el.textContent='—'; return; }
+  try{
+    const snap=await window.nestiqFs.staffInvitations(db, lid)
+      .where('role','==','contractor')
+      .where('sourceId','==',String(vid))
+      .where('status','==','pending')
+      .limit(1).get();
+    if(snap.empty){ el.textContent='Code expired or used'; return; }
+    const code=snap.docs[0].id;
+    el.innerHTML=`Code: <strong style="font-family:ui-monospace,monospace;letter-spacing:0.08em">${String(code).replace(/</g,'&lt;')}</strong> <button type="button" class="btn-outline btn-sm" style="font-size:0.7rem;padding:2px 8px;margin-left:4px" onclick="navigator.clipboard.writeText('${code}').then(()=>nestiqShowNotif('Copied','success'))">Copy</button>`;
+  }catch(_e){ el.textContent='—'; }
+}
+window.nestiqShowVendorInviteCode=nestiqShowVendorInviteCode;
 
 window.nestiqSwitchMaintSubtab=nestiqSwitchMaintSubtab;
 window.nestiqRenderVendorList=nestiqRenderVendorList;

@@ -105,19 +105,22 @@ const pdfGenerator={
   }
 };
 
-function finalizePdf(doc, filename){
+function finalizePdf(doc, filename, opts){
+  opts=opts&&typeof opts==='object'?opts:{};
   try{
     const pages=doc.getNumberOfPages();
     for(let i=1;i<=pages;i++){
       doc.setPage(i);
       pdfGenerator.addFooter(doc,i,pages);
     }
-    doc.output('dataurlnewwindow');
-    doc.save(filename);
-    showNotif('PDF ready','success');
+    if(opts.returnDataUrl) return doc.output('datauristring');
+    if(opts.preview!==false) doc.output('dataurlnewwindow');
+    if(!opts.previewOnly) doc.save(filename);
+    if(!opts.silent) nestiqShowNotif(opts.previewOnly?'PDF opened':'PDF ready','success');
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    if(!opts.silent) nestiqShowNotif('PDF generation failed','error');
   }
+  return null;
 }
 
 function tenantByPayment(payment){
@@ -129,12 +132,15 @@ function propertyForTenant(tenant){
 }
 
 async function generateReceiptPDF(tenant,payment){
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
     const prop=propertyForTenant(tenant);
-    let y=pdfGenerator.addHeader(doc,'RENT RECEIPT');
+    let y=pdfGenerator.addHeader(doc,
+      String(payment.paymentType||'').toLowerCase()==='deposit' ? 'DEPOSIT RECEIPT'
+        : String(payment.paymentType||'').toLowerCase()==='move_in' ? 'MOVE-IN RECEIPT'
+        : 'RENT RECEIPT');
     const w=doc.internal.pageSize.getWidth()-(pdfGenerator.marginX*2);
     doc.setDrawColor(225,225,225);
     doc.roundedRect(pdfGenerator.marginX,y,w,34,2,2,'S');
@@ -189,12 +195,86 @@ async function generateReceiptPDF(tenant,payment){
     doc.text(`For queries contact ${landlordSettings.email||'—'}`,pdfGenerator.marginX,270);
     finalizePdf(doc,`receipt-${payment.receiptNo||Date.now()}.pdf`);
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
+  }
+}
+
+async function generateContractorPayoutPDF(job){
+  if(!job){
+    nestiqShowNotif?.('No payout found','warning');
+    return;
+  }
+  if(!window.jspdf?.jsPDF){
+    nestiqShowNotif?.('PDF library not loaded','error');
+    return;
+  }
+  nestiqShowNotif('Generating PDF...','warning');
+  try{
+    const { jsPDF }=window.jspdf;
+    const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
+    const payee=typeof nestiqMaintPayeeMeta==='function'?nestiqMaintPayeeMeta(job):{name:job.vendorName||'Contractor'};
+    const loc=typeof nestiqMaintLocationMeta==='function'?nestiqMaintLocationMeta(job):{field:'Location',value:job.unit||'Common Area'};
+    const amount=job.contractorPaidAmount!=null?Number(job.contractorPaidAmount):(typeof nestiqMaintJobAmount==='function'?nestiqMaintJobAmount(job):Number(job.actualCost||0));
+    const receiptNo=job.contractorReceiptNo||job.contractorPaidRef||'N/A';
+    const reference=job.contractorPaidRef||'N/A';
+    const paidAt=job.contractorPaidAt||new Date().toISOString();
+    const ls=(typeof landlordSettings!=='undefined'&&landlordSettings)?landlordSettings:{};
+    const acc=typeof nestiqMaintMaskAccount==='function'?nestiqMaintMaskAccount(payee.accountNumber):'';
+    const bankLine=[payee.bankName, acc, payee.accountType].filter(Boolean).join(' · ');
+    let y=pdfGenerator.addHeader(doc,'CONTRACTOR PAYOUT RECEIPT');
+    const w=doc.internal.pageSize.getWidth()-(pdfGenerator.marginX*2);
+    doc.setDrawColor(225,225,225);
+    doc.roundedRect(pdfGenerator.marginX,y,w,34,2,2,'S');
+    doc.setFont('helvetica','bold'); doc.setTextColor(...pdfGenerator.colors.gold); doc.setFontSize(16);
+    doc.text(String(receiptNo),pdfGenerator.marginX+4,y+9);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...pdfGenerator.colors.dark); doc.setFontSize(10);
+    doc.text(`Issue Date: ${isoToPretty(paidAt)}`,pdfGenerator.marginX+4,y+16);
+    doc.text('Payment Method: In-app payment',pdfGenerator.marginX+4,y+22);
+    doc.text(`Reference: ${reference}`,pdfGenerator.marginX+4,y+28);
+    const rightX=pdfGenerator.marginX+w-58;
+    doc.setFillColor(90,122,96); doc.circle(rightX+14,y+9,6,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.text('PAID',rightX+14,y+10,{align:'center'});
+    doc.setTextColor(...pdfGenerator.colors.gold); doc.setFont('helvetica','bold'); doc.setFontSize(18);
+    doc.text(`R${Number(amount||0).toLocaleString('en-ZA')}`,rightX,y+22);
+    doc.setFont('helvetica','normal'); doc.setTextColor(...pdfGenerator.colors.dark); doc.setFontSize(10);
+    doc.text('Tax Invoice: No',rightX,y+28);
+    y+=40;
+    doc.setDrawColor(230,230,230); doc.line(pdfGenerator.marginX,y,pdfGenerator.marginX+w,y); y+=5;
+    y=pdfGenerator.addSectionTitle(doc,y,'Paid to');
+    doc.setFontSize(10); doc.setTextColor(...pdfGenerator.colors.dark);
+    doc.text(`Contractor: ${payee.name||'—'}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Bank: ${bankLine||'—'}`,pdfGenerator.marginX,y); y+=8;
+    y=pdfGenerator.addSectionTitle(doc,y,'Job details');
+    doc.text(`Job: ${job.title||job.issueCategory||'Maintenance'}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Property: ${job.property||'—'}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`${loc.field||'Location'}: ${loc.value||'—'}`,pdfGenerator.marginX,y); y+=6;
+    if(job.completionNotes){
+      const notes=String(job.completionNotes).replace(/\s+/g,' ').trim();
+      doc.text(`Work: ${notes.length>90?notes.slice(0,89)+'…':notes}`,pdfGenerator.marginX,y); y+=8;
+    }else y+=2;
+    y=pdfGenerator.addSectionTitle(doc,y,'Payment information');
+    doc.text(`Amount: R${Number(amount||0).toLocaleString('en-ZA',{minimumFractionDigits:2,maximumFractionDigits:2})}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Paid by: ${job.contractorPaidBy||ls.name||'Landlord'}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Date received: ${isoToPretty(paidAt)}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Landlord: ${ls.name||'—'}`,pdfGenerator.marginX,y); y+=8;
+    pdfGenerator.addStamp(doc,'PAID','#5a7a60',100,200);
+    try{
+      const qrText=`NESTIQ:payout:${receiptNo}:${payee.name||'Contractor'}:${Number(amount||0)}:${paidAt}`;
+      const qrUrl=await getQRCodeDataUrl(qrText,80);
+      doc.addImage(qrUrl,'PNG',168,248,24,24);
+    }catch(_err){}
+    doc.setTextColor(...pdfGenerator.colors.gray); doc.setFontSize(9);
+    doc.text('This receipt is proof of an in-app payment recorded in NestIQ. It is not a SARS tax invoice.',pdfGenerator.marginX,265);
+    doc.text(`For queries contact ${ls.email||ls.phone||'—'}`,pdfGenerator.marginX,270);
+    finalizePdf(doc,`payout-${String(receiptNo).replace(/[^\w.-]+/g,'-')}.pdf`);
+  }catch(_err){
+    console.warn('NestIQ: contractor payout PDF', _err);
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 
 function generateStatementPDF(tenant,year=new Date().getFullYear()){
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
@@ -251,12 +331,12 @@ function generateStatementPDF(tenant,year=new Date().getFullYear()){
     doc.text(`For queries or disputes please contact ${landlordSettings.email||'—'}`,pdfGenerator.marginX,275);
     finalizePdf(doc,`statement-${tenant.name.replace(/\s+/g,'-')}-${year}.pdf`);
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 
 function generateTaxPDF(year,incomeData,expData){
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
@@ -305,16 +385,26 @@ function generateTaxPDF(year,incomeData,expData){
     doc.text('Please consult a registered tax practitioner for your official SARS submission.',pdfGenerator.marginX+3,y+12);
     finalizePdf(doc,`tax-report-${year}.pdf`);
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 
-function generateLeasePDF(tenant,property,additionalClauses=[]){
-  showNotif('Generating PDF...','warning');
+function generateLeasePDF(tenant,property,additionalClauses=[],lease=null,opts={}){
+  opts=opts&&typeof opts==='object'?opts:{};
+  if(!opts.silent && !opts.returnDataUrl) nestiqShowNotif('Generating PDF...','warning');
   try{
+    if(lease && typeof lease==='object' && !lease.status && !lease.tenantId && (lease.preview!=null||lease.previewOnly!=null||lease.download!=null)){
+      opts=lease; lease=null;
+    }
+    if(!lease && tenant && typeof window.nestiqPrimaryLeaseForTenant==='function'){
+      lease=window.nestiqPrimaryLeaseForTenant(tenant.id);
+    }
+    if(lease && typeof window.nestiqNormalizeLease==='function') lease=window.nestiqNormalizeLease(lease);
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
-    let y=pdfGenerator.addHeader(doc,'LEASE AGREEMENT SUMMARY');
+    const bothSigned=!!(lease?.landlordSigned && lease?.tenantSigned);
+    const title=bothSigned?'LEASE AGREEMENT':(lease?.status==='draft'?'LEASE AGREEMENT (DRAFT)':'LEASE AGREEMENT');
+    let y=pdfGenerator.addHeader(doc,title);
     y=pdfGenerator.addSectionTitle(doc,y,'Parties to this Agreement');
     const w=doc.internal.pageSize.getWidth()-(pdfGenerator.marginX*2);
     const boxW=(w-4)/2;
@@ -334,23 +424,38 @@ function generateLeasePDF(tenant,property,additionalClauses=[]){
     y+=34;
     y=pdfGenerator.addSectionTitle(doc,y,'Property Details');
     doc.text(`Address: ${property.addr||'—'}`,pdfGenerator.marginX,y); y+=6;
-    doc.text(`Unit: ${tenant.unit||'—'}`,pdfGenerator.marginX,y); y+=6;
+    doc.text(`Unit: ${lease?.unitLabel||tenant.unit||'—'}`,pdfGenerator.marginX,y); y+=6;
     doc.text(`Property Type: ${property.type||'—'}`,pdfGenerator.marginX,y); y+=6;
     doc.text(`Bedrooms: ${property.bedrooms??'—'}`,pdfGenerator.marginX,y); y+=6;
     doc.text(`Parking: ${tenant.parkingBay||'—'}`,pdfGenerator.marginX,y); y+=8;
     y=pdfGenerator.addSectionTitle(doc,y,'Lease Terms');
-    const start=new Date(tenant.leaseStart||'2025-01-01');
-    const end=new Date(tenant.leaseEnd||tenant.lease||new Date());
+    const startIso=lease?.leaseStart||tenant.leaseStart;
+    const endIso=lease?.leaseEnd||tenant.leaseEnd||tenant.lease;
+    const start=new Date(startIso||'2025-01-01');
+    const end=new Date(endIso||new Date());
     const months=Math.max(1,Math.round((end-start)/(1000*60*60*24*30)));
+    const noticeDays=Number(lease?.noticePeriodDays)||30;
+    const noticeLabel=noticeDays===30?'1 calendar month':`${noticeDays} days`;
+    const occupants=Number(lease?.occupants)||1;
+    const pets=lease?.pets||{};
+    const petsLabel=pets.allowed?`Allowed${pets.details?' — '+pets.details:''}`:'Not allowed';
+    const included=(lease?.utilitiesIncluded||[]).join(', ')||'None specified';
+    const excluded=(lease?.utilitiesExcluded||[]).join(', ')||'None specified';
+    const rentAmt=Number(lease?.rent!=null?lease.rent:tenant.rent||0);
+    const depAmt=Number(lease?.deposit!=null?lease.deposit:(typeof nestiqTenantDepositAmount==='function'?nestiqTenantDepositAmount(tenant):Number(tenant.deposit&&typeof tenant.deposit==='object'?tenant.deposit.amount:tenant.deposit||0)));
+    const dueDay=lease?.dueDate||tenant.monthlyDueDate||1;
     const terms=[
-      ['Commencement Date',isoToPretty(tenant.leaseStart)],
-      ['Expiry Date',isoToPretty(tenant.leaseEnd||tenant.lease)],
+      ['Commencement Date',isoToPretty(startIso)],
+      ['Expiry Date',isoToPretty(endIso)],
       ['Lease Period',`${months} months`],
-      ['Monthly Rental',`R${Number(tenant.rent||0).toLocaleString('en-ZA')}`],
-      ['Annual Rental',`R${(Number(tenant.rent||0)*12).toLocaleString('en-ZA')}`],
-      ['Deposit',`R${(typeof nestiqTenantDepositAmount==='function'?nestiqTenantDepositAmount(tenant):Number(tenant.deposit&&typeof tenant.deposit==='object'?tenant.deposit.amount:tenant.deposit||0)).toLocaleString('en-ZA')}`],
-      ['Due Date',`${tenant.monthlyDueDate||1} of each month`],
-      ['Notice Period','1 calendar month']
+      ['Monthly Rental',`R${rentAmt.toLocaleString('en-ZA')}`],
+      ['Annual Rental',`R${(rentAmt*12).toLocaleString('en-ZA')}`],
+      ['Deposit',`R${depAmt.toLocaleString('en-ZA')}`],
+      ['Due Date',`${dueDay} of each month`],
+      ['First month',lease?.prorateFirstMonth?'Pro-rata from commencement if after day 1':'Full monthly rent'],
+      ['Notice Period',noticeLabel],
+      ['Occupants',String(occupants)],
+      ['Pets',petsLabel]
     ];
     terms.forEach((t,idx)=>{
       const col=idx%2; const row=Math.floor(idx/2);
@@ -358,10 +463,20 @@ function generateLeasePDF(tenant,property,additionalClauses=[]){
       const yy=y+(row*7);
       doc.text(`${t[0]}: ${t[1]}`,x,yy);
     });
-    y+=32;
+    y+=50;
+    y=pdfGenerator.addSectionTitle(doc,y,'Utilities');
+    doc.text(`Included: ${included}`,pdfGenerator.marginX,y,{maxWidth:w}); y+=6;
+    doc.text(`Excluded (tenant pays): ${excluded}`,pdfGenerator.marginX,y,{maxWidth:w}); y+=8;
+    if(lease?.maintenanceResponsibilities){
+      y=pdfGenerator.addSectionTitle(doc,y,'Maintenance responsibilities');
+      const maintLines=doc.splitTextToSize(String(lease.maintenanceResponsibilities),w);
+      maintLines.forEach(line=>{ doc.text(line,pdfGenerator.marginX,y); y+=5; });
+      y+=3;
+    }
     y=pdfGenerator.addSectionTitle(doc,y,'Key Terms and Conditions');
+    const extra=[...(lease?.additionalClauses||[]), ...((additionalClauses||[]).filter(c=>!(lease?.additionalClauses||[]).includes(c)))];
     const clauses=[
-      `1. The tenant shall pay rent on or before the ${tenant.monthlyDueDate||1} day of each month.`,
+      `1. The tenant shall pay rent on or before the ${dueDay} day of each month.`,
       `2. Rental payments shall be made via EFT to the landlord's designated bank account.`,
       `3. The tenant shall not sublet the property without written consent from the landlord.`,
       `4. The tenant shall maintain the property in a clean and habitable condition.`,
@@ -369,28 +484,69 @@ function generateLeasePDF(tenant,property,additionalClauses=[]){
       `6. Any damage beyond fair wear and tear shall be deducted from the deposit.`,
       `7. This agreement is governed by the Rental Housing Act 50 of 1999 as amended.`,
       `8. Disputes shall be referred to the Rental Housing Tribunal.`,
-      ...((additionalClauses||[]).map((c,idx)=>`${9+idx}. ${c}`))
+      `9. Notice to terminate shall be ${noticeLabel} in writing.`,
+      `10. Occupancy is limited to ${occupants} occupant(s) unless the landlord agrees in writing.`,
+      ...(extra.map((c,idx)=>`${11+idx}. ${c}`))
     ];
     doc.setFontSize(9);
-    clauses.forEach(c=>{ doc.text(c,pdfGenerator.marginX,y,{maxWidth:w}); y+=6; });
-    y+=4;
+    clauses.forEach(c=>{
+      if(y>250){ doc.addPage(); y=pdfGenerator.addHeader(doc,title); }
+      const lines=doc.splitTextToSize(c,w);
+      lines.forEach(line=>{ doc.text(line,pdfGenerator.marginX,y); y+=5; });
+      y+=1;
+    });
+    y+=6;
+    if(y>230){ doc.addPage(); y=pdfGenerator.addHeader(doc,title); }
     doc.setDrawColor(190,190,190);
     doc.line(pdfGenerator.marginX, y, pdfGenerator.marginX+70, y);
     doc.line(pdfGenerator.marginX+w-70, y, pdfGenerator.marginX+w, y);
     doc.setFontSize(9); doc.setTextColor(...pdfGenerator.colors.gray);
-    doc.text(`Landlord: ${landlordSettings.name||'—'}`,pdfGenerator.marginX,y+5);
-    doc.text('Date: _____________________',pdfGenerator.marginX,y+10);
-    doc.text(`Tenant: ${tenant.name||'—'}`,pdfGenerator.marginX+w-70,y+5);
-    doc.text('Date: _____________________',pdfGenerator.marginX+w-70,y+10);
-    doc.text('This is a summary document only. The full lease agreement supersedes this summary.',pdfGenerator.marginX,276);
-    finalizePdf(doc,`lease-summary-${tenant.name.replace(/\s+/g,'-')}.pdf`);
+    const ldSign=lease?.landlordSigned;
+    const tnSign=lease?.tenantSigned;
+    const signDate=v=>{
+      if(!v) return '_____________________';
+      if(typeof v==='string') return isoToPretty(v.slice(0,10));
+      try{ if(v.toDate) return isoToPretty(v.toDate().toISOString().slice(0,10)); }catch(_e){}
+      if(v.seconds) return isoToPretty(new Date(v.seconds*1000).toISOString().slice(0,10));
+      return isoToPretty(String(v).slice(0,10));
+    };
+    const ldDate=ldSign?.signedAt?signDate(ldSign.signedAt):'_____________________';
+    const tnDate=tnSign?.signedAt?signDate(tnSign.signedAt):'_____________________';
+    doc.setFont('helvetica', ldSign?'italic':'normal');
+    doc.text(ldSign?String(ldSign.typedName||landlordSettings.name||'Landlord'):'(awaiting landlord signature)',pdfGenerator.marginX,y+5);
+    doc.setFont('helvetica','normal');
+    doc.text(ldSign?`Signed: ${ldDate}`:`Date: ${ldDate}`,pdfGenerator.marginX,y+10);
+    doc.text('Landlord',pdfGenerator.marginX,y+15);
+    doc.setFont('helvetica', tnSign?'italic':'normal');
+    doc.text(tnSign?String(tnSign.typedName||tenant.name||'Tenant'):'(awaiting tenant signature)',pdfGenerator.marginX+w-70,y+5);
+    doc.setFont('helvetica','normal');
+    doc.text(tnSign?`Signed: ${tnDate}`:`Date: ${tnDate}`,pdfGenerator.marginX+w-70,y+10);
+    doc.text('Tenant',pdfGenerator.marginX+w-70,y+15);
+    doc.setFontSize(8);
+    if(bothSigned){
+      doc.text('Signed in NestIQ by both parties (typed name + agreement). This is a student-project acknowledgement, not a certified electronic signature.',pdfGenerator.marginX,276,{maxWidth:w});
+    }else if(lease){
+      doc.text('This document reflects the current lease terms. It is not fully signed until both parties complete the in-app acknowledgement.',pdfGenerator.marginX,276,{maxWidth:w});
+    }else{
+      doc.text('This is a summary document only. The full lease agreement supersedes this summary.',pdfGenerator.marginX,276);
+    }
+    const safeName=String(tenant.name||'tenant').replace(/\s+/g,'-');
+    const pdfOpts={
+      returnDataUrl:!!opts.returnDataUrl,
+      silent:!!(opts.silent||opts.returnDataUrl),
+      previewOnly:!!(opts.preview||opts.returnDataUrl),
+      preview:opts.returnDataUrl?false:(opts.preview!==false && !opts.silent)
+    };
+    if(opts.download===false) pdfOpts.previewOnly=true;
+    return finalizePdf(doc,`lease-${safeName}.pdf`, pdfOpts)||null;
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    if(!(opts.silent||opts.returnDataUrl)) nestiqShowNotif('PDF generation failed','error');
+    return null;
   }
 }
 
 function generateMaintenancePDF(propertyId=null,dateRange={}){
-  showNotif('Generating PDF...','warning');
+  nestiqShowNotif('Generating PDF...','warning');
   try{
     const { jsPDF }=window.jspdf;
     const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait'});
@@ -435,18 +591,18 @@ function generateMaintenancePDF(propertyId=null,dateRange={}){
     doc.text(`Total maintenance costs (period): R${totalMaintCost.toLocaleString('en-ZA')}`,pdfGenerator.marginX,270);
     finalizePdf(doc,`maintenance-report-${Date.now()}.pdf`);
   }catch(_err){
-    showNotif('PDF generation failed','error');
+    nestiqShowNotif('PDF generation failed','error');
   }
 }
 
 function generateRentReceiptPDF(payment){
   const t=tenantByPayment(payment);
-  if(!t) return showNotif('PDF generation failed','error');
+  if(!t) return nestiqShowNotif('PDF generation failed','error');
   generateReceiptPDF(t,payment);
 }
 function generatePaymentStatementPDF(tenantId){
   const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t) return showNotif('PDF generation failed','error');
+  if(!t) return nestiqShowNotif('PDF generation failed','error');
   generateStatementPDF(t,new Date().getFullYear());
 }
 function generateTaxReportPDF(){
@@ -458,9 +614,15 @@ function generateTaxReportPDF(){
   generateTaxPDF(year,incomeData,expData);
 }
 function generateLeaseSummaryPDF(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t) return showNotif('PDF generation failed','error');
-  generateLeasePDF(t,propertyForTenant(t));
+  const btn=nestiqBtnFromEvent?.();
+  nestiqSetBtnLoading?.(btn,true,'Generating...');
+  try{
+    const t=tenantsData.find(x=>x.id===tenantId);
+    if(!t){ nestiqShowNotif('PDF generation failed','error'); return; }
+    generateLeasePDF(t,propertyForTenant(t));
+  }finally{
+    nestiqSetBtnLoading?.(btn,false);
+  }
 }
 
 window.pdfGenerator=pdfGenerator;
@@ -470,6 +632,7 @@ window.generateTaxPDF=generateTaxPDF;
 window.generateLeasePDF=generateLeasePDF;
 window.generateMaintenancePDF=generateMaintenancePDF;
 window.generateRentReceiptPDF=generateRentReceiptPDF;
+window.generateContractorPayoutPDF=generateContractorPayoutPDF;
 window.generatePaymentStatementPDF=generatePaymentStatementPDF;
 window.generateTaxReportPDF=generateTaxReportPDF;
 window.generateLeaseSummaryPDF=generateLeaseSummaryPDF;

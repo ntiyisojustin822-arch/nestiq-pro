@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Rental Application — NestIQ</title>
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./css/styles.css" />
-  <link rel="stylesheet" href="./css/animations.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./css/styles.css?v=ux-polish1" />
+  <link rel="stylesheet" href="./css/animations.css?v=polish1" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -14,11 +14,11 @@
       theme: {
         extend: {
           colors: {
-            gold: '#C46A3A',
+            gold: '#c9a84c',
             ink: '#0E1117',
-            cream: '#F5F0E8',
-            rust: '#A63D2F',
-            muted: '#6B7280',
+            cream: '#f7f4ef',
+            rust: '#c46a3a',
+            muted: '#6b665e',
           },
           fontFamily: {
             display: ['Playfair Display', 'serif'],
@@ -51,8 +51,10 @@
       }catch(e){ console.warn('NestIQ public page Firebase', e); }
     })();
   </script>
+  <script src="./js/firestore-paths.js"></script>
   <script src="./js/utils.js"></script>
-  <script src="./js/applications.js"></script>
+  <script src="./js/units.js?v=listing-units1"></script>
+  <script src="./js/applications.js?v=listing-units1"></script>
   <script>
     (function nestiqBootPublicApplicationPage(){
       function run(){
@@ -64,6 +66,7 @@
       else run();
     })();
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="./js/animations.js"></script>
 </body>
 </html>

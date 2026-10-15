@@ -214,7 +214,7 @@ function prComputeDataset(range){
 function openPortfolioReportOptionsModal(){
   const s=typeof getSession==='function'?getSession():null;
   if(s?.role!=='landlord'){
-    showNotif('Portfolio report is available to landlords only','warning');
+    nestiqShowNotif('Portfolio report is available to landlords only','warning');
     return;
   }
   document.getElementById('modalContent').innerHTML=`
@@ -246,14 +246,14 @@ function openPortfolioReportOptionsModal(){
     <label style="display:flex;align-items:center;gap:8px;margin:6px 0;font-size:0.86rem"><input type="radio" name="pr_fmt" value="pdf"> Download PDF</label>
     <div style="display:flex;gap:10px;margin-top:18px;flex-wrap:wrap">
       <button type="button" class="btn-primary btn-sm" onclick="generatePortfolioReportFromModal()">Generate report</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
   const t=new Date().toISOString().slice(0,10);
   const f=document.getElementById('pr_from');
   const t0=document.getElementById('pr_to');
   if(f) f.value=new Date(new Date().getFullYear(),new Date().getMonth()-1,1).toISOString().slice(0,10);
   if(t0) t0.value=t;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function generatePortfolioReportFromModal(){
@@ -269,7 +269,7 @@ function generatePortfolioReportFromModal(){
     charts:Boolean(document.getElementById('pr_sec_charts')?.checked)
   };
   const fmt=document.querySelector('input[name="pr_fmt"]:checked')?.value||'print';
-  closeModal();
+  nestiqCloseModalAnimated();
   const range=prGetReportDateRange(period,from,to);
   const data=prComputeDataset(range);
   const meta=prLandlordMeta();
@@ -279,7 +279,7 @@ function generatePortfolioReportFromModal(){
     return;
   }
   const w=window.open('','_blank');
-  if(!w){ showNotif('Allow pop-ups to open the report','warning'); return; }
+  if(!w){ nestiqShowNotif('Allow pop-ups to open the report','warning'); return; }
   w.document.write(prBuildReportDocument(data,sections,meta,prepared,range));
   w.document.close();
 }
@@ -475,7 +475,7 @@ ${bodyInner}
 
 function __nestiqBuildPortfolioPDF(reportWin){
   const{jsPDF}=window.jspdf||{};
-  if(!jsPDF){ showNotif('PDF library not loaded','error'); return; }
+  if(!jsPDF){ nestiqShowNotif('PDF library not loaded','error'); return; }
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const pageW=doc.internal.pageSize.getWidth();
   const pageH=doc.internal.pageSize.getHeight();
@@ -489,7 +489,7 @@ function __nestiqBuildPortfolioPDF(reportWin){
     doc.setTextColor(100);
     doc.text(`Prepared by NestIQ Pro on ${prepared}`,pageW/2,pageH-10,{align:'center'});
     doc.save('nestiq-portfolio-report.pdf');
-    showNotif('PDF downloaded','success');
+    nestiqShowNotif('PDF downloaded','success');
     return;
   }
   pages.forEach((section,idx)=>{
@@ -530,16 +530,16 @@ function __nestiqBuildPortfolioPDF(reportWin){
     doc.text(`Page ${i} of ${tp} · For financial enquiries: ${meta.email||'—'} ${meta.phone||''}`,pageW/2,pageH-10,{align:'center'});
   }
   doc.save(`nestiq-portfolio-report-${new Date().toISOString().slice(0,10)}.pdf`);
-  showNotif('PDF downloaded','success');
+  nestiqShowNotif('PDF downloaded','success');
 }
 
 window.__nestiqBuildPortfolioPDF=__nestiqBuildPortfolioPDF;
 
 function __nestiqPortfolioPdfDirect(data,sections,meta,prepared,range){
   const{jsPDF}=window.jspdf||{};
-  if(!jsPDF){ showNotif('PDF library not loaded','error'); return; }
+  if(!jsPDF){ nestiqShowNotif('PDF library not loaded','error'); return; }
   const w=window.open('','_blank');
-  if(!w){ showNotif('Allow pop-ups for PDF generation','warning'); return; }
+  if(!w){ nestiqShowNotif('Allow pop-ups for PDF generation','warning'); return; }
   w.document.write(prBuildReportDocument(data,sections,meta,prepared,range));
   w.document.close();
   let tries=0;

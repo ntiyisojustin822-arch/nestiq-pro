@@ -1,20 +1,19 @@
 <div id="page-vendors" class="page" style="padding-top:70px">
 
   <!-- Page header -->
-  <div class="page-header reveal">
+  <div class="page-header reveal nq-reveal">
     <div>
       <h1 class="page-title">🛠️ Vendors &amp; Contractors</h1>
       <p class="page-sub">Manage your trusted tradespeople and contractors</p>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn-outline btn-sm" onclick="nestiqVendorReportPrint()">📊 Vendor Report</button>
-      <button class="btn-outline btn-sm" onclick="nestiqExportVendorsCSV()">⬇ Export CSV</button>
       <button class="btn-gold btn-sm" onclick="nestiqOpenAddVendorModal()">+ Add Vendor</button>
     </div>
   </div>
 
   <!-- Stats row -->
-  <div class="stats-row reveal" id="vendorStatsRow"></div>
+  <div class="stats-row reveal nq-reveal" id="vendorStatsRow"></div>
 
   <!-- Filter chips -->
   <div id="vendorFilterChips" class="filter-chips reveal" style="margin-bottom:16px"></div>

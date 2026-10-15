@@ -1,10 +1,5 @@
-function showNotif(msg,type='success'){
-  const icons={success:'✓',warning:'⚠',error:'✕'};
-  const el=document.createElement('div');
-  el.className=`notif ${type}`;
-  el.innerHTML=`<span>${icons[type]}</span><span>${msg}</span>`;
-  document.getElementById('notifContainer').appendChild(el);
-  setTimeout(()=>{el.style.cssText='opacity:0;transform:translateX(20px);transition:.3s';setTimeout(()=>el.remove(),300)},3000);
+function showNotif(msg,type,duration){
+  if(typeof nestiqShowNotif==='function') return nestiqShowNotif(msg,type,duration);
 }
 
 let systemNotifLog=[];
@@ -52,6 +47,7 @@ function logSystemNotification(title,body){
   systemNotifLog.unshift({id:Date.now(),title,body,timestamp:new Date().toISOString(),read:false});
   if(systemNotifLog.length>100) systemNotifLog=systemNotifLog.slice(0,100);
   saveNotificationState();
+  if(typeof nestiqShakeNotifBell==='function') nestiqShakeNotifBell();
 }
 function canSendByTag(tag,minMs){
   const last=Number(notifSentLog[tag]||0);
@@ -195,9 +191,22 @@ function markSystemNotifRead(id){systemNotifLog=systemNotifLog.map(n=>n.id===id?
 function markSystemNotifReadByTag(_tag){ systemNotifLog=systemNotifLog.map((n,idx)=>idx===0?{...n,read:true}:n); saveNotificationState(); renderBell(); }
 function clearSystemNotifs(){ systemNotifLog=[]; saveNotificationState(); renderBell(); }
 function clearBellNotifs(){bellNotifs=[];renderBell();document.getElementById('bellDropdown')?.classList.remove('open');}
+function nestiqShakeNotifBell(){
+  const bell=document.getElementById('notifBell')
+    || document.querySelector('.notif-bell')
+    || document.querySelector('.notif-bell-btn')
+    || document.querySelector('#bellWrap .notif-bell-btn');
+  if(!bell) return;
+  bell.style.animation='none';
+  void bell.offsetWidth;
+  bell.style.animation='nq-shake 0.45s ease';
+  bell.addEventListener('animationend',()=>{ bell.style.animation=''; },{once:true});
+}
+
 function addBellNotif(icon,text,onClickExtra){
   bellNotifs.unshift({id:Date.now(),icon,text,time:'Just now',unread:true,onClickExtra:onClickExtra||''});
   renderBell();
+  nestiqShakeNotifBell();
 }
 
 function notifBannerHtml(){
@@ -230,7 +239,7 @@ async function enableBrowserNotifications(){
     const res=await Notification.requestPermission();
     dismissNotifPermissionBanner();
     if(res==='granted'){
-      showNotif('Notifications enabled','success');
+      nestiqShowNotif('Notifications enabled','success');
       sendBrowserNotif('NestIQ Pro','Notifications are now enabled',{tag:'enabled'});
     }
   }catch(_err){
@@ -315,7 +324,7 @@ function runTenantNotificationChecks(){
     const end=new Date(t.leaseEnd||t.lease||'');
     const leaseDays=Math.ceil((end-now)/86400000);
     if(leaseDays===60){
-      maybeSend(`lease-expiry-${t.id}`,365*24*60*60*1000,'Lease Expiring','Your lease expires in 60 days. Contact your landlord to discuss renewal.',{data:{route:'tenant-dashboard'}});
+      maybeSend(`lease-expiry-${t.id}`,365*24*60*60*1000,'Lease Expiring','Your lease expires in 60 days. Message your caretaker to discuss renewal.',{data:{route:'tenant-dashboard'}});
     }
   }
 }
@@ -384,12 +393,12 @@ function notifyTenantMaintenanceUpdate(req){
 }
 function notifyTenantNewMessage(msg){
   const s=typeof getSession==='function'?getSession():null;
-  if(s?.role!=='tenant' || s.userId!==msg.tenantId || msg.fromRole!=='landlord') return;
-  maybeSend(`message-${msg.id}`,1000,'New Message','Your landlord sent you a message',{data:{route:'tenant-dashboard'}});
+  if(s?.role!=='tenant' || s.userId!==msg.tenantId || msg.fromRole!=='caretaker') return;
+  maybeSend(`message-${msg.id}`,1000,'New Message','Your caretaker sent you a message',{data:{route:'tenant-dashboard'}});
 }
 function sendTestBrowserNotification(){
   const ok=sendBrowserNotif('NestIQ Pro','Notifications are working correctly',{tag:'nestiq-test',data:{route:'settings'}});
-  if(!ok) showNotif('Enable browser notifications first','warning');
+  if(!ok) nestiqShowNotif('Enable browser notifications first','warning');
 }
 function disableAllNotificationSettings(){
   Object.keys(notifSettings).forEach(k=>{
@@ -397,7 +406,7 @@ function disableAllNotificationSettings(){
   });
   saveNotificationState();
   if(typeof renderSettings==='function') renderSettings();
-  showNotif('All notification toggles disabled','success');
+  nestiqShowNotif('All notification toggles disabled','success');
 }
 
 document.addEventListener('click',e=>{

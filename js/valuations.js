@@ -528,9 +528,9 @@ function nestiqOpenUpdateValuationModal(propertyId){
     <p id="nv_impact" style="font-size:0.84rem;color:var(--muted)"></p>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveNewValuation(${p.id})">Save valuation</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   const inp = document.getElementById('nv_val');
   const upd = () => {
     const n = Number(inp?.value);
@@ -550,7 +550,7 @@ function nestiqSaveNewValuation(propertyId){
   const date = document.getElementById('nv_date')?.value || '';
   const source = document.getElementById('nv_src')?.value || 'manual';
   if (!Number.isFinite(val) || val <= 0 || !date){
-    showNotif('Enter value and date', 'error');
+    nestiqShowNotif('Enter value and date', 'error');
     return;
   }
   const ids = (p.valuations || []).map(v => v.id);
@@ -567,8 +567,8 @@ function nestiqSaveNewValuation(propertyId){
   });
   saveData?.();
   normalizeDataModel?.();
-  closeModal();
-  showNotif(`📈 ${p.name} value updated to ${nestiqFormatMoney(val)}`, 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif(`📈 ${p.name} value updated to ${nestiqFormatMoney(val)}`, 'success');
   nestiqRenderValuationPage();
 }
 
@@ -582,9 +582,9 @@ function nestiqOpenPurchaseDetailsModal(propertyId){
     <div class="form-group"><label>Transfer costs (R)</label><input class="form-input" id="np_tc" type="number" step="1" min="0" value="${p.transferCosts || 0}"></div>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSavePurchaseDetails(${p.id})">Save</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqSavePurchaseDetails(propertyId){
@@ -596,8 +596,8 @@ function nestiqSavePurchaseDetails(propertyId){
   p.transferCosts = Math.max(0, Number(document.getElementById('np_tc')?.value) || 0);
   saveData?.();
   normalizeDataModel?.();
-  closeModal();
-  showNotif('Purchase details saved', 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Purchase details saved', 'success');
   nestiqRenderValuationPage();
 }
 
@@ -624,9 +624,9 @@ function nestiqOpenBondDetailsModal(propertyId){
     <div style="margin-top:10px;font-size:0.82rem">Current LTV: <strong>${ltv != null ? ltv.toFixed(1) + '%' : '—'}</strong></div>
     <div style="display:flex;gap:8px;margin-top:14px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveBondDetails(${p.id})">Save bond details</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Close</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   nestiqBondUpdateRemainingDisplay(p);
 }
 
@@ -674,8 +674,8 @@ function nestiqSaveBondDetails(propertyId){
   p.bondTermYears = Math.max(0, Number(document.getElementById('nb_term')?.value) || 0);
   saveData?.();
   normalizeDataModel?.();
-  closeModal();
-  showNotif('Bond details saved', 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Bond details saved', 'success');
   nestiqRenderValuationPage();
 }
 
@@ -691,9 +691,9 @@ function nestiqOpenImprovementModal(propertyId){
     <label style="display:flex;gap:8px;align-items:center;font-size:0.86rem"><input type="checkbox" id="ni_addv"> Added to property value (for yield / invested basis)</label>
     <div style="display:flex;gap:8px;margin-top:12px">
       <button type="button" class="btn-primary btn-sm" onclick="nestiqSaveImprovement(${p.id})">Save</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function nestiqSaveImprovement(propertyId){
@@ -701,7 +701,7 @@ function nestiqSaveImprovement(propertyId){
   if (!p) return;
   const desc = document.getElementById('ni_desc')?.value?.trim() || '';
   if (!desc){
-    showNotif('Description required', 'error');
+    nestiqShowNotif('Description required', 'error');
     return;
   }
   const ids = (p.improvements || []).map(x => x.id);
@@ -716,8 +716,8 @@ function nestiqSaveImprovement(propertyId){
   });
   saveData?.();
   normalizeDataModel?.();
-  closeModal();
-  showNotif('Improvement added', 'success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Improvement added', 'success');
   nestiqRenderValuationPage();
 }
 
@@ -749,8 +749,8 @@ function nestiqOpenValuationHistoryModal(propertyId){
       </table>
     </div>
     <div id="nestiqValHistFoot" style="margin-top:12px;font-size:0.84rem"></div>
-    <button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="closeModal()">Close</button>`;
-  document.getElementById('modalOverlay').classList.add('open');
+    <button type="button" class="btn-outline btn-sm" style="margin-top:10px" onclick="nestiqCloseModalAnimated()">Close</button>`;
+  nestiqOpenModalAnimated();
   setTimeout(() => nestiqRenderValHistoryChart(p, vals, purchase), 50);
 }
 

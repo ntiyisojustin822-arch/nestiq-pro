@@ -3,12 +3,10 @@
   'use strict';
 
   // Sandbox merchant (PayFast test). Replace with live merchant ID/key for production charging.
-  const PAYFAST_MERCHANT_ID = '10000100';
-  const PAYFAST_MERCHANT_KEY = '46f0cd694581a';
+  const PAYFAST_MERCHANT_ID = '10053105';
+  const PAYFAST_MERCHANT_KEY = 'f8e8oy0eob5s2';
   const PAYFAST_PASSPHRASE = '';
-  const PAYFAST_IS_SANDBOX = PAYFAST_MERCHANT_ID === '10000100' || (
-    typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-  );
+  const PAYFAST_IS_SANDBOX = true;
   const PAYFAST_PROCESS_URL = PAYFAST_IS_SANDBOX
     ? 'https://sandbox.payfast.co.za/eng/process'
     : 'https://www.payfast.co.za/eng/process';
@@ -47,7 +45,6 @@
         'Financial reports & exports',
         'EmailJS notifications',
         'WhatsApp reminders',
-        'Walk-in application capture',
         'Priority support'
       ],
       payfastPlanId: 'PAYFAST_PRO_PLAN_ID',
@@ -123,14 +120,39 @@
     }catch(_e){}
   }
 
-  function nestiqConsumePendingPaymentReturn(){
+  /** Read pending checkout without clearing — only clear after activation succeeds. */
+  function nestiqPeekPendingPaymentReturn(){
     try{
       const raw = localStorage.getItem('nestiq-pending-payment');
-      if(raw) localStorage.removeItem('nestiq-pending-payment');
       return raw ? JSON.parse(raw) : null;
     }catch(_e){
-      try{ localStorage.removeItem('nestiq-pending-payment'); }catch(_e2){}
       return null;
+    }
+  }
+
+  function nestiqClearPendingPaymentReturn(){
+    try{ localStorage.removeItem('nestiq-pending-payment'); }catch(_e){}
+  }
+
+  function nestiqConsumePendingPaymentReturn(){
+    const pending = nestiqPeekPendingPaymentReturn();
+    nestiqClearPendingPaymentReturn();
+    return pending;
+  }
+
+  function nestiqPendingPaymentIsFresh(pending, maxMs){
+    if(!pending) return false;
+    const max = Number.isFinite(maxMs) ? maxMs : 48 * 60 * 60 * 1000;
+    return (Date.now() - Number(pending.at || 0)) < max;
+  }
+
+  function nestiqIsRentPaymentReturnUrl(){
+    try{
+      const p = new URLSearchParams(location.search);
+      if(String(p.get('kind')||'') === 'rent') return true;
+      return String(p.get('ref')||'').indexOf('RENT-') === 0;
+    }catch(_e){
+      return false;
     }
   }
 
@@ -147,21 +169,28 @@
     const outlet = document.getElementById('appOutlet');
     if(!outlet) return;
     const ok = kind === 'success';
+    const rent = nestiqIsRentPaymentReturnUrl();
+    const title = rent
+      ? (ok ? 'Rent payment submitted' : 'Rent payment cancelled')
+      : (ok ? 'Payment successful' : 'Payment cancelled');
+    const body = rent
+      ? (ok
+        ? 'Signing you back into your tenant portal. Your rent status will update once PayFast confirms the payment.'
+        : 'No rent was taken. Sign in to return to your portal — your rent status is unchanged.')
+      : (ok
+        ? 'Signing you back into NestIQ and activating your plan. This usually takes a few seconds…'
+        : 'No charge was completed. Sign in to return to your dashboard — your plan is unchanged.');
     outlet.innerHTML = `
       <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:32px 20px;background:var(--paper,#F5F0E8)">
         <div style="max-width:440px;width:100%;text-align:center;background:#fff;border:1px solid rgba(14,17,23,.1);border-radius:16px;padding:32px 24px;box-shadow:0 8px 32px rgba(14,17,23,.06)">
           <div style="font-size:2.4rem;margin-bottom:12px">${ok ? '🎉' : '↩️'}</div>
-          <h1 style="font-family:'Playfair Display',serif;font-size:1.45rem;margin:0 0 10px">${ok ? 'Payment successful' : 'Payment cancelled'}</h1>
-          <p style="color:rgba(14,17,23,.6);line-height:1.55;margin:0 0 20px;font-size:.92rem">
-            ${ok
-              ? 'Signing you back into NestIQ and activating your plan. This usually takes a few seconds…'
-              : 'No charge was completed. Sign in to return to your dashboard — your plan is unchanged.'}
-          </p>
+          <h1 style="font-family:'Playfair Display',serif;font-size:1.45rem;margin:0 0 10px">${title}</h1>
+          <p style="color:rgba(14,17,23,.6);line-height:1.55;margin:0 0 20px;font-size:.92rem">${body}</p>
           <div id="nestiqPayReturnStatus" style="font-size:.84rem;color:rgba(14,17,23,.55);margin-bottom:16px">${ok ? 'Restoring your session…' : ''}</div>
           <button type="button" class="btn-gold" style="width:100%;justify-content:center" onclick="nestiqShowSignInLandlord?.()">Sign in to continue</button>
-          <p style="margin-top:14px;font-size:.8rem;color:rgba(14,17,23,.45)">
+          ${rent ? '' : `<p style="margin-top:14px;font-size:.8rem;color:rgba(14,17,23,.45)">
             <a href="billing.html" style="color:#C46A3A;font-weight:600">Open Billing &amp; Plan</a>
-          </p>
+          </p>`}
         </div>
       </section>`;
     try{ window.nestiqHideBootOverlay?.(); }catch(_e){}
@@ -265,14 +294,16 @@
         <h2 class="modal-title" style="margin-bottom:8px">You've reached your Starter plan limit</h2>
         <p class="modal-sub" style="margin-bottom:20px">${msg}</p>
         <button type="button" class="btn-gold" style="width:100%;justify-content:center;margin-bottom:10px"
-          onclick="closeModal();nestiqInitiatePayFastCheckout('pro','monthly')">Upgrade to Pro — ${nestiqFormatZar(NESTIQ_PLANS.pro.price_monthly)}/month</button>
-        <button type="button" class="btn-outline" style="width:100%;justify-content:center" onclick="closeModal()">Maybe Later</button>
-        ${STRIPE_ENABLED ? `<button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="closeModal();nestiqInitiateStripeCheckout('pro','monthly')">Pay with Stripe</button>` : ''}
+          onclick="nestiqCloseModalAnimated();nestiqInitiatePayFastCheckout('pro','monthly')">Upgrade to Pro — ${nestiqFormatZar(NESTIQ_PLANS.pro.price_monthly)}/month</button>
+        <button type="button" class="btn-outline" style="width:100%;justify-content:center" onclick="nestiqCloseModalAnimated()">Maybe Later</button>
+        ${STRIPE_ENABLED ? `<button type="button" class="btn-outline btn-sm" style="width:100%;margin-top:10px" onclick="nestiqCloseModalAnimated();nestiqInitiateStripeCheckout('pro','monthly')">Pay with Stripe</button>` : ''}
       </div>`;
     if(typeof openModal === 'function') openModal();
     const mc = document.getElementById('modalContent');
-    if(mc) mc.innerHTML = html;
-    else if(typeof showNotif === 'function') showNotif(msg, 'warning');
+    if(mc){
+      mc.innerHTML = html;
+      nestiqOpenModalAnimated();
+    } else if(typeof nestiqShowNotif === 'function') nestiqShowNotif(msg, 'warning');
   }
 
   function nestiqSplitName(full){
@@ -293,91 +324,110 @@
     return '';
   }
 
-  async function nestiqInitiatePayFastCheckout(planKey, billingCycle){
+  function nestiqInitiatePayFastCheckout(planKey, billingCycle){
     planKey = String(planKey || 'pro').toLowerCase();
     billingCycle = billingCycle === 'annual' ? 'annual' : 'monthly';
     const plan = NESTIQ_PLANS[planKey];
-    if(!plan || plan.price_monthly <= 0 && planKey !== 'starter'){
-      if(typeof showNotif === 'function') showNotif('Invalid plan', 'error');
+    if(!plan){
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Invalid plan selected.', 'error');
       return;
     }
-    const db = window.nestiqDb;
-    const lid = typeof window.nestiqCurrentLandlordUid === 'function' ? window.nestiqCurrentLandlordUid() : null;
-    if(!db || !lid){
-      if(typeof showNotif === 'function') showNotif('Sign in as a landlord first', 'error');
+    if(plan.price_monthly <= 0 && planKey !== 'starter'){
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Invalid plan selected.', 'error');
       return;
     }
-    const ls = window.landlordSettings || {};
-    const email = String(ls.email || firebase.auth().currentUser?.email || '').trim();
-    const nm = nestiqSplitName(ls.name || window.landlordName);
+    if(typeof nestiqShowInAppPaymentModal !== 'function'){
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Payment form failed to load. Refresh and try again.', 'error');
+      return;
+    }
+
     const amount = billingCycle === 'annual' ? plan.price_annual : plan.price_monthly;
-    const mPaymentId = `NESTIQ-${lid}-${Date.now()}`;
-    const base = nestiqAppBase();
+    const label = billingCycle === 'annual' ? 'Annual' : 'Monthly';
+    const month = new Date().toLocaleString('en-ZA', { month: 'long', year: 'numeric' });
 
-    const payfastData = {
-      merchant_id: PAYFAST_MERCHANT_ID,
-      merchant_key: PAYFAST_MERCHANT_KEY,
-      // Always return to Firebase Hosting site root (never /index.html on localhost Express).
-      return_url: `${base}${nestiqPayfastReturnPath('success')}`,
-      cancel_url: `${base}${nestiqPayfastReturnPath('cancelled')}`,
-      notify_url: window.NESTIQ_PAYFAST_ITN_URL || `${base}api/payfast-webhook`,
-      name_first: nm.firstName,
-      name_last: nm.lastName,
-      email_address: email,
-      m_payment_id: mPaymentId,
-      amount: amount.toFixed(2),
-      item_name: `NestIQ ${plan.name} — ${billingCycle === 'annual' ? 'Annual' : 'Monthly'}`,
-      subscription_type: '1',
-      billing_date: new Date().toISOString().slice(0, 10),
-      recurring_amount: amount.toFixed(2),
-      frequency: billingCycle === 'annual' ? '6' : '3',
-      cycles: '0',
-      custom_str1: lid,
-      custom_str2: planKey,
-      custom_str3: billingCycle
-    };
+    nestiqShowInAppPaymentModal({
+      amount,
+      description: `NestIQ Pro ${plan.name} Plan — ${label} (${month})`,
+      onSuccess: function(ref){
+        const landlordId = typeof window.nestiqCurrentLandlordUid === 'function'
+          ? window.nestiqCurrentLandlordUid()
+          : (window.__nestiqLandlordUid || null);
 
-    if(PAYFAST_PASSPHRASE){
-      const sig = nestiqPayfastSignature(payfastData, PAYFAST_PASSPHRASE);
-      if(sig) payfastData.signature = sig;
-    }
-
-    try{
-      await db.collection('landlords').doc(lid).collection('billing').doc('pending').collection('records').doc(mPaymentId).set({
-        m_payment_id: mPaymentId,
-        plan: planKey,
-        billingCycle,
-        amount,
-        status: 'pending',
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-    }catch(e){
-      console.warn('NestIQ pending billing write', e);
-    }
-
-    nestiqMarkPendingPaymentReturn(planKey, billingCycle, mPaymentId, amount);
-
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = PAYFAST_PROCESS_URL;
-    form.style.display = 'none';
-    Object.keys(payfastData).forEach(k => {
-      const inp = document.createElement('input');
-      inp.type = 'hidden';
-      inp.name = k;
-      inp.value = String(payfastData[k]);
-      form.appendChild(inp);
+        if(window.nestiqDb && landlordId){
+          window.nestiqDb
+            .collection('landlords').doc(landlordId)
+            .collection('profile').doc('settings')
+            .update({
+              'billing.plan': planKey,
+              'billing.status': 'active',
+              'billing.billingCycle': billingCycle,
+              'billing.reference': ref,
+              'billing.updatedAt': new Date().toISOString(),
+              'billing.currentPeriodStart': new Date().toISOString()
+            })
+            .then(() => {
+              if(window.landlordSettings){
+                window.landlordSettings.billing = Object.assign({}, window.landlordSettings.billing || {}, {
+                  plan: planKey,
+                  status: 'active',
+                  billingCycle,
+                  reference: ref,
+                  updatedAt: new Date().toISOString(),
+                  currentPeriodStart: new Date().toISOString()
+                });
+              }
+              if(typeof nestiqShowNotif === 'function'){
+                nestiqShowNotif(`🎉 Upgraded to ${plan.name} plan successfully!`, 'success', 6000);
+              }
+              if(typeof nestiqConfetti === 'function'){
+                nestiqConfetti({ count: 120, spread: 80 });
+              }
+              setTimeout(() => {
+                if(typeof nestiqRenderBillingPage === 'function') nestiqRenderBillingPage();
+              }, 1200);
+            })
+            .catch(e => {
+              console.warn('[NestIQ] Billing update error:', e);
+              // Nested update can fail if billing object missing — fall back to apply helper
+              if(typeof nestiqApplyPaidPlan === 'function'){
+                nestiqApplyPaidPlan(planKey, billingCycle, { mPaymentId: ref, amount })
+                  .then(() => {
+                    if(typeof nestiqShowNotif === 'function'){
+                      nestiqShowNotif(`🎉 Upgraded to ${plan.name} plan successfully!`, 'success', 6000);
+                    }
+                    if(typeof nestiqRenderBillingPage === 'function') nestiqRenderBillingPage();
+                  })
+                  .catch(() => {
+                    if(typeof nestiqShowNotif === 'function'){
+                      nestiqShowNotif('Payment recorded but plan update failed. Contact support.', 'warning');
+                    }
+                  });
+              }else if(typeof nestiqShowNotif === 'function'){
+                nestiqShowNotif('Payment recorded but plan update failed. Contact support.', 'warning');
+              }
+            });
+        }else{
+          if(window.landlordSettings){
+            window.landlordSettings.billing = window.landlordSettings.billing || {};
+            window.landlordSettings.billing.plan = planKey;
+            window.landlordSettings.billing.status = 'active';
+            window.landlordSettings.billing.billingCycle = billingCycle;
+          }
+          if(typeof nestiqShowNotif === 'function'){
+            nestiqShowNotif(`🎉 Upgraded to ${plan.name} plan!`, 'success', 5000);
+          }
+          if(typeof nestiqRenderBillingPage === 'function') nestiqRenderBillingPage();
+        }
+      }
     });
-    document.body.appendChild(form);
-    form.submit();
   }
 
   function nestiqInitiateStripeCheckout(planKey, billingCycle){
     if(!STRIPE_ENABLED){
-      if(typeof showNotif === 'function') showNotif('Stripe is not configured yet. Use PayFast for now.', 'info');
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Stripe is not configured yet. Use PayFast for now.', 'info');
       return;
     }
-    if(typeof showNotif === 'function') showNotif('Stripe checkout coming soon — use PayFast.', 'info');
+    if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Stripe checkout coming soon — use PayFast.', 'info');
   }
 
   async function nestiqApplyPaidPlan(planKey, billingCycle, meta){
@@ -446,10 +496,16 @@
     const lid = typeof window.nestiqCurrentLandlordUid === 'function' ? window.nestiqCurrentLandlordUid() : null;
     if(!db || !lid) return false;
 
-    // Already on a paid active plan
+    // Prefer live Firestore status (webhook may already have activated).
+    try{ await nestiqRefreshLandlordSettingsFromFirestore(); }catch(_e){}
+
     const current = nestiqGetBilling();
     const curPlan = String(current.plan || '').toLowerCase();
-    if(current.status === 'active' && curPlan && curPlan !== 'starter'){
+    const curStatus = String(current.status || '').toLowerCase();
+    // Paid active (not trial) — already subscribed after payment / webhook.
+    if(curStatus === 'active' && curPlan && curPlan !== 'starter'){
+      nestiqClearPendingPaymentReturn();
+      nestiqUpdateNavBillingBadge();
       return true;
     }
 
@@ -459,7 +515,7 @@
     let amount = hint?.amount != null ? Number(hint.amount) : null;
     let foundPending = !!(planKey || mPaymentId);
 
-    // Prefer newest pending checkout for this landlord
+    // Prefer newest pending/completed checkout for this landlord
     try{
       const pendingCol = db.collection('landlords').doc(lid).collection('billing').doc('pending').collection('records');
       let snap;
@@ -471,10 +527,11 @@
       const rows = snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(r => {
           const st = String(r.status || 'pending').toLowerCase();
-          return st === 'pending' || st === '';
+          return st === 'pending' || st === 'completed' || st === '';
         });
       if(mPaymentId){
-        const match = rows.find(r => r.id === mPaymentId || r.m_payment_id === mPaymentId);
+        const match = rows.find(r => r.id === mPaymentId || r.m_payment_id === mPaymentId)
+          || snap.docs.map(d => ({ id: d.id, ...d.data() })).find(r => r.id === mPaymentId || r.m_payment_id === mPaymentId);
         if(match){
           planKey = match.plan || planKey;
           billingCycle = match.billingCycle || billingCycle;
@@ -506,11 +563,48 @@
 
     if(!foundPending) return false;
 
-    return nestiqApplyPaidPlan(planKey || 'pro', billingCycle || 'monthly', {
+    const ok = await nestiqApplyPaidPlan(planKey || 'pro', billingCycle || 'monthly', {
       mPaymentId,
       amount,
       source: 'payfast_return'
     });
+    if(ok) nestiqClearPendingPaymentReturn();
+    return ok;
+  }
+
+  /**
+   * After landlord auth + settings load: if they just paid (local pending or ?payment=success),
+   * activate the plan so the UI shows subscribed without a manual refresh.
+   */
+  async function nestiqSyncSubscriptionAfterLogin(){
+    const s = typeof getSession === 'function' ? getSession() : null;
+    if(!s || s.role !== 'landlord') return false;
+    try{ await nestiqRefreshLandlordSettingsFromFirestore(); }catch(_e){}
+    if(nestiqPlanIsPaidActive() && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+        && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter'){
+      nestiqClearPendingPaymentReturn();
+      nestiqUpdateNavBillingBadge();
+      if(document.getElementById('billCurrentPlanName')){
+        try{ await nestiqRenderBillingPage(); }catch(_e){}
+      }
+      return true;
+    }
+    const pending = nestiqPeekPendingPaymentReturn();
+    const urlSuccess = (()=>{
+      try{ return new URLSearchParams(location.search).get('payment') === 'success'; }catch(_e){ return false; }
+    })();
+    const freshPending = nestiqPendingPaymentIsFresh(pending, 48 * 60 * 60 * 1000);
+    if(!urlSuccess && !freshPending) return false;
+    const ok = await nestiqActivatePlanAfterSuccessfulPayment(pending || { plan: 'pro', cycle: 'monthly' });
+    nestiqUpdateNavBillingBadge();
+    if(ok){
+      nestiqClearPaymentQueryParam();
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('✓ Your Pro plan is now active!', 'success');
+      if(document.getElementById('billCurrentPlanName')){
+        try{ await nestiqRenderBillingPage(); }catch(_e){}
+      }
+    }
+    return ok;
   }
 
   function nestiqPlanIsPaidActive(b){
@@ -553,11 +647,11 @@
         <div style="text-align:center;padding:12px">
           <h2 class="modal-title">Trial ended</h2>
           <p class="modal-sub">Your 14-day free trial has ended. Upgrade to Pro to keep your full access.</p>
-          <button class="btn-gold" style="width:100%;margin-top:16px" onclick="closeModal();location.href='billing.html'">Upgrade Now</button>
+          <button class="btn-gold" style="width:100%;margin-top:16px" onclick="nestiqCloseModalAnimated();location.href='billing.html'">Upgrade Now</button>
         </div>`;
       if(typeof openModal === 'function'){
         document.getElementById('modalContent').innerHTML = html;
-        document.getElementById('modalOverlay').classList.add('open');
+        nestiqOpenModalAnimated();
       }
       return;
     }
@@ -684,7 +778,7 @@
 
   function nestiqDownloadReceipt(row){
     const jsPDF = window.jspdf?.jsPDF;
-    if(!jsPDF){ if(typeof showNotif === 'function') showNotif('PDF library not loaded', 'error'); return; }
+    if(!jsPDF){ if(typeof nestiqShowNotif === 'function') nestiqShowNotif('PDF library not loaded', 'error'); return; }
     const doc = new jsPDF();
     doc.setFontSize(16);
     doc.text('NestIQ Payment Receipt', 14, 20);
@@ -712,7 +806,7 @@
     };
     await window.nestiqFs.settingsRef(db, lid).set(patch, { merge: true });
     await nestiqRefreshLandlordSettingsFromFirestore();
-    if(typeof showNotif === 'function') showNotif('Billing details saved', 'success');
+    if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Billing details saved', 'success');
   }
 
   async function nestiqCancelSubscription(){
@@ -733,7 +827,7 @@
         support_email: window.NESTIQ_SUPPORT_EMAIL || 'support@nestiq.co.za'
       });
     }
-    if(typeof showNotif === 'function') showNotif('Subscription cancelled', 'warning');
+    if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Subscription cancelled', 'warning');
     nestiqRenderBillingPage();
   }
 
@@ -747,7 +841,7 @@
       const p = NESTIQ_PLANS[key];
       const price = cycle === 'annual' ? p.price_annual : p.price_monthly;
       const per = cycle === 'annual' ? '/year' : '/month';
-      const highlight = key === 'pro' ? ' bill-plan-popular' : '';
+      const highlight = key === 'pro' ? ' bill-plan-popular recommended' : '';
       const cur = key === current;
       const curIdx = PLAN_ORDER[current] ?? 0;
       const thisIdx = PLAN_ORDER[key] ?? 0;
@@ -756,14 +850,32 @@
       else if(thisIdx < curIdx) btn = `<button type="button" class="bill-btn bill-btn-outline" onclick="nestiqDowngradeToStarter();nestiqRenderBillingPage()">Downgrade</button>`;
       else btn = `<button type="button" class="bill-btn bill-btn-gold" onclick="nestiqInitiatePayFastCheckout('${key}','${cycle}')">Upgrade Now</button>`;
       const feats = p.features.map(f => `<li>✓ ${escHtml(f)}</li>`).join('');
-      return `<div class="bill-plan-card${highlight}">
+      return `<div class="bill-plan-card billing-plan-card${highlight}" data-plan="${key}">
         ${key === 'pro' ? '<div class="bill-popular-tag">Most Popular</div>' : ''}
         <h3 class="font-display text-xl font-bold">${escHtml(p.name)}</h3>
-        <p class="bill-price">${price === 0 ? 'Free' : nestiqFormatZar(price)}<span class="bill-price-sub">${price ? per : ''}</span></p>
+        <p class="bill-price"><span id="billPrice-${key}" class="bill-price-num">${price === 0 ? 'Free' : ('R' + Number(price).toLocaleString('en-ZA'))}</span><span class="bill-price-sub">${price ? per : ''}</span></p>
         <ul class="bill-features">${feats}</ul>
         ${btn}
       </div>`;
     }).join('');
+    window.__nestiqBillPricePrev = window.__nestiqBillPricePrev || {};
+    keys.forEach(key => {
+      const p = NESTIQ_PLANS[key];
+      const price = cycle === 'annual' ? p.price_annual : p.price_monthly;
+      const el = document.getElementById('billPrice-' + key);
+      const prev = window.__nestiqBillPricePrev[key];
+      if(el && price > 0 && prev != null && prev !== price && typeof nestiqAnimateCounter === 'function'){
+        nestiqAnimateCounter(el, price, 700, 'R', '', prev);
+      }
+      window.__nestiqBillPricePrev[key] = price;
+    });
+    grid.querySelectorAll('.bill-plan-card').forEach(card => {
+      card.addEventListener('click', () => {
+        card.classList.remove('nq-plan-pick');
+        void card.offsetWidth;
+        card.classList.add('nq-plan-pick');
+      });
+    });
   }
 
   function nestiqRenderUsageBars(){
@@ -788,7 +900,7 @@
         ? ` <a href="#" class="bill-upgrade-link" onclick="nestiqScrollToPlans();return false">Upgrade to add more</a>` : '';
       return `<div class="bill-usage-item${disabled ? ' bill-usage-disabled' : ''}">
         <div class="bill-usage-head"><span>${it.label}</span><span>${label}${upgrade}</span></div>
-        <div class="bill-bar-track"><div class="bill-bar-fill" style="width:${unlimited ? 8 : pct}%;background:${nestiqUsageBarColor(pct)}"></div></div>
+        <div class="bill-bar-track"><div class="bill-bar-fill nq-progress" style="--nq-target:${unlimited ? 8 : pct}%;background:${nestiqUsageBarColor(pct)}"></div></div>
       </div>`;
     }).join('');
   }
@@ -800,7 +912,13 @@
     const cycle = b.billingCycle === 'annual' ? 'Annual' : (b.billingCycle === 'monthly' ? 'Monthly' : '—');
     const amt = b.billingCycle === 'annual' ? plan.price_annual : plan.price_monthly;
     const paid = planKey !== 'starter' && (b.status === 'active' || b.status === 'trial');
-    const end = b.currentPeriodEnd ? new Date(b.currentPeriodEnd) : (b.trialEnds ? new Date(b.trialEnds) : null);
+    const end = (()=>{
+      const raw = b.currentPeriodEnd || b.trialEnds;
+      if(!raw) return null;
+      if(typeof raw.toDate === 'function') return raw.toDate();
+      if(raw.seconds != null) return new Date(Number(raw.seconds) * 1000);
+      return new Date(raw);
+    })();
     const nextBill = end && !isNaN(end) ? end.toLocaleDateString('en-ZA') : '—';
 
     const title = document.getElementById('billCurrentPlanName');
@@ -814,8 +932,14 @@
       <p><strong>Amount due:</strong> ${planKey === 'starter' && b.status !== 'trial' ? 'R0.00' : nestiqFormatZar(amt)}</p>`;
     const cancelBtn = document.getElementById('billCancelBtn');
     const invoiceBtn = document.getElementById('billDownloadInvoiceBtn');
+    const refreshPaidBtn = document.getElementById('billRefreshPaidBtn');
     if(cancelBtn) cancelBtn.style.display = paid && b.status === 'active' ? '' : 'none';
     if(invoiceBtn) invoiceBtn.style.display = paid && b.status === 'active' ? '' : 'none';
+    // Hide manual recovery once the landlord is on a paid active plan.
+    if(refreshPaidBtn){
+      const needsManual = !(planKey !== 'starter' && b.status === 'active');
+      refreshPaidBtn.style.display = needsManual ? '' : 'none';
+    }
 
     const emailIn = document.getElementById('billInvoiceEmail');
     const vatIn = document.getElementById('billVatNumber');
@@ -869,8 +993,10 @@
   function nestiqClearPaymentQueryParam(){
     try{
       const params = new URLSearchParams(location.search);
-      if(!params.has('payment')) return;
+      if(!params.has('payment') && !params.has('kind') && !params.has('ref')) return;
       params.delete('payment');
+      params.delete('kind');
+      params.delete('ref');
       const q = params.toString();
       const path = /\/index\.html$/i.test(location.pathname) ? location.pathname : '/index.html';
       history.replaceState({}, '', path + (q ? '?' + q : '') + (location.hash || ''));
@@ -879,10 +1005,22 @@
 
   /** After PayFast redirects back to NestIQ. */
   async function nestiqHandlePaymentReturnOnDashboard(){
+    if(nestiqIsRentPaymentReturnUrl()){
+      const s = typeof getSession === 'function' ? getSession() : null;
+      let firebaseUser = null;
+      try{ firebaseUser = firebase?.auth?.()?.currentUser; }catch(_e){}
+      if(!firebaseUser && !(s && s.role === 'tenant')){
+        const p = new URLSearchParams(location.search);
+        nestiqShowPaymentReturnGate(p.get('payment') === 'cancelled' ? 'cancelled' : 'success');
+        return;
+      }
+      try{ window.nestiqCheckPayFastReturn?.(); }catch(_e){}
+      return;
+    }
     const params = new URLSearchParams(location.search);
     let payment = params.get('payment');
-    const pending = nestiqConsumePendingPaymentReturn();
-    if(!payment && pending && (Date.now() - Number(pending.at || 0)) < 2 * 60 * 60 * 1000){
+    const pending = nestiqPeekPendingPaymentReturn();
+    if(!payment && nestiqPendingPaymentIsFresh(pending, 2 * 60 * 60 * 1000)){
       payment = 'success';
     }
     if(!payment) return;
@@ -893,28 +1031,34 @@
 
     // Not signed in yet — show a dedicated payment gate instead of the generic login landing.
     if(!authedLandlord && !firebaseUser){
-      // Keep pending so we can activate after they sign in.
-      if(pending){
-        try{ localStorage.setItem('nestiq-pending-payment', JSON.stringify(pending)); }catch(_e){}
-      }
       nestiqShowPaymentReturnGate(payment === 'cancelled' ? 'cancelled' : 'success');
       return;
     }
 
     if(payment === 'success'){
-      if(typeof showNotif === 'function'){
-        showNotif('🎉 Payment successful! Activating your plan…', 'success');
+      nestiqConfetti?.({ count: 100, spread: 70 });
+      if(typeof nestiqShowNotif === 'function'){
+        nestiqShowNotif('🎉 Payment successful! Activating your plan…', 'success');
       }
       nestiqClearPaymentQueryParam();
       let activated = false;
       try{
-        activated = await nestiqActivatePlanAfterSuccessfulPayment(pending || {});
+        // Refresh first in case the PayFast ITN webhook already wrote status=active.
+        await nestiqRefreshLandlordSettingsFromFirestore();
+        if(nestiqPlanIsPaidActive()
+            && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+            && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter'){
+          activated = true;
+          nestiqClearPendingPaymentReturn();
+        }else{
+          activated = await nestiqActivatePlanAfterSuccessfulPayment(pending || {});
+        }
       }catch(actErr){
         console.error('NestIQ activate after payment', actErr);
       }
       if(activated){
         nestiqUpdateNavBillingBadge();
-        if(typeof showNotif === 'function') showNotif('✓ Your Pro plan is now active!', 'success');
+        if(typeof nestiqShowNotif === 'function') nestiqShowNotif('✓ Your Pro plan is now active!', 'success');
         if(typeof nestiqRenderBillingPage === 'function' && document.getElementById('billCurrentPlan')){
           try{ await nestiqRenderBillingPage(); }catch(_e){}
         }
@@ -925,31 +1069,42 @@
       const poll = setInterval(async () => {
         tries++;
         await nestiqRefreshLandlordSettingsFromFirestore();
-        if(nestiqPlanIsPaidActive()){
+        const liveActive = nestiqPlanIsPaidActive()
+          && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+          && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter';
+        if(liveActive){
           clearInterval(poll);
+          nestiqClearPendingPaymentReturn();
           nestiqUpdateNavBillingBadge();
-          if(typeof showNotif === 'function') showNotif('✓ Your Pro plan is now active!', 'success');
+          if(typeof nestiqShowNotif === 'function') nestiqShowNotif('✓ Your Pro plan is now active!', 'success');
+          if(document.getElementById('billCurrentPlanName')){
+            try{ await nestiqRenderBillingPage(); }catch(_e){}
+          }
           return;
         }
-        if(tries >= 4){
+        if(tries >= 6){
           clearInterval(poll);
           try{
-            const ok = await nestiqActivatePlanAfterSuccessfulPayment(pending || { plan: 'pro', cycle: 'monthly' });
-            if(ok && typeof showNotif === 'function') showNotif('✓ Your Pro plan is now active!', 'success');
-            else if(typeof showNotif === 'function'){
-              showNotif('Payment received — open Billing & Plan and refresh if your plan has not updated.', 'info');
+            const hint = nestiqPeekPendingPaymentReturn() || pending || { plan: 'pro', cycle: 'monthly' };
+            const ok = await nestiqActivatePlanAfterSuccessfulPayment(hint);
+            if(ok && typeof nestiqShowNotif === 'function') nestiqShowNotif('✓ Your Pro plan is now active!', 'success');
+            else if(typeof nestiqShowNotif === 'function'){
+              nestiqShowNotif('Payment received — your plan will update shortly. Open Billing & Plan if it has not updated.', 'info');
             }
             nestiqUpdateNavBillingBadge();
+            if(document.getElementById('billCurrentPlanName')){
+              try{ await nestiqRenderBillingPage(); }catch(_e){}
+            }
           }catch(_e){
-            if(typeof showNotif === 'function'){
-              showNotif('Payment received — open Billing & Plan if your plan has not updated yet.', 'info');
+            if(typeof nestiqShowNotif === 'function'){
+              nestiqShowNotif('Payment received — open Billing & Plan if your plan has not updated yet.', 'info');
             }
           }
         }
-      }, 2000);
+      }, 1500);
     }else if(payment === 'cancelled'){
-      if(typeof showNotif === 'function'){
-        showNotif('Payment was cancelled. Your plan has not changed.', 'warning');
+      if(typeof nestiqShowNotif === 'function'){
+        nestiqShowNotif('Payment was cancelled. Your plan has not changed.', 'warning');
       }
       nestiqClearPaymentQueryParam();
     }
@@ -966,9 +1121,19 @@
       banner.className = 'bill-banner bill-banner-success';
       banner.textContent = '🎉 Payment successful! Activating your plan…';
       banner.style.display = 'block';
-      const pending = nestiqConsumePendingPaymentReturn();
+      const pending = nestiqPeekPendingPaymentReturn();
       let ok = false;
-      try{ ok = await nestiqActivatePlanAfterSuccessfulPayment(pending || {}); }catch(_e){}
+      try{
+        await nestiqRefreshLandlordSettingsFromFirestore();
+        if(nestiqPlanIsPaidActive()
+            && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+            && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter'){
+          ok = true;
+          nestiqClearPendingPaymentReturn();
+        }else{
+          ok = await nestiqActivatePlanAfterSuccessfulPayment(pending || {});
+        }
+      }catch(_e){}
       if(ok){
         banner.textContent = '🎉 Payment successful! Your Pro plan is now active.';
         history.replaceState({}, '', 'billing.html');
@@ -979,15 +1144,24 @@
       const poll = setInterval(async () => {
         tries++;
         await nestiqRefreshLandlordSettingsFromFirestore();
-        if(nestiqPlanIsPaidActive() || tries >= 6){
+        const liveActive = nestiqPlanIsPaidActive()
+          && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+          && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter';
+        if(liveActive || tries >= 8){
           clearInterval(poll);
-          if(!nestiqPlanIsPaidActive()){
-            try{ await nestiqActivatePlanAfterSuccessfulPayment(pending || { plan: 'pro' }); }catch(_e){}
+          if(!liveActive){
+            try{
+              await nestiqActivatePlanAfterSuccessfulPayment(
+                nestiqPeekPendingPaymentReturn() || pending || { plan: 'pro' }
+              );
+            }catch(_e){}
+          }else{
+            nestiqClearPendingPaymentReturn();
           }
           history.replaceState({}, '', 'billing.html');
           nestiqRenderBillingPage();
         }
-      }, 2000);
+      }, 1500);
     }else if(params.get('payment') === 'cancelled'){
       banner.className = 'bill-banner bill-banner-warn';
       banner.textContent = 'Payment was cancelled. Your plan has not changed.';
@@ -1014,12 +1188,12 @@
     await nestiqHandleBillingReturnUrl();
     // Recover only when we have a recent local checkout mark (user actually started PayFast).
     try{
-      if(!nestiqPlanIsPaidActive()){
-        const raw = localStorage.getItem('nestiq-pending-payment');
-        const pending = raw ? JSON.parse(raw) : null;
-        if(pending && (Date.now() - Number(pending.at || 0)) < 48 * 60 * 60 * 1000){
-          const ok = await nestiqActivatePlanAfterSuccessfulPayment(pending);
-          if(ok) try{ localStorage.removeItem('nestiq-pending-payment'); }catch(_e){}
+      if(!nestiqPlanIsPaidActive()
+          || String(nestiqGetBilling().plan || '').toLowerCase() === 'starter'
+          || String(nestiqGetBilling().status || '').toLowerCase() === 'trial'){
+        const pending = nestiqPeekPendingPaymentReturn();
+        if(nestiqPendingPaymentIsFresh(pending, 48 * 60 * 60 * 1000)){
+          await nestiqActivatePlanAfterSuccessfulPayment(pending);
         }
       }
     }catch(_e){}
@@ -1030,29 +1204,27 @@
 
   /** Manual recovery for landlords who paid but still see Free. */
   async function nestiqRefreshPaidPlanStatus(){
-    if(typeof showNotif === 'function') showNotif('Checking payment status…', 'info');
+    if(typeof nestiqShowNotif === 'function') nestiqShowNotif('Checking payment status…', 'info');
     await nestiqRefreshLandlordSettingsFromFirestore();
-    if(nestiqPlanIsPaidActive()){
+    if(nestiqPlanIsPaidActive()
+        && String(nestiqGetBilling().status || '').toLowerCase() === 'active'
+        && String(nestiqGetBilling().plan || '').toLowerCase() !== 'starter'){
+      nestiqClearPendingPaymentReturn();
       nestiqUpdateNavBillingBadge();
       await nestiqRenderBillingPage();
-      if(typeof showNotif === 'function') showNotif('✓ Your paid plan is active', 'success');
+      if(typeof nestiqShowNotif === 'function') nestiqShowNotif('✓ Your paid plan is active', 'success');
       return;
     }
-    let pending = null;
-    try{
-      const raw = localStorage.getItem('nestiq-pending-payment');
-      pending = raw ? JSON.parse(raw) : null;
-    }catch(_e){}
+    const pending = nestiqPeekPendingPaymentReturn();
     // Only auto-activate when we have evidence of a recent checkout (local mark or Firestore pending).
     const ok = await nestiqActivatePlanAfterSuccessfulPayment(pending || {});
-    if(ok) try{ localStorage.removeItem('nestiq-pending-payment'); }catch(_e){}
     await nestiqRenderBillingPage();
     nestiqUpdateNavBillingBadge();
-    if(typeof showNotif === 'function'){
-      showNotif(
+    if(typeof nestiqShowNotif === 'function'){
+      nestiqShowNotif(
         ok
           ? '✓ Your Pro plan is now active!'
-          : 'No recent PayFast checkout was found for this account. If you paid, open Billing after returning from PayFast with ?payment=success, or contact support with your payment reference.',
+          : 'No recent PayFast checkout was found for this account. If you paid, return from PayFast with payment success, or contact support with your payment reference.',
         ok ? 'success' : 'warning'
       );
     }
@@ -1070,8 +1242,14 @@
   window.nestiqHandlePaymentReturnOnDashboard = nestiqHandlePaymentReturnOnDashboard;
   window.nestiqPayfastReturnBase = nestiqPayfastReturnBase;
   window.nestiqIsPaymentReturnUrl = nestiqIsPaymentReturnUrl;
+  window.nestiqIsRentPaymentReturnUrl = nestiqIsRentPaymentReturnUrl;
   window.nestiqShowPaymentReturnGate = nestiqShowPaymentReturnGate;
+  window.nestiqPayfastProcessUrl = PAYFAST_PROCESS_URL;
+  window.NESTIQ_PAYFAST_MERCHANT_ID = PAYFAST_MERCHANT_ID;
+  window.NESTIQ_PAYFAST_MERCHANT_KEY = PAYFAST_MERCHANT_KEY;
+  window.nestiqClearPaymentQueryParam = nestiqClearPaymentQueryParam;
   window.nestiqActivatePlanAfterSuccessfulPayment = nestiqActivatePlanAfterSuccessfulPayment;
+  window.nestiqSyncSubscriptionAfterLogin = nestiqSyncSubscriptionAfterLogin;
   window.nestiqRefreshPaidPlanStatus = nestiqRefreshPaidPlanStatus;
   window.nestiqApplyPaidPlan = nestiqApplyPaidPlan;
 })();

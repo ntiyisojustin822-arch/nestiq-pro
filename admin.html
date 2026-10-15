@@ -16,6 +16,7 @@
   <script src="./js/support.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
   <script src="./js/support.js"></script>
+  <script src="./js/icons.js?v=icons1"></script>
 <script>
     tailwind.config = {
       theme: {
@@ -54,10 +55,13 @@
     .admin-content { padding: 24px; flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; overscroll-behavior: contain; min-height: 0; }
     .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
     .stat-card { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-    .stat-card .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+    .stat-card .label { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
     .stat-card .val { font-size: 1.5rem; font-weight: 700; font-family: 'Playfair Display', serif; }
     .panel { background: var(--paper); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 20px; }
     .panel-title { font-size: 1.05rem; font-weight: 600; margin: 0 0 14px; font-family: 'Playfair Display', serif; }
+    .admin-help p { font-size: 0.88rem; color: var(--muted); line-height: 1.55; margin: 0 0 10px; }
+    .admin-help ul { margin: 0; padding: 0 0 0 18px; color: var(--ink); font-size: 0.86rem; line-height: 1.55; }
+    .admin-help li { margin: 0 0 6px; }
     .data-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
     .data-table th { text-align: left; padding: 10px 12px; border-bottom: 2px solid var(--border); color: var(--muted); font-weight: 600; font-size: 0.72rem; text-transform: uppercase; letter-spacing: .04em; }
     .data-table td { padding: 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
@@ -80,8 +84,13 @@
     .filter-bar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
     .skeleton { background: linear-gradient(90deg, #ece8e0 25%, #f5f2ec 50%, #ece8e0 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; border-radius: 8px; height: 14px; margin: 6px 0; }
     @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    .nestiq-icon { display: block; flex-shrink: 0; overflow: visible; }
+    .nq-ico { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 0; }
+    .nestiq-icon-empty { margin: 0 auto 10px; opacity: 0.72; }
+    .admin-nav a .nq-ico, .admin-nav a .nestiq-icon { color: inherit; }
+    .btn .nestiq-icon { display: block; }
     .empty-state { text-align: center; padding: 48px 24px; color: var(--muted); }
-    .empty-state .icon { font-size: 2.5rem; margin-bottom: 12px; }
+    .empty-state .icon { margin-bottom: 12px; display: flex; justify-content: center; color: var(--muted); }
     .page-section { display: none; }
     .page-section.active { display: block; }
     .activity-item { padding: 12px 0; border-bottom: 1px solid var(--border); font-size: 0.86rem; line-height: 1.45; }
@@ -107,7 +116,7 @@
     #adminLoginBtn:disabled { opacity: 0.7; cursor: wait; }
     .pagination { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 16px; font-size: 0.84rem; }
     .mobile-tabs { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: var(--ink); z-index: 45; padding: 8px 4px; justify-content: space-around; border-top: 1px solid rgba(255,255,255,.1); }
-    .mobile-tabs button { background: none; border: none; color: rgba(255,255,255,.6); font-size: 0.65rem; padding: 6px 8px; cursor: pointer; }
+    .mobile-tabs button { background: none; border: none; color: rgba(255,255,255,.6); font-size: 0.65rem; padding: 6px 8px; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; }
     .mobile-tabs button.active { color: var(--gold); }
     @media (max-width: 768px) {
       .admin-sidebar { transform: translateX(-100%); }
@@ -156,24 +165,25 @@
         <span class="admin-badge">ADMIN</span>
       </div>
       <nav class="admin-nav" id="adminNav">
-        <a href="#" data-page="overview" class="active sidebar-nav-item"><span>📊</span><span class="label">Overview</span></a>
-        <a href="#" data-page="landlords" class="sidebar-nav-item"><span>🏠</span><span class="label">Landlords</span></a>
-        <a href="#" data-page="tenants" class="sidebar-nav-item"><span>👥</span><span class="label">Tenants</span></a>
-        <a href="#" data-page="applications" class="sidebar-nav-item"><span>📋</span><span class="label">Applications</span></a>
-        <a href="#" data-page="billing" class="sidebar-nav-item"><span>💳</span><span class="label">Billing</span></a>
-        <a href="#" data-page="maintenance" class="sidebar-nav-item"><span>🔧</span><span class="label">Maintenance</span></a>
-        <a href="#" data-page="support" class="sidebar-nav-item"><span>🎧</span><span class="label">Support Tickets</span><span id="adminSupportOpenBadge" class="admin-badge" style="display:none;margin-left:6px;background:#dc3545;color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:8px">0</span></a>
-        <a href="#" data-page="changelog" class="sidebar-nav-item"><span>📋</span><span class="label">Changelog</span></a>
-        <a href="#" data-page="announcements" class="sidebar-nav-item"><span>📣</span><span class="label">Announcements</span></a>
-        <a href="#" data-page="settings" class="sidebar-nav-item"><span>⚙️</span><span class="label">Settings</span></a>
-        <a href="#" data-page="flagged" class="sidebar-nav-item"><span>🚩</span><span class="label">Flagged Accounts</span></a>
+        <a href="#" data-page="overview" class="active sidebar-nav-item"><span class="nq-ico" data-nq-icon="layout-dashboard" data-nq-size="18"></span><span class="label">Overview</span></a>
+        <a href="#" data-page="landlords" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="18"></span><span class="label">Landlords</span></a>
+        <a href="#" data-page="tenants" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="users" data-nq-size="18"></span><span class="label">Tenants</span></a>
+        <a href="#" data-page="staff" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="hard-hat" data-nq-size="18"></span><span class="label">Staff</span></a>
+        <a href="#" data-page="applications" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="clipboard-list" data-nq-size="18"></span><span class="label">Applications</span></a>
+        <a href="#" data-page="billing" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="credit-card" data-nq-size="18"></span><span class="label">Billing</span></a>
+        <a href="#" data-page="maintenance" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="wrench" data-nq-size="18"></span><span class="label">Maintenance</span></a>
+        <a href="#" data-page="support" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="headphones" data-nq-size="18"></span><span class="label">Support Tickets</span><span id="adminSupportOpenBadge" class="admin-badge" style="display:none;margin-left:6px;background:#dc3545;color:#fff;font-size:0.65rem;padding:2px 6px;border-radius:8px">0</span></a>
+        <a href="#" data-page="changelog" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="list" data-nq-size="18"></span><span class="label">Changelog</span></a>
+        <a href="#" data-page="announcements" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="megaphone" data-nq-size="18"></span><span class="label">Announcements</span></a>
+        <a href="#" data-page="settings" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="settings" data-nq-size="18"></span><span class="label">Settings</span></a>
+        <a href="#" data-page="flagged" class="sidebar-nav-item"><span class="nq-ico" data-nq-icon="search" data-nq-size="18"></span><span class="label">Needs review</span></a>
       </nav>
     </aside>
 
     <div class="admin-main">
       <header class="admin-topbar">
         <div style="display:flex;align-items:center;gap:12px">
-          <button type="button" class="btn btn-outline btn-sm" id="sidebarToggle" style="display:none">☰</button>
+          <button type="button" class="btn btn-outline btn-sm" id="sidebarToggle" style="display:none" aria-label="Menu"><span class="nq-ico" data-nq-icon="menu" data-nq-size="16"></span></button>
           <h1 id="pageTitle" style="margin:0;font-size:1.25rem;font-family:'Playfair Display',serif">Overview</h1>
         </div>
         <button type="button" class="btn btn-outline btn-sm" id="adminSignOutBtn">Sign Out</button>
@@ -200,7 +210,6 @@
             <select id="landlordPlanFilter" class="form-input" style="max-width:140px"><option value="">All plans</option><option>Free</option><option>Pro</option><option>Enterprise</option></select>
             <select id="landlordStatusFilter" class="form-input" style="max-width:140px"><option value="">All status</option><option>Active</option><option>Suspended</option><option>Trial</option></select>
             <select id="landlordSort" class="form-input" style="max-width:160px"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="properties">Most properties</option><option value="active">Last active</option></select>
-            <button type="button" class="btn btn-outline btn-sm" onclick="exportLandlordsCsv()">Export All Landlords CSV</button>
             <button type="button" class="btn btn-outline btn-sm" onclick="bulkLandlordSuspend()">Bulk suspend</button>
           </div>
           <div class="panel" style="padding:0;overflow:hidden">
@@ -217,6 +226,33 @@
           <div class="panel" style="padding:0;overflow:hidden">
             <div id="tenantsTableWrap"></div>
             <div id="tenantsPagination" class="pagination" style="padding:12px 16px"></div>
+          </div>
+        </section>
+
+        <!-- STAFF (caretakers + contractors) -->
+        <section id="page-staff" class="page-section">
+          <div class="panel admin-help">
+            <h3 class="panel-title">Staff</h3>
+            <p>Caretakers and contractors who have accepted a staff invitation and created a portal account. Landlords invite caretakers from a property and contractors from Vendors — this page is the platform-wide list.</p>
+            <p style="margin-bottom:0">Open a row to see who invited them and which properties they can access. <strong>Suspend</strong> locks portal access without deleting the landlord’s staff record.</p>
+          </div>
+          <div class="filter-bar">
+            <input type="search" id="staffSearch" class="form-input" placeholder="Search name, email or landlord…" style="max-width:260px" />
+            <select id="staffRoleFilter" class="form-input" style="max-width:160px">
+              <option value="">All roles</option>
+              <option value="caretaker">Caretaker</option>
+              <option value="contractor">Contractor</option>
+            </select>
+            <select id="staffStatusFilter" class="form-input" style="max-width:150px">
+              <option value="">All status</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+          <div class="stat-grid" id="staffStats" style="margin-bottom:16px"></div>
+          <div class="panel" style="padding:0;overflow:hidden">
+            <div id="staffTableWrap"></div>
+            <div id="staffPagination" class="pagination" style="padding:12px 16px"></div>
           </div>
         </section>
 
@@ -335,19 +371,30 @@
           <div class="panel" id="platformSettingsForm"></div>
         </section>
 
-        <!-- FLAGGED -->
+        <!-- NEEDS REVIEW -->
         <section id="page-flagged" class="page-section">
+          <div class="panel admin-help">
+            <h3 class="panel-title">Needs review</h3>
+            <p>Accounts and applications that may need a closer look. This is a watchlist, not a separate account type. NestIQ scans landlords, tenants and rental applications when you open this page. Nothing is auto-suspended — you decide what to do.</p>
+            <p style="margin-bottom:8px;font-weight:600;color:var(--ink)">Items appear here when:</p>
+            <ul>
+              <li><strong>Low —</strong> a landlord has not been active for 60 days or more</li>
+              <li><strong>Medium —</strong> a Free-plan landlord is over the free property or tenant limit</li>
+              <li><strong>High —</strong> an applicant reported a previous eviction, or a tenant has more than 10 failed sign-in attempts</li>
+            </ul>
+            <p style="margin-top:12px;margin-bottom:0"><strong>Investigate</strong> opens the details. <strong>Suspend</strong> locks a landlord account. <strong>Dismiss</strong> hides the row for this session only — it can show again the next time you open the page if the issue is still true.</p>
+          </div>
           <div class="panel" style="padding:0;overflow:hidden"><div id="flaggedListWrap"></div></div>
         </section>
       </main>
     </div>
 
     <nav class="mobile-tabs" id="mobileTabs">
-      <button type="button" data-page="overview" class="active">📊<br>Home</button>
-      <button type="button" data-page="landlords">🏠<br>Lords</button>
-      <button type="button" data-page="tenants">👥<br>Tenants</button>
-      <button type="button" data-page="applications">📋<br>Apps</button>
-      <button type="button" data-page="billing">💳<br>Bill</button>
+      <button type="button" data-page="overview" class="active"><span class="nq-ico" data-nq-icon="layout-dashboard" data-nq-size="16"></span>Home</button>
+      <button type="button" data-page="landlords"><span class="nq-ico" data-nq-icon="building-2" data-nq-size="16"></span>Lords</button>
+      <button type="button" data-page="tenants"><span class="nq-ico" data-nq-icon="users" data-nq-size="16"></span>Tenants</button>
+      <button type="button" data-page="applications"><span class="nq-ico" data-nq-icon="clipboard-list" data-nq-size="16"></span>Apps</button>
+      <button type="button" data-page="billing"><span class="nq-ico" data-nq-icon="credit-card" data-nq-size="16"></span>Bill</button>
     </nav>
   </div>
 
@@ -355,13 +402,12 @@
     <div class="drawer" id="drawerPanel" onclick="event.stopPropagation()"></div>
   </div>
 
-  <div id="modalOverlay" onclick="if(event.target===this)closeModal()">
+  <div id="modalOverlay" onclick="if(event.target===this)nestiqCloseModalAnimated()">
     <div id="modalContent"></div>
   </div>
 
   <div id="adminNotif" class="admin-notif"></div>
 
-<script src="./js/animations.js"></script>
 <script>
 (function(){
   'use strict';
@@ -387,6 +433,7 @@
   let cache = {
     landlords: [],
     tenants: [],
+    staff: [],
     applications: [],
     billing: [],
     supportTickets: [],
@@ -396,7 +443,7 @@
     settings: null,
     flagged: []
   };
-  let pagination = { landlords: 0, tenants: 0, applications: 0, billing: 0, maintenance: 0 };
+  let pagination = { landlords: 0, tenants: 0, staff: 0, applications: 0, billing: 0, maintenance: 0 };
 
   window.nestiqDb = null;
 
@@ -410,6 +457,17 @@
   }
 
   function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+  function ico(name, size){ return typeof nestiqIcon==='function' ? nestiqIcon(name, { size: size || 15 }) : ''; }
+
+  function staggerAdminTable(wrapOrTbody){
+    if(typeof nestiqStaggerChildren!=='function') return;
+    const tableBody = wrapOrTbody && wrapOrTbody.tagName === 'TBODY'
+      ? wrapOrTbody
+      : (typeof wrapOrTbody === 'string'
+        ? document.querySelector(wrapOrTbody + ' tbody')
+        : wrapOrTbody?.querySelector?.('tbody'));
+    if(tableBody) nestiqStaggerChildren(tableBody, 30);
+  }
 
   function showAdminNotif(msg, type){
     const el = document.getElementById('adminNotif');
@@ -419,13 +477,14 @@
     showAdminNotif._t = setTimeout(() => el.classList.remove('show'), 4200);
   }
 
-  function openModal(html){ document.getElementById('modalContent').innerHTML = html; document.getElementById('modalOverlay').classList.add('open'); }
+  function openModal(html){ document.getElementById('modalContent').innerHTML = html; if(typeof nestiqOpenModalAnimated==='function') nestiqOpenModalAnimated(); else document.getElementById('modalOverlay').classList.add('open'); if(typeof nestiqAnimateModalContent==='function') nestiqAnimateModalContent(document.getElementById('modalContent')); }
   function closeModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
   window.closeModal = closeModal;
 
   function openDrawer(html){
     document.getElementById('drawerPanel').innerHTML = html;
     document.getElementById('drawerOverlay').classList.add('open');
+    if(typeof nestiqHydrateIcons==='function') nestiqHydrateIcons(document.getElementById('drawerPanel'));
   }
   function closeDrawer(e){
     if(e && e.target !== document.getElementById('drawerOverlay')) return;
@@ -450,7 +509,8 @@
   }
 
   function emptyState(icon, title, sub){
-    return `<div class="empty-state"><div class="icon">${icon}</div><div style="font-weight:600;color:var(--ink);margin-bottom:6px">${esc(title)}</div><div style="font-size:0.86rem">${esc(sub)}</div></div>`;
+    const glyph = (typeof nestiqIcon==='function' && nestiqIcon(icon, { size: 36, class: 'nestiq-icon-empty' })) || esc(icon);
+    return `<div class="empty-state"><div class="icon">${glyph}</div><div style="font-weight:600;color:var(--ink);margin-bottom:6px">${esc(title)}</div><div style="font-size:0.86rem">${esc(sub)}</div></div>`;
   }
 
   function initials(name){
@@ -527,14 +587,16 @@
 
   function activityIcon(action){
     const a = String(action||'').toLowerCase();
-    if(a.includes('signup') || a.includes('landlord')) return '🆕';
-    if(a.includes('application')) return '📋';
-    if(a.includes('tenant')) return '✅';
-    if(a.includes('billing') || a.includes('subscription') || a.includes('plan')) return '💳';
-    if(a.includes('suspend')) return '⏸️';
-    if(a.includes('announce')) return '📣';
-    if(a.includes('delete')) return '🗑️';
-    return '•';
+    let name = 'sparkles';
+    if(a.includes('signup') || a.includes('landlord')) name = 'building-2';
+    else if(a.includes('application')) name = 'clipboard-list';
+    else if(a.includes('tenant')) name = 'users';
+    else if(a.includes('staff') || a.includes('caretaker') || a.includes('contractor')) name = 'hard-hat';
+    else if(a.includes('billing') || a.includes('subscription') || a.includes('plan')) name = 'credit-card';
+    else if(a.includes('suspend')) name = 'pause';
+    else if(a.includes('announce')) name = 'megaphone';
+    else if(a.includes('delete')) name = 'trash-2';
+    return ico(name, 14);
   }
 
   function renderPagination(key, total, containerId, onPage){
@@ -547,19 +609,6 @@
       <button type="button" class="btn btn-outline btn-sm" ${page<=0?'disabled':''} onclick="window.__adminPage('${key}',${page-1})">Previous</button>
       <button type="button" class="btn btn-outline btn-sm" ${page>=pages-1?'disabled':''} onclick="window.__adminPage('${key}',${page+1})">Next</button>`;
     window.__adminPage = (k, p) => { pagination[k] = Math.max(0, p); onPage(); };
-  }
-
-  function downloadCsv(filename, rows){
-    const csv = rows.map(r => r.map(c => {
-      const s = String(c ?? '');
-      return s.includes(',') || s.includes('"') ? '"' + s.replace(/"/g,'""') + '"' : s;
-    }).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(a.href);
   }
 
   /* ─── Auth ─── */
@@ -738,9 +787,9 @@
 
   /* ─── Navigation ─── */
   const PAGE_TITLES = {
-    overview:'Overview', landlords:'Landlords', tenants:'Tenants', applications:'Applications',
+    overview:'Overview', landlords:'Landlords', tenants:'Tenants', staff:'Staff', applications:'Applications',
     billing:'Billing', support:'Support Tickets', maintenance:'Maintenance', changelog:'Changelog',
-    announcements:'Announcements', settings:'Settings', flagged:'Flagged Accounts'
+    announcements:'Announcements', settings:'Settings', flagged:'Needs review'
   };
 
   async function navigateTo(page){
@@ -757,6 +806,7 @@
     if(page === 'overview') await loadOverview();
     if(page === 'landlords') await loadLandlords();
     if(page === 'tenants') await loadTenants();
+    if(page === 'staff') await loadStaff();
     if(page === 'applications') await loadApplications();
     if(page === 'billing') await loadBilling();
     if(page === 'support') await loadSupport();
@@ -787,6 +837,10 @@
     document.getElementById(id)?.addEventListener('change', () => { pagination.landlords = 0; renderLandlordsTable(); });
   });
   document.getElementById('tenantSearch')?.addEventListener('input', () => { pagination.tenants = 0; renderTenantsTable(); });
+  document.getElementById('staffSearch')?.addEventListener('input', () => { pagination.staff = 0; renderStaffTable(); });
+  ['staffRoleFilter','staffStatusFilter'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', () => { pagination.staff = 0; renderStaffTable(); });
+  });
 
   /* ─── Data: landlords ─── */
   async function fetchLandlordRow(id){
@@ -831,7 +885,7 @@
       cache.landlords = rows.filter(Boolean);
       renderLandlordsTable();
     }catch(e){
-      document.getElementById('landlordsTableWrap').innerHTML = emptyState('⚠️', 'Could not load landlords', e.message);
+      document.getElementById('landlordsTableWrap').innerHTML = emptyState('triangle-alert', 'Could not load landlords', e.message);
       showAdminNotif('Landlords load failed: ' + e.message, 'error');
     }
   }
@@ -859,7 +913,7 @@
     const page = pagination.landlords || 0;
     const slice = list.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
     if(!list.length){
-      document.getElementById('landlordsTableWrap').innerHTML = emptyState('🏠', 'No landlords yet', 'Landlord accounts will appear here after signup.');
+      document.getElementById('landlordsTableWrap').innerHTML = emptyState('building-2', 'No landlords yet', 'Landlord accounts will appear here after signup.');
       document.getElementById('landlordsPagination').innerHTML = '';
       return;
     }
@@ -879,20 +933,17 @@
         <td>${formatDate(l.lastActive)}</td>
         <td>${statusBadge(l.status)}</td>
         <td style="white-space:nowrap">
-          <button class="btn btn-outline btn-sm" onclick="viewLandlord('${esc(l.id)}')">👁️</button>
-          <button class="btn btn-outline btn-sm" onclick="emailLandlord('${esc(l.id)}')">✉️</button>
-          <button class="btn btn-outline btn-sm" onclick="suspendLandlord('${esc(l.id)}',true)">⏸️</button>
-          <button class="btn btn-outline btn-sm" onclick="upgradeLandlordPlan('${esc(l.id)}')">🔼</button>
-          <button class="btn btn-outline btn-sm" style="color:var(--rust)" onclick="deleteLandlord('${esc(l.id)}')">🗑️</button>
+          <button class="btn btn-outline btn-sm" title="View" onclick="viewLandlord('${esc(l.id)}')">${ico('eye')}</button>
+          <button class="btn btn-outline btn-sm" title="Email" onclick="emailLandlord('${esc(l.id)}')">${ico('mail')}</button>
+          <button class="btn btn-outline btn-sm" title="Suspend" onclick="suspendLandlord('${esc(l.id)}',true)">${ico('pause')}</button>
+          <button class="btn btn-outline btn-sm" title="Upgrade" onclick="upgradeLandlordPlan('${esc(l.id)}')">${ico('circle-arrow-up')}</button>
+          <button class="btn btn-outline btn-sm" style="color:var(--rust)" title="Delete" onclick="deleteLandlord('${esc(l.id)}')">${ico('trash-2')}</button>
         </td>
       </tr>`;
     });
     html += '</tbody></table>';
     document.getElementById('landlordsTableWrap').innerHTML = html;
-    if(typeof nestiqStaggerChildren==='function'){
-      const tbody=document.querySelector('#landlordsTableWrap tbody');
-      if(tbody) nestiqStaggerChildren(tbody, 40, 'tr');
-    }
+    staggerAdminTable('#landlordsTableWrap');
     if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
     renderPagination('landlords', list.length, 'landlordsPagination', renderLandlordsTable);
   }
@@ -941,6 +992,7 @@
       });
       html += '</tbody></table>';
       el.innerHTML = html;
+      staggerAdminTable(el);
     }catch(e){
       el.innerHTML = '<p style="color:var(--muted)">Could not load email logs. Add a Firestore index on emailLogs.sentAt if needed.</p>';
     }
@@ -954,13 +1006,14 @@
       <textarea id="adminEmailBody" class="form-input" rows="6" style="margin:12px 0" placeholder="Message…"></textarea>
       <p style="font-size:0.8rem;color:var(--muted)">Configure EmailJS in landlord settings for automated delivery. This logs the intent for your records.</p>
       <button class="btn btn-gold" onclick="confirmEmailLandlord('${esc(id)}')">Log & close</button>
-      <button class="btn btn-outline" style="margin-left:8px" onclick="closeModal()">Cancel</button>`);
+      <button class="btn btn-outline" style="margin-left:8px" onclick="nestiqCloseModalAnimated()">Cancel</button>`);
+    nestiqOpenModalAnimated();
   };
 
   window.confirmEmailLandlord = async id => {
     const l = cache.landlords.find(x => x.id === id);
     await logAdminActivity('email_landlord', id, l?.email, document.getElementById('adminEmailBody')?.value?.slice(0,200));
-    closeModal();
+    nestiqCloseModalAnimated();
     showAdminNotif('Email action logged for ' + (l?.email||id), 'success');
   };
 
@@ -999,6 +1052,7 @@
         <option value="cancelled">cancelled</option>
       </select>
       <button class="btn btn-gold" style="margin-top:12px" onclick="applyBillingOverride('${esc(id)}')">Save override</button>`);
+    nestiqOpenModalAnimated();
   };
 
   window.applyBillingOverride = async id => {
@@ -1019,7 +1073,7 @@
     }
     await db.collection('landlords').doc(id).collection('profile').doc('settings').set(patch, { merge: true });
     await logAdminActivity('billing_override', id, '', `plan=${plan} status=${status}`);
-    closeModal();
+    nestiqCloseModalAnimated();
     showAdminNotif('Billing override saved', 'success');
     await loadLandlords();
     if(document.getElementById('page-billing').classList.contains('active')) await loadBilling();
@@ -1063,12 +1117,6 @@
     showAdminNotif('Bulk suspend complete', 'warning');
   };
 
-  window.exportLandlordsCsv = () => {
-    const rows = [['ID','Name','Email','Plan','Status','Properties','Tenants','Signup']];
-    filterLandlords().forEach(l => rows.push([l.id,l.name,l.email,l.plan,l.status,l.propertiesCount,l.tenantsCount,formatDate(l.signupDate)]));
-    downloadCsv('nestiq-landlords.csv', rows);
-  };
-
   /* ─── Tenants ─── */
   async function loadTenants(){
     document.getElementById('tenantsTableWrap').innerHTML = skeletonTable(8, 8);
@@ -1105,7 +1153,7 @@
       cache.tenants = rows;
       renderTenantsTable();
     }catch(e){
-      document.getElementById('tenantsTableWrap').innerHTML = emptyState('👥', 'No tenant accounts', e.message);
+      document.getElementById('tenantsTableWrap').innerHTML = emptyState('users', 'No tenant accounts', e.message);
     }
   }
 
@@ -1115,7 +1163,7 @@
     const page = pagination.tenants || 0;
     const slice = list.slice(page * PAGE_SIZE, (page+1)*PAGE_SIZE);
     if(!list.length){
-      document.getElementById('tenantsTableWrap').innerHTML = emptyState('👥', 'No tenants', 'Tenant portal accounts appear here.');
+      document.getElementById('tenantsTableWrap').innerHTML = emptyState('users', 'No tenants', 'Tenant portal accounts appear here.');
       return;
     }
     let html = `<table class="data-table"><thead><tr><th>Name</th><th>Email</th><th>Landlord</th><th>Property</th><th>Portal</th><th>Status</th><th>Actions</th></tr></thead><tbody>`;
@@ -1125,13 +1173,14 @@
         <td>${t.portalAccess ? '<span class="badge badge-green">Yes</span>' : '<span class="badge badge-red">No</span>'}</td>
         <td>${statusBadge(t.status)}</td>
         <td>
-          <button class="btn btn-outline btn-sm" onclick="viewTenantAdmin('${esc(t.uid)}')">👁️</button>
-          <button class="btn btn-outline btn-sm" onclick="suspendTenantPortal('${esc(t.uid)}')">⏸️</button>
+          <button class="btn btn-outline btn-sm" title="View" onclick="viewTenantAdmin('${esc(t.uid)}')">${ico('eye')}</button>
+          <button class="btn btn-outline btn-sm" title="Suspend" onclick="suspendTenantPortal('${esc(t.uid)}')">${ico('pause')}</button>
         </td>
       </tr>`;
     });
     html += '</tbody></table>';
     document.getElementById('tenantsTableWrap').innerHTML = html;
+    staggerAdminTable('#tenantsTableWrap');
     renderPagination('tenants', list.length, 'tenantsPagination', renderTenantsTable);
   }
 
@@ -1147,6 +1196,219 @@
     await logAdminActivity('suspend_tenant', uid);
     showAdminNotif('Tenant portal suspended', 'warning');
     await loadTenants();
+  };
+
+  /* ─── Staff (caretakers + contractors) ─── */
+  function staffRoleBadge(role){
+    const r = String(role||'').toLowerCase();
+    if(r === 'caretaker') return '<span class="badge badge-gold">Caretaker</span>';
+    if(r === 'contractor') return '<span class="badge badge-gray">Contractor</span>';
+    return '<span class="badge badge-gray">'+esc(role||'Staff')+'</span>';
+  }
+
+  function staffStatusOf(d){
+    const raw = d.accountStatus || d.status || 'active';
+    return String(raw||'active').toLowerCase() || 'active';
+  }
+
+  async function resolveStaffLandlordName(lid, fallback){
+    const id = String(lid||'').trim();
+    if(!id) return fallback || '—';
+    const cached = cache.landlords.find(l => String(l.id) === id);
+    if(cached && cached.name) return cached.name;
+    try{
+      const ls = await db.collection('landlords').doc(id).collection('profile').doc('settings').get();
+      if(ls.exists){
+        const n = ls.data().name || ls.data().landlordSettings?.name;
+        if(n) return n;
+      }
+    }catch(_e){}
+    return fallback || id;
+  }
+
+  async function loadStaff(){
+    document.getElementById('staffTableWrap').innerHTML = skeletonTable(8, 8);
+    try{
+      const byUid = new Map();
+      const staffSnap = await db.collection('staffAccounts').get();
+      staffSnap.docs.forEach(doc => {
+        const d = doc.data() || {};
+        const rawRole = String(d.role||'').toLowerCase();
+        const role = rawRole === 'caretaker' ? 'caretaker' : (rawRole === 'contractor' ? 'contractor' : (Array.isArray(d.assignedPropertyIds) && d.assignedPropertyIds.length ? 'caretaker' : 'contractor'));
+        byUid.set(doc.id, {
+          uid: doc.id,
+          role,
+          name: d.name || (role === 'caretaker' ? 'Caretaker' : 'Contractor'),
+          email: (d.email || '').toLowerCase(),
+          phone: d.phone || '',
+          landlordId: d.landlordId || '',
+          landlordName: d.landlordName || '',
+          staffId: d.staffId || '',
+          vendorId: d.linkedVendorId || d.vendorId || '',
+          vendorType: d.staffType || d.vendorType || '',
+          assignedPropertyIds: Array.isArray(d.assignedPropertyIds) ? d.assignedPropertyIds.map(x => String(x)).filter(Boolean) : [],
+          status: staffStatusOf(d),
+          signupDate: d.createdAt || null,
+          source: 'staffAccounts'
+        });
+      });
+      try{
+        const cSnap = await db.collection('contractorAccounts').get();
+        cSnap.docs.forEach(doc => {
+          const d = doc.data() || {};
+          const prev = byUid.get(doc.id) || {};
+          if(prev.role === 'caretaker') return;
+          byUid.set(doc.id, {
+            uid: doc.id,
+            role: 'contractor',
+            name: prev.name || d.name || 'Contractor',
+            email: (prev.email || d.email || '').toLowerCase(),
+            phone: prev.phone || d.phone || '',
+            landlordId: prev.landlordId || d.landlordId || '',
+            landlordName: prev.landlordName || d.landlordName || '',
+            staffId: prev.staffId || d.staffId || '',
+            vendorId: prev.vendorId || d.vendorId || '',
+            vendorType: prev.vendorType || d.vendorType || d.staffType || '',
+            assignedPropertyIds: prev.assignedPropertyIds || [],
+            status: prev.status || staffStatusOf(d),
+            signupDate: prev.signupDate || d.createdAt || null,
+            source: prev.source ? prev.source + '+contractorAccounts' : 'contractorAccounts'
+          });
+        });
+      }catch(_e){}
+
+      const rows = [...byUid.values()];
+      const lids = [...new Set(rows.map(r => String(r.landlordId||'')).filter(Boolean))];
+      const nameByLid = {};
+      await Promise.all(lids.map(async lid => {
+        nameByLid[lid] = await resolveStaffLandlordName(lid, '');
+      }));
+      rows.forEach(r => {
+        if(!r.landlordName && r.landlordId) r.landlordName = nameByLid[r.landlordId] || r.landlordId;
+        else if(r.landlordId && nameByLid[r.landlordId]) r.landlordName = nameByLid[r.landlordId];
+        if(!r.landlordName) r.landlordName = r.landlordId || '—';
+      });
+      rows.sort((a,b) => (b.signupDate?.seconds||0) - (a.signupDate?.seconds||0));
+      cache.staff = rows;
+      renderStaffTable();
+    }catch(e){
+      document.getElementById('staffTableWrap').innerHTML = emptyState('hard-hat', 'Could not load staff', e.message);
+      showAdminNotif('Staff load failed: ' + e.message, 'error');
+    }
+  }
+
+  function filterStaff(){
+    let list = cache.staff.slice();
+    const q = (document.getElementById('staffSearch')?.value || '').toLowerCase();
+    const role = (document.getElementById('staffRoleFilter')?.value || '').toLowerCase();
+    const st = (document.getElementById('staffStatusFilter')?.value || '').toLowerCase();
+    if(q){
+      list = list.filter(s =>
+        String(s.name||'').toLowerCase().includes(q)
+        || String(s.email||'').includes(q)
+        || String(s.landlordName||'').toLowerCase().includes(q)
+        || String(s.phone||'').toLowerCase().includes(q)
+      );
+    }
+    if(role) list = list.filter(s => s.role === role);
+    if(st) list = list.filter(s => String(s.status).toLowerCase() === st);
+    return list;
+  }
+
+  function renderStaffTable(){
+    const list = filterStaff();
+    const page = pagination.staff || 0;
+    const slice = list.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+    const caretakers = cache.staff.filter(s => s.role === 'caretaker').length;
+    const contractors = cache.staff.filter(s => s.role === 'contractor').length;
+    const active = cache.staff.filter(s => String(s.status).toLowerCase() !== 'suspended').length;
+    const statsEl = document.getElementById('staffStats');
+    if(statsEl){
+      statsEl.innerHTML = `
+        <div class="stat-card"><div class="label">Total staff</div><div class="val">${cache.staff.length}</div></div>
+        <div class="stat-card"><div class="label">Caretakers</div><div class="val">${caretakers}</div></div>
+        <div class="stat-card"><div class="label">Contractors</div><div class="val">${contractors}</div></div>
+        <div class="stat-card"><div class="label">Active</div><div class="val">${active}</div></div>`;
+    }
+    if(!list.length){
+      document.getElementById('staffTableWrap').innerHTML = emptyState('hard-hat', 'No staff accounts', 'Caretaker and contractor portal accounts appear here after they accept an invitation.');
+      document.getElementById('staffPagination').innerHTML = '';
+      return;
+    }
+    let html = `<table class="data-table"><thead><tr>
+      <th>Name</th><th>Role</th><th>Landlord</th><th>Email</th><th>Assigned</th><th>Joined</th><th>Status</th><th>Actions</th>
+    </tr></thead><tbody>`;
+    slice.forEach(s => {
+      const assigned = s.role === 'caretaker'
+        ? (s.assignedPropertyIds.length ? s.assignedPropertyIds.length + ' propert' + (s.assignedPropertyIds.length === 1 ? 'y' : 'ies') : 'None')
+        : (s.vendorType || s.vendorId || '—');
+      html += `<tr>
+        <td><span class="avatar">${esc(initials(s.name))}</span> ${esc(s.name)}</td>
+        <td>${staffRoleBadge(s.role)}</td>
+        <td>${esc(s.landlordName)}</td>
+        <td>${esc(s.email || '—')}</td>
+        <td>${esc(assigned)}</td>
+        <td>${formatDate(s.signupDate)}</td>
+        <td>${statusBadge(s.status)}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-outline btn-sm" title="View" onclick="viewStaffAdmin('${esc(s.uid)}')">${ico('eye')}</button>
+          <button class="btn btn-outline btn-sm" title="${String(s.status).toLowerCase()==='suspended'?'Reactivate':'Suspend'}" onclick="toggleStaffPortal('${esc(s.uid)}')">${String(s.status).toLowerCase()==='suspended'?ico('play'):ico('pause')}</button>
+        </td>
+      </tr>`;
+    });
+    html += '</tbody></table>';
+    document.getElementById('staffTableWrap').innerHTML = html;
+    staggerAdminTable('#staffTableWrap');
+    renderPagination('staff', list.length, 'staffPagination', renderStaffTable);
+  }
+
+  window.viewStaffAdmin = async uid => {
+    const s = cache.staff.find(x => x.uid === uid);
+    if(!s) return;
+    const props = (s.assignedPropertyIds||[]).map(id => `<li>${esc(id)}</li>`).join('') || '<li>None assigned</li>';
+    const landlordBtn = s.landlordId
+      ? `<button type="button" class="btn btn-outline btn-sm" onclick="openStaffLandlord('${esc(s.landlordId)}')">Open landlord</button>`
+      : '';
+    openDrawer(`<button class="btn btn-outline btn-sm" onclick="closeDrawer()">Close</button>
+      <h2 style="font-family:'Playfair Display',serif;margin:16px 0 8px">${esc(s.name)}</h2>
+      <p style="color:var(--muted);font-size:0.88rem">${esc(s.email||'')}</p>
+      <div style="margin:16px 0">${staffRoleBadge(s.role)} ${statusBadge(s.status)}</div>
+      <p><strong>Landlord:</strong> ${esc(s.landlordName)} ${landlordBtn}</p>
+      <p><strong>Phone:</strong> ${esc(s.phone||'—')}</p>
+      ${s.role==='contractor' ? `<p><strong>Vendor type:</strong> ${esc(s.vendorType||'—')}</p><p><strong>Vendor ID:</strong> ${esc(s.vendorId||'—')}</p>` : ''}
+      <p><strong>Staff ID:</strong> ${esc(s.staffId||'—')}</p>
+      <p><strong>Joined:</strong> ${formatDate(s.signupDate)}</p>
+      <h3 style="margin-top:24px;font-size:1rem">Assigned properties</h3>
+      <ul style="padding-left:18px;font-size:0.88rem">${props}</ul>
+      <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
+        <button type="button" class="btn btn-outline btn-sm" onclick="toggleStaffPortal('${esc(s.uid)}')">${String(s.status).toLowerCase()==='suspended'?'Reactivate portal':'Suspend portal'}</button>
+      </div>`);
+  };
+
+  window.openStaffLandlord = async id => {
+    if(!cache.landlords.some(l => String(l.id) === String(id))){
+      try{
+        const row = await fetchLandlordRow(id);
+        if(row) cache.landlords.push(row);
+      }catch(_e){}
+    }
+    if(typeof window.viewLandlord === 'function') window.viewLandlord(id);
+  };
+
+  window.toggleStaffPortal = async uid => {
+    const s = cache.staff.find(x => x.uid === uid);
+    if(!s) return;
+    const suspended = String(s.status).toLowerCase() === 'suspended';
+    const next = suspended ? 'active' : 'suspended';
+    if(!confirmAction(suspended ? 'Reactivate this staff portal?' : 'Suspend this staff portal access?')) return;
+    await db.collection('staffAccounts').doc(uid).set({ accountStatus: next }, { merge: true });
+    if(s.role === 'contractor'){
+      try{ await db.collection('contractorAccounts').doc(uid).set({ status: next }, { merge: true }); }catch(_e){}
+    }
+    await logAdminActivity(suspended ? 'reactivate_staff' : 'suspend_staff', uid, s.email, s.role);
+    showAdminNotif(suspended ? 'Staff portal reactivated' : 'Staff portal suspended', suspended ? 'success' : 'warning');
+    closeDrawer();
+    await loadStaff();
   };
 
   /* ─── Applications ─── */
@@ -1171,12 +1433,13 @@
         return d && d.getMonth() === month;
       }).length;
       document.getElementById('appStats').innerHTML = `
-        <div class="stat-card"><div class="label">Pending</div><div class="val">${pending}</div></div>
-        <div class="stat-card"><div class="label">Approved this month</div><div class="val">${approved}</div></div>
-        <div class="stat-card"><div class="label">Declined this month</div><div class="val">${declined}</div></div>`;
+        <div class="stat-card"><div class="label">Pending</div><div class="val"><span class="stat-value" data-count-to="${pending}">0</span></div></div>
+        <div class="stat-card"><div class="label">Approved this month</div><div class="val"><span class="stat-value" data-count-to="${approved}">0</span></div></div>
+        <div class="stat-card"><div class="label">Declined this month</div><div class="val"><span class="stat-value" data-count-to="${declined}">0</span></div></div>`;
+      if(typeof nestiqInitCounters==='function') nestiqInitCounters();
       renderApplicationsTable();
     }catch(e){
-      document.getElementById('applicationsTableWrap').innerHTML = emptyState('📋', 'No applications', e.message);
+      document.getElementById('applicationsTableWrap').innerHTML = emptyState('clipboard-list', 'No applications', e.message);
     }
   }
 
@@ -1185,7 +1448,7 @@
     const page = pagination.applications || 0;
     const slice = list.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
     if(!list.length){
-      document.getElementById('applicationsTableWrap').innerHTML = emptyState('📋', 'No pending public applications', 'Unprocessed submissions appear here.');
+      document.getElementById('applicationsTableWrap').innerHTML = emptyState('clipboard-list', 'No pending public applications', 'Unprocessed submissions appear here.');
       return;
     }
     let html = `<table class="data-table"><thead><tr><th>Applicant</th><th>Email</th><th>Property</th><th>Landlord</th><th>Submitted</th><th>Ratio</th><th>Actions</th></tr></thead><tbody>`;
@@ -1198,14 +1461,15 @@
         <td>${formatDate(a.createdAt)||esc(a.createdAt||'—')}</td>
         <td>${esc(a.incomeRatio||a.rentToIncome||'—')}</td>
         <td>
-          <button class="btn btn-outline btn-sm" onclick="viewApplication('${esc(a.id)}')">👁️</button>
-          <button class="btn btn-outline btn-sm" onclick="notifyLandlordApp('${esc(a.id)}')">✉️</button>
-          <button class="btn btn-outline btn-sm" onclick="deleteApplication('${esc(a.id)}')">🗑️</button>
+          <button class="btn btn-outline btn-sm" title="View" onclick="viewApplication('${esc(a.id)}')">${ico('eye')}</button>
+          <button class="btn btn-outline btn-sm" title="Notify" onclick="notifyLandlordApp('${esc(a.id)}')">${ico('mail')}</button>
+          <button class="btn btn-outline btn-sm" title="Delete" onclick="deleteApplication('${esc(a.id)}')">${ico('trash-2')}</button>
         </td>
       </tr>`;
     });
     html += '</tbody></table>';
     document.getElementById('applicationsTableWrap').innerHTML = html;
+    staggerAdminTable('#applicationsTableWrap');
     renderPagination('applications', list.length, 'applicationsPagination', renderApplicationsTable);
   }
 
@@ -1255,12 +1519,13 @@
     const free = billSnaps.filter(x => normalizePlanKey(x.billing.plan) === 'starter').length;
     const trials = billSnaps.filter(x => x.billing.status === 'trial').length;
     document.getElementById('billingStats').innerHTML = `
-      <div class="stat-card"><div class="label">MRR</div><div class="val">R${mrr.toLocaleString()}</div></div>
-      <div class="stat-card"><div class="label">ARR</div><div class="val">R${(mrr*12).toLocaleString()}</div></div>
-      <div class="stat-card"><div class="label">Paying</div><div class="val">${paying}</div></div>
-      <div class="stat-card"><div class="label">Free tier</div><div class="val">${free}</div></div>
-      <div class="stat-card"><div class="label">On trial</div><div class="val">${trials}</div></div>
+      <div class="stat-card"><div class="label">MRR</div><div class="val"><span class="stat-value" data-count-to="${mrr}" data-prefix="R">0</span></div></div>
+      <div class="stat-card"><div class="label">ARR</div><div class="val"><span class="stat-value" data-count-to="${mrr*12}" data-prefix="R">0</span></div></div>
+      <div class="stat-card"><div class="label">Paying</div><div class="val"><span class="stat-value" data-count-to="${paying}">0</span></div></div>
+      <div class="stat-card"><div class="label">Free tier</div><div class="val"><span class="stat-value" data-count-to="${free}">0</span></div></div>
+      <div class="stat-card"><div class="label">On trial</div><div class="val"><span class="stat-value" data-count-to="${trials}">0</span></div></div>
       <div class="stat-card"><div class="label">Trial conv.</div><div class="val">—</div></div>`;
+    if(typeof nestiqInitCounters==='function') nestiqInitCounters();
     renderBillingTable();
     renderMrrChart(billSnaps);
   }
@@ -1286,7 +1551,8 @@
       </tr>`;
     });
     html += '</tbody></table>';
-    document.getElementById('billingTableWrap').innerHTML = html || emptyState('💳', 'No billing records', 'Landlords appear here once billing is set on signup.');
+    document.getElementById('billingTableWrap').innerHTML = html || emptyState('credit-card', 'No billing records', 'Landlords appear here once billing is set on signup.');
+    staggerAdminTable('#billingTableWrap');
     renderPagination('billing', cache.billing.length, 'billingPagination', renderBillingTable);
   }
 
@@ -1307,6 +1573,7 @@
       <input id="payAmount" class="form-input" type="number" placeholder="Amount (ZAR)" />
       <input id="payNotes" class="form-input" style="margin-top:10px" placeholder="Notes" />
       <button class="btn btn-gold" style="margin-top:14px" onclick="saveManualPayment()">Record</button>`);
+    nestiqOpenModalAnimated();
   };
 
   window.saveManualPayment = async () => {
@@ -1322,7 +1589,7 @@
       plan: 'pro'
     });
     await logAdminActivity('manual_payment', id, '', notes);
-    closeModal();
+    nestiqCloseModalAnimated();
     showAdminNotif('Payment recorded', 'success');
     await loadBilling();
   };
@@ -1359,7 +1626,7 @@
         cache.maintenance = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         renderMaintenanceTable();
       }catch(e2){
-        document.getElementById('maintenanceTableWrap').innerHTML = emptyState('🔧', 'No maintenance requests', e2.message);
+        document.getElementById('maintenanceTableWrap').innerHTML = emptyState('wrench', 'No maintenance requests', e2.message);
       }
     }
   }
@@ -1368,7 +1635,7 @@
     const page = pagination.maintenance || 0;
     const slice = cache.maintenance.slice(page*PAGE_SIZE, (page+1)*PAGE_SIZE);
     if(!slice.length){
-      document.getElementById('maintenanceTableWrap').innerHTML = emptyState('🔧', 'No requests', 'Maintenance tickets from all landlords appear here.');
+      document.getElementById('maintenanceTableWrap').innerHTML = emptyState('wrench', 'No requests', 'Maintenance tickets from all landlords appear here.');
       return;
     }
     let html = `<table class="data-table"><thead><tr><th>Title</th><th>Tenant</th><th>Status</th><th>Urgency</th><th>Date</th></tr></thead><tbody>`;
@@ -1377,6 +1644,7 @@
     });
     html += '</tbody></table>';
     document.getElementById('maintenanceTableWrap').innerHTML = html;
+    staggerAdminTable('#maintenanceTableWrap');
     renderPagination('maintenance', cache.maintenance.length, 'maintenancePagination', renderMaintenanceTable);
   }
 
@@ -1385,18 +1653,20 @@
     const snap = await db.collection('announcements').orderBy('sentAt','desc').limit(50).get().catch(() => ({ docs: [] }));
     cache.announcements = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     let html = `<table class="data-table"><thead><tr><th>Title</th><th>Sent</th><th>Audience</th><th>Delivery</th></tr></thead><tbody>`;
-    if(!cache.announcements.length) html += '<tr><td colspan="4">'+emptyState('📣','No announcements sent yet','')+'</td></tr>';
+    if(!cache.announcements.length) html += '<tr><td colspan="4">'+emptyState('megaphone','No announcements sent yet','')+'</td></tr>';
     cache.announcements.forEach(a => {
       html += `<tr><td>${esc(a.title)}</td><td>${formatDate(a.sentAt)}</td><td>${esc(a.audience)}</td><td>${esc((a.delivery||[]).join(', '))}</td></tr>`;
     });
     html += '</tbody></table>';
     document.getElementById('announcementsHistoryWrap').innerHTML = html;
+    staggerAdminTable('#announcementsHistoryWrap');
   }
 
   window.previewAnnouncement = () => {
     const t = document.getElementById('annTitle').value;
     const b = document.getElementById('annBody').value;
-    openModal(`<h2>${esc(t)}</h2><p style="margin-top:12px;line-height:1.6">${esc(b)}</p><button class="btn btn-outline" style="margin-top:16px" onclick="closeModal()">Close</button>`);
+    openModal(`<h2>${esc(t)}</h2><p style="margin-top:12px;line-height:1.6">${esc(b)}</p><button class="btn btn-outline" style="margin-top:16px" onclick="nestiqCloseModalAnimated()">Close</button>`);
+    nestiqOpenModalAnimated();
   };
 
   window.sendAnnouncement = async () => {
@@ -1559,6 +1829,7 @@
             <button class="btn btn-outline btn-sm" onclick="clUnpublish('${d.id}')">Unpublish</button>
           </td></tr>`).join('')}
         </tbody></table>`;
+      staggerAdminTable(wrap);
     }catch(e){
       wrap.innerHTML = '<p style="padding:16px;color:#c00">' + (e.message||'Error') + '</p>';
     }
@@ -1630,7 +1901,7 @@
 
   window.notifySubscribers = notifySubscribers;
 
-  /* ─── Flagged ─── */
+  /* ─── Needs review ─── */
   async function loadFlagged(){
     if(!cache.landlords.length) await loadLandlords();
     if(!cache.applications.length){
@@ -1664,7 +1935,7 @@
   function renderFlagged(){
     const wrap = document.getElementById('flaggedListWrap');
     if(!cache.flagged.length){
-      wrap.innerHTML = emptyState('🚩', 'No flagged accounts', 'Automatic checks run when you open this page.');
+      wrap.innerHTML = emptyState('search', 'Nothing needs review', 'Nothing currently matches the checks above. This list refreshes each time you open Needs review.');
       return;
     }
     let html = '<table class="data-table"><thead><tr><th>Reason</th><th>Target</th><th>Severity</th><th>Actions</th></tr></thead><tbody>';
@@ -1681,12 +1952,19 @@
     });
     html += '</tbody></table>';
     wrap.innerHTML = html;
+    staggerAdminTable(wrap);
   }
 
   window.dismissFlag = i => { cache.flagged.splice(i,1); renderFlagged(); };
   window.investigateFlag = i => {
     const f = cache.flagged[i];
-    openDrawer(`<h2>Investigate</h2><p>${esc(f.reason)}</p><p>Target: ${esc(f.target)}</p>`);
+    openDrawer(`<h2>Investigate</h2>
+      <p style="color:var(--muted);font-size:0.88rem;line-height:1.5">This account was listed because an automatic check matched. Review the person in Landlords, Tenants or Applications, then suspend only if you need to lock them out.</p>
+      <p><strong>Reason:</strong> ${esc(f.reason)}</p>
+      <p><strong>Type:</strong> ${esc(f.type)}</p>
+      <p><strong>Target:</strong> ${esc(f.target)}</p>
+      ${f.email?`<p><strong>Email:</strong> ${esc(f.email)}</p>`:''}
+      <p><strong>Severity:</strong> ${esc(f.severity)}</p>`);
   };
 
   /* ─── Overview ─── */
@@ -1714,12 +1992,12 @@
       const signupsMonth = cache.landlords.filter(l => (l.signupDate?.seconds||0) >= monthStart).length;
 
       document.getElementById('overviewStats').innerHTML = `
-        <div class="stat-card reveal"><div class="label">🏠 Total Landlords</div><div class="val"><span data-count-to="${cache.landlords.length}">0</span></div></div>
-        <div class="stat-card reveal"><div class="label">👥 Total Tenants</div><div class="val"><span data-count-to="${tenantCount}">0</span></div></div>
-        <div class="stat-card reveal"><div class="label">🏘️ Total Properties</div><div class="val"><span data-count-to="${propCount}">0</span></div></div>
-        <div class="stat-card reveal"><div class="label">📋 Pending Applications</div><div class="val"><span data-count-to="${pendingApps}">0</span></div></div>
-        <div class="stat-card reveal"><div class="label">💰 Monthly Revenue</div><div class="val"><span data-count-to="${mrr}" data-prefix="R">0</span></div></div>
-        <div class="stat-card reveal"><div class="label">📈 New Signups (mo)</div><div class="val"><span data-count-to="${signupsMonth}">0</span></div></div>`;
+        <div class="stat-card reveal"><div class="label">${ico('building-2',14)} Total Landlords</div><div class="val"><span class="stat-value" data-count-to="${cache.landlords.length}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">${ico('users',14)} Total Tenants</div><div class="val"><span class="stat-value" data-count-to="${tenantCount}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">${ico('house',14)} Total Properties</div><div class="val"><span class="stat-value" data-count-to="${propCount}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">${ico('clipboard-list',14)} Pending Applications</div><div class="val"><span class="stat-value" data-count-to="${pendingApps}">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">${ico('banknote',14)} Monthly Revenue</div><div class="val"><span class="stat-value" data-count-to="${mrr}" data-prefix="R">0</span></div></div>
+        <div class="stat-card reveal"><div class="label">${ico('chart-column',14)} New Signups (mo)</div><div class="val"><span class="stat-value" data-count-to="${signupsMonth}">0</span></div></div>`;
       if(typeof nestiqInitCounters==='function') nestiqInitCounters();
       if(typeof nestiqInitScrollReveal==='function') nestiqInitScrollReveal();
 
@@ -1766,7 +2044,7 @@
       const snap = await db.collection('adminActivity').orderBy('timestamp','desc').limit(20).get();
       cache.activity = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       if(!cache.activity.length){
-        el.innerHTML = emptyState('📭', 'No activity yet', 'Admin actions will appear here.');
+        el.innerHTML = emptyState('inbox', 'No activity yet', 'Admin actions will appear here.');
         return;
       }
       el.innerHTML = cache.activity.map(a => `
@@ -1776,7 +2054,7 @@
           <div style="color:var(--muted);font-size:0.75rem;margin-top:4px">${timeAgo(a.timestamp)}</div>
         </div>`).join('');
     }catch(e){
-      el.innerHTML = emptyState('⚠️', 'Activity unavailable', 'Create adminActivity index if needed.');
+      el.innerHTML = emptyState('triangle-alert', 'Activity unavailable', 'Create adminActivity index if needed.');
     }
   }
 
@@ -1829,10 +2107,11 @@
     });
     const avgH = respCount ? Math.round(totalResp / respCount) : 0;
     document.getElementById('supportStats').innerHTML = `
-      <div class="stat-card"><div class="label">Open tickets</div><div class="val">${open}</div></div>
-      <div class="stat-card"><div class="label">Avg response</div><div class="val">${avgH ? avgH + 'h' : '—'}</div></div>
-      <div class="stat-card"><div class="label">Resolved (7d)</div><div class="val">${resolvedWeek}</div></div>
-      <div class="stat-card"><div class="label">Urgent</div><div class="val" style="color:${urgent>0?'#dc3545':'inherit'}">${urgent}${urgent>0?' ⚠':''}</div></div>`;
+      <div class="stat-card"><div class="label">Open tickets</div><div class="val"><span class="stat-value" data-count-to="${open}">0</span></div></div>
+      <div class="stat-card"><div class="label">Avg response</div><div class="val">${avgH ? `<span class="stat-value" data-count-to="${avgH}" data-suffix="h">0</span>` : '—'}</div></div>
+      <div class="stat-card"><div class="label">Resolved (7d)</div><div class="val"><span class="stat-value" data-count-to="${resolvedWeek}">0</span></div></div>
+      <div class="stat-card"><div class="label">Urgent</div><div class="val" style="color:${urgent>0?'#dc3545':'inherit'}"><span class="stat-value" data-count-to="${urgent}"${urgent>0?' data-suffix=" ⚠"':''}>0</span></div></div>`;
+    if(typeof nestiqInitCounters==='function') nestiqInitCounters();
     const badge = document.getElementById('adminSupportOpenBadge');
     if(badge){
       if(open > 0){ badge.textContent = open > 99 ? '99+' : String(open); badge.style.display = 'inline'; }
@@ -1882,18 +2161,19 @@
         <td>${supFmt(t.createdAt)}</td>
         <td>${supFmt(t.lastUpdated)}</td>
         <td style="white-space:nowrap">
-          <button class="btn btn-outline btn-sm" onclick="adminViewTicket('${esc(t.id)}')" title="View">👁️</button>
+          <button class="btn btn-outline btn-sm" onclick="adminViewTicket('${esc(t.id)}')" title="View">${ico('eye')}</button>
           <select class="form-input" style="max-width:110px;display:inline-block;padding:4px;font-size:0.75rem" onchange="adminSetTicketStatus('${esc(t.id)}',this.value)">
             <option value="">Status…</option>
             <option value="open">Open</option><option value="in progress">In Progress</option>
             <option value="resolved">Resolved</option><option value="closed">Closed</option>
           </select>
           <button class="btn btn-outline btn-sm" onclick="adminFlagUrgent('${esc(t.id)}')" title="Urgent">🚩</button>
-          <button class="btn btn-outline btn-sm" onclick="adminDeleteTicket('${esc(t.id)}')" title="Delete">🗑️</button>
+          <button class="btn btn-outline btn-sm" onclick="adminDeleteTicket('${esc(t.id)}')" title="Delete">${ico('trash-2')}</button>
         </td></tr>`;
     });
     html += '</tbody></table>';
-    document.getElementById('supportTableWrap').innerHTML = rows.length ? html : emptyState('🎧', 'No tickets', 'No tickets match your filters.');
+    document.getElementById('supportTableWrap').innerHTML = rows.length ? html : emptyState('headphones', 'No tickets', 'No tickets match your filters.');
+    staggerAdminTable('#supportTableWrap');
     document.getElementById('supportSelectAll')?.addEventListener('change', function(){ supportToggleAll(this.checked); });
   }
 
@@ -1905,31 +2185,37 @@
     return [...document.querySelectorAll('.support-row-cb:checked')].map(cb => cb.value);
   }
 
+  function applySupportTickets(docs, { notifyNew } = {}){
+    const incoming = (docs || []).map(d => ({ id: d.id, ...d.data() }));
+    incoming.forEach(t => {
+      const isNew = !supportKnownIds.has(t.id);
+      supportKnownIds.add(t.id);
+      if(notifyNew && isNew && String(t.priority).toLowerCase() === 'urgent' && String(t.status).toLowerCase() === 'open'){
+        window.nestiqSupport?.playUrgentSound?.();
+        showAdminNotif('New urgent support ticket: ' + (t.ticketId || t.subject), 'error');
+      }
+    });
+    cache.supportTickets = incoming;
+    supportStatsRow(cache.supportTickets);
+    renderSupportTable();
+  }
+
   function startSupportListener(){
     if(supportTicketsUnsub) return;
-    supportTicketsUnsub = db.collection('supportTickets').onSnapshot(snap => {
-      const incoming = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      incoming.forEach(t => {
-        if(!supportKnownIds.has(t.id)){
-          supportKnownIds.add(t.id);
-          if(String(t.priority).toLowerCase() === 'urgent' && String(t.status).toLowerCase() === 'open'){
-            window.nestiqSupport?.playUrgentSound?.();
-            showAdminNotif('New urgent support ticket: ' + (t.ticketId || t.subject), 'error');
-          }
-        }
-      });
-      cache.supportTickets = incoming;
-      supportStatsRow(cache.supportTickets);
-      renderSupportTable();
+    if(!db){
+      document.getElementById('supportTableWrap').innerHTML = emptyState('triangle-alert', 'Tickets unavailable', 'Firebase is not connected.');
+      return;
+    }
+    supportTicketsUnsub = db.collection('supportTickets').limit(200).onSnapshot(snap => {
+      applySupportTickets(snap.docs, { notifyNew: supportKnownIds.size > 0 });
     }, e => {
-      if(document.getElementById('supportTableWrap'))
-        document.getElementById('supportTableWrap').innerHTML = emptyState('⚠️', 'Tickets unavailable', e.message);
+      console.warn('NestIQ admin support tickets', e);
+      const wrap = document.getElementById('supportTableWrap');
+      if(wrap) wrap.innerHTML = emptyState('triangle-alert', 'Tickets unavailable', e.message || 'Could not load tickets.');
     });
   }
 
   async function loadSupport(){
-    document.getElementById('supportTableWrap').innerHTML = skeletonTable(10, 5);
-    startSupportListener();
     ['supportSearch','supportFilterStatus','supportFilterPriority','supportFilterCategory'].forEach(id => {
       const el = document.getElementById(id);
       if(el && !el.dataset.bound){
@@ -1938,6 +2224,33 @@
         el.addEventListener('change', renderSupportTable);
       }
     });
+
+    if(cache.supportTickets.length || supportTicketsUnsub){
+      supportStatsRow(cache.supportTickets);
+      renderSupportTable();
+      startSupportListener();
+      return;
+    }
+
+    const wrap = document.getElementById('supportTableWrap');
+    if(wrap) wrap.innerHTML = skeletonTable(10, 5);
+
+    try{
+      const snap = await Promise.race([
+        db.collection('supportTickets').limit(200).get(),
+        new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))
+      ]);
+      applySupportTickets(snap.docs, { notifyNew: false });
+    }catch(e){
+      console.warn('NestIQ admin support tickets load', e);
+      if(wrap && wrap.querySelector('.skeleton')){
+        const msg = String(e.message || e) === 'timeout'
+          ? 'Still waiting on Firestore. Check your connection, then refresh.'
+          : (e.message || 'Could not load tickets.');
+        wrap.innerHTML = emptyState('headphones', 'No tickets yet', msg);
+      }
+    }
+    startSupportListener();
   }
 
   window.adminViewTicket = async function(id){
@@ -2034,5 +2347,6 @@
 
 })();
 </script>
+<script src="./js/animations.js"></script>
 </body>
 </html>

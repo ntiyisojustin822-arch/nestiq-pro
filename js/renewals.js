@@ -22,8 +22,21 @@ const MO_LANDLORD_KEYS=[
   {k:'depositRefunded',label:'Deposit refunded or claim made'}
 ];
 
+function renewalTenantInOccupancy(t){
+  if(!t) return false;
+  if(typeof window.nestiqTenantHasActiveOccupancy==='function') return window.nestiqTenantHasActiveOccupancy(t);
+  return t.status!=='vacant';
+}
+
+function renewalFindTenant(tenantId){
+  return (window.tenantsData||[]).find(x=>String(x.id)===String(tenantId))||null;
+}
+function renewalIdJs(id){
+  return JSON.stringify(String(id??''));
+}
+
 function renewalParseLeaseEnd(t){
-  if(!t||t.status==='vacant') return null;
+  if(!renewalTenantInOccupancy(t)) return null;
   const raw=t.leaseEnd||t.lease||'';
   if(/available|^[\s-]*$/i.test(String(raw))) return null;
   const d=new Date(raw);
@@ -41,7 +54,7 @@ function renewalLeaseDaysToEnd(t){
 }
 
 function renewalLeaseCategory(t){
-  if(!t||t.status==='vacant') return null;
+  if(!renewalTenantInOccupancy(t)) return null;
   const days=renewalLeaseDaysToEnd(t);
   if(days===null) return null;
   if(days<0) return 'expired';
@@ -83,7 +96,7 @@ function runRenewalInAppBellChecks(){
   computeLeaseStatus();
   const MS_DAY=86400000;
   (tenantsData||[]).forEach(t=>{
-    if(!t||t.status==='vacant') return;
+    if(!renewalTenantInOccupancy(t)) return;
     const days=renewalLeaseDaysToEnd(t);
     if(days===null) return;
     const st=t.renewalStatus;
@@ -124,8 +137,8 @@ function renewalTenantRowHtml(t,kind){
   const btn=kind==='notice'
     ? `<button type="button" class="btn-outline btn-sm" onclick="showPage('renewals')">View</button>`
     : kind==='warning'
-      ? `<button type="button" class="btn-outline btn-sm" onclick="openStartRenewalModal(${t.id})">Start Renewal</button>`
-      : `<button type="button" class="btn-primary btn-sm" onclick="openStartRenewalModal(${t.id})">Renew Now</button>`;
+      ? `<button type="button" class="btn-outline btn-sm" onclick='openStartRenewalModal(${renewalIdJs(t.id)})'>Start Renewal</button>`
+      : `<button type="button" class="btn-primary btn-sm" onclick='openStartRenewalModal(${renewalIdJs(t.id)})'>Renew Now</button>`;
   return `<div class="renewal-home-row">
     <div><strong>${String(t.name||'').replace(/</g,'')}</strong><div class="renewal-home-muted">${String(t.property||'')} · ${String(t.unit||'')}</div></div>
     <div class="renewal-home-meta">${sub}</div>
@@ -198,15 +211,24 @@ function renewalCalcNewRent(current,type,opts){
 }
 
 function openStartRenewalModal(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t) return;
+  const t=renewalFindTenant(tenantId);
+  if(!t){
+    nestiqShowNotif?.('Could not open renewal — tenant not found. Refresh and try again.','warning');
+    return;
+  }
+  const host=document.getElementById('modalContent');
+  if(!host){
+    nestiqShowNotif?.('Could not open the renewal form. Refresh the page.','error');
+    return;
+  }
   const endIso=t.leaseEnd||t.lease;
   const endDate=renewalParseLeaseEnd(t);
   const startDefault=endDate?renewalDayAfter(endIso):new Date().toISOString().slice(0,10);
   const endDefault=renewalAddMonths(startDefault,12);
   const draft=t.renewalDraft||{};
   const curRent=Number(t.rent||0);
-  document.getElementById('modalContent').innerHTML=`
+  const idJs=renewalIdJs(t.id);
+  host.innerHTML=`
     <h2 class="modal-title">Start Lease Renewal — ${String(t.name||'').replace(/</g,'')}</h2>
     <p class="modal-sub">${t.property} · ${t.unit}</p>
     <div style="font-size:0.84rem;margin-bottom:12px;padding:10px;background:var(--cream);border-radius:10px;border:1px solid var(--border)">
@@ -243,11 +265,11 @@ function openStartRenewalModal(tenantId){
     </div>
     <div class="form-group"><label>Notes</label><textarea id="ren_notes" class="form-input form-textarea" placeholder="Special conditions">${String(draft.notes||'').replace(/</g,'')}</textarea></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-      <button type="button" class="btn-primary btn-sm" onclick="submitStartRenewalDiscuss(${tenantId})">Move to Discussing</button>
-      <button type="button" class="btn-outline btn-sm" onclick="submitStartRenewalWhatsApp(${tenantId})">Send Renewal Offer via WhatsApp</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-primary btn-sm" onclick='submitStartRenewalDiscuss(${idJs})'>Move to Discussing</button>
+      <button type="button" class="btn-outline btn-sm" onclick='submitStartRenewalWhatsApp(${idJs})'>Send Renewal Offer via WhatsApp</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
   window.__renModalTenantId=tenantId;
   window.__renModalBaseRent=curRent;
   ['ren_inc_type','ren_cpi','ren_pct','ren_amt','ren_start','ren_end'].forEach(id=>{
@@ -299,7 +321,7 @@ function renewalModalRecalc(){
 }
 
 function renewalCollectDraftFromModal(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t) return null;
   const o=renewalReadIncOpts();
   const base=Number(t.rent||0);
@@ -319,13 +341,13 @@ function renewalCollectDraftFromModal(tenantId){
 
 function submitStartRenewalDiscuss(tenantId){
   const d=renewalCollectDraftFromModal(tenantId);
-  if(!d||!d.newStart||!d.newEnd){ showNotif('Enter lease dates','warning'); return; }
-  const t=tenantsData.find(x=>x.id===tenantId);
+  if(!d||!d.newStart||!d.newEnd){ nestiqShowNotif('Enter lease dates','warning'); return; }
+  const t=renewalFindTenant(tenantId);
   t.renewalDraft=d;
   t.renewalStatus='discussing';
   saveData();
-  closeModal();
-  showNotif('Renewal moved to In Discussion','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Renewal moved to In Discussion','success');
   computeLeaseStatus();
   renderRenewalsPage();
   renderHomeLeaseWidget();
@@ -333,25 +355,26 @@ function submitStartRenewalDiscuss(tenantId){
 
 function submitStartRenewalWhatsApp(tenantId){
   const d=renewalCollectDraftFromModal(tenantId);
-  if(!d||!d.newStart||!d.newEnd){ showNotif('Enter lease dates','warning'); return; }
-  const t=tenantsData.find(x=>x.id===tenantId);
+  if(!d||!d.newStart||!d.newEnd){ nestiqShowNotif('Enter lease dates','warning'); return; }
+  const t=renewalFindTenant(tenantId);
   t.renewalDraft=d;
   t.renewalStatus='discussing';
   saveData();
   const endPretty=isoToPretty(t.leaseEnd||t.lease);
   const msg=`Dear ${t.name}, your lease for ${t.property} - ${t.unit} expires on ${endPretty}. We would like to offer you a lease renewal on the following terms:\nNew lease period: ${isoToPretty(d.newStart)} to ${isoToPretty(d.newEnd)}\nNew monthly rent: R${d.newRent.toLocaleString('en-ZA')}\nPlease confirm if you accept these terms or contact us to discuss. — NestIQ Pro`;
-  closeModal();
+  nestiqCloseModalAnimated();
   openWhatsAppChat?.(t.phone,msg);
-  showNotif('WhatsApp opened — renewal marked as discussing','success');
+  nestiqShowNotif('WhatsApp opened — renewal marked as discussing','success');
   computeLeaseStatus();
   renderRenewalsPage();
   renderHomeLeaseWidget();
 }
 
 function openSendOfferModal(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t||!t.renewalDraft){ showNotif('Start renewal first','warning'); return; }
+  const t=renewalFindTenant(tenantId);
+  if(!t||!t.renewalDraft){ nestiqShowNotif('Start renewal first','warning'); return; }
   const d=t.renewalDraft;
+  const idJs=renewalIdJs(t.id);
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">Send Renewal Offer — ${String(t.name||'').replace(/</g,'')}</h2>
     <div style="font-size:0.85rem;line-height:1.5;margin-bottom:12px">
@@ -360,13 +383,13 @@ function openSendOfferModal(tenantId){
       <div><strong>Notes:</strong> ${String(d.notes||'—').replace(/</g,'')}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button type="button" class="btn-primary btn-sm" onclick="renewalGenerateOfferLetter(${tenantId})">Generate Renewal Offer Letter</button>
-      <button type="button" class="btn-outline btn-sm" onclick="renewalDownloadOfferPdf(${tenantId})">Download PDF</button>
-      <button type="button" class="btn-outline btn-sm" onclick="renewalEmailOffer(${tenantId})" ${typeof isEmailConfigured==='function'&&!isEmailConfigured()?'disabled title="Configure EmailJS"':''}>Send via email</button>
-      <button type="button" class="btn-gold btn-sm" onclick="renewalMarkOfferSent(${tenantId})">Move to Offer Sent</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Close</button>
+      <button type="button" class="btn-primary btn-sm" onclick='renewalGenerateOfferLetter(${idJs})'>Generate Renewal Offer Letter</button>
+      <button type="button" class="btn-outline btn-sm" onclick='renewalDownloadOfferPdf(${idJs})'>Download PDF</button>
+      <button type="button" class="btn-outline btn-sm" onclick='renewalEmailOffer(${idJs})' ${typeof isEmailConfigured==='function'&&!isEmailConfigured()?'disabled title="Configure EmailJS"':''}>Send via email</button>
+      <button type="button" class="btn-gold btn-sm" onclick='renewalMarkOfferSent(${idJs})'>Move to Offer Sent</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Close</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function renewalOfferLetterHtml(t,d){
@@ -397,19 +420,19 @@ function renewalOfferLetterHtml(t,d){
 }
 
 function renewalGenerateOfferLetter(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t||!t.renewalDraft) return;
   const w=window.open('','_blank');
-  if(!w){ showNotif('Allow pop-ups for the offer letter','warning'); return; }
+  if(!w){ nestiqShowNotif('Allow pop-ups for the offer letter','warning'); return; }
   w.document.write(renewalOfferLetterHtml(t,t.renewalDraft));
   w.document.close();
 }
 
 function renewalDownloadOfferPdf(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t||!t.renewalDraft) return;
   const {jsPDF}=window.jspdf||{};
-  if(!jsPDF){ showNotif('PDF library not loaded','error'); return; }
+  if(!jsPDF){ nestiqShowNotif('PDF library not loaded','error'); return; }
   const doc=new jsPDF({unit:'mm',format:'a4'});
   const html=renewalOfferLetterHtml(t,t.renewalDraft).replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim();
   doc.setFontSize(10);
@@ -419,18 +442,18 @@ function renewalDownloadOfferPdf(tenantId){
 }
 
 function renewalEmailOffer(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t||!t.email){ showNotif('Tenant has no email','warning'); return; }
+  const t=renewalFindTenant(tenantId);
+  if(!t||!t.email){ nestiqShowNotif('Tenant has no email','warning'); return; }
   if(typeof sendCustomEmail!=='function') return;
   const d=t.renewalDraft;
   const body=`Dear ${t.name},\n\nPlease find below our formal lease renewal offer.\n\nNew period: ${isoToPretty(d.newStart)} to ${isoToPretty(d.newEnd)}\nNew monthly rent: R${d.newRent.toLocaleString('en-ZA')}\n\nKind regards,\n${landlordSettings?.name||'Landlord'}`;
-  sendCustomEmail(t,'Lease renewal offer',body).then(()=>showNotif('Email sent','success')).catch(()=>{});
+  sendCustomEmail(t,'Lease renewal offer',body).then(()=>nestiqShowNotif('Email sent','success')).catch(()=>{});
 }
 
 function renewalMarkOfferSent(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   const d=t?.renewalDraft;
-  if(!t||!d){ showNotif('Missing draft terms','error'); return; }
+  if(!t||!d){ nestiqShowNotif('Missing draft terms','error'); return; }
   const incPct=d.oldRent?(((d.newRent-d.oldRent)/d.oldRent)*100):0;
   t.renewalStatus='offer-sent';
   t.pendingNewLease={
@@ -443,16 +466,17 @@ function renewalMarkOfferSent(tenantId){
     notes:d.notes||''
   };
   saveData();
-  closeModal();
-  showNotif('Offer marked as sent','success');
+  nestiqCloseModalAnimated();
+  nestiqShowNotif('Offer marked as sent','success');
   renderRenewalsPage();
   renderHomeLeaseWidget();
 }
 
 function openConfirmRenewalModal(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   const p=t?.pendingNewLease;
-  if(!t||!p){ showNotif('No pending offer','warning'); return; }
+  if(!t||!p){ nestiqShowNotif('No pending offer','warning'); return; }
+  const idJs=renewalIdJs(t.id);
   document.getElementById('modalContent').innerHTML=`
     <h2 class="modal-title">Confirm Lease Renewal — ${String(t.name||'').replace(/</g,'')}</h2>
     <div style="font-size:0.86rem;line-height:1.55;margin-bottom:14px">
@@ -460,15 +484,15 @@ function openConfirmRenewalModal(tenantId){
       <div><strong>New rent:</strong> R${Number(p.newRent||0).toLocaleString('en-ZA')}</div>
     </div>
     <div style="display:flex;flex-direction:column;gap:8px">
-      <button type="button" class="btn-primary btn-sm" onclick="renewalApplyAccepted(${tenantId})">Tenant Accepted — Apply Renewal</button>
-      <button type="button" class="btn-outline btn-sm" style="border-color:var(--rust);color:var(--rust)" onclick="renewalApplyDeclined(${tenantId})">Tenant Declined — Mark as Not Renewing</button>
-      <button type="button" class="btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button type="button" class="btn-primary btn-sm" onclick='renewalApplyAccepted(${idJs})'>Tenant Accepted — Apply Renewal</button>
+      <button type="button" class="btn-outline btn-sm" style="border-color:var(--rust);color:var(--rust)" onclick='renewalApplyDeclined(${idJs})'>Tenant Declined — Mark as Not Renewing</button>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqCloseModalAnimated()">Cancel</button>
     </div>`;
-  document.getElementById('modalOverlay').classList.add('open');
+  nestiqOpenModalAnimated();
 }
 
 function renewalApplyAccepted(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   const p=t?.pendingNewLease;
   if(!t||!p) return;
   const oldRent=Number(t.rent||0);
@@ -493,9 +517,10 @@ function renewalApplyAccepted(tenantId){
   t.movingOut=null;
   saveData();
   syncTenantStatuses?.();
-  closeModal();
+  nestiqCloseModalAnimated();
   addBellNotif('✅',`Lease renewed: ${t.name} — ${t.property}`);
-  showNotif('Renewal applied. Lease and rent updated.','success');
+  nestiqConfetti?.({ count: 50, spread: 50 });
+  nestiqShowNotif('Renewal applied. Lease and rent updated.','success');
   computeLeaseStatus();
   renderRenewalsPage();
   renderHomeLeaseWidget();
@@ -503,7 +528,7 @@ function renewalApplyAccepted(tenantId){
 }
 
 function renewalApplyDeclined(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t) return;
   const end=renewalParseLeaseEnd(t);
   t.renewalStatus='not-renewing';
@@ -517,22 +542,22 @@ function renewalApplyDeclined(tenantId){
     landlordChecklist:{}
   };
   saveData();
-  closeModal();
+  nestiqCloseModalAnimated();
   addBellNotif('📤',`${t.name} marked as not renewing — vacating workflow`);
-  showNotif('Tenant marked as not renewing','warning');
+  nestiqShowNotif('Tenant marked as not renewing','warning');
   renderRenewalsPage();
   renderHomeLeaseWidget();
 }
 
 function renewalSendConfirmationWhatsApp(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t) return;
   const msg=`Dear ${t.name}, we confirm your lease renewal for ${t.property} - ${t.unit}.\nNew lease period: ${isoToPretty(t.leaseStart)} to ${isoToPretty(t.leaseEnd||t.lease)}\nNew monthly rent: R${Number(t.rent||0).toLocaleString('en-ZA')} effective ${isoToPretty(t.leaseStart)}\nThank you for renewing with us. — NestIQ Pro`;
   openWhatsAppChat?.(t.phone,msg);
 }
 
 function renewalToggleLandlordCheck(tenantId,key,checked){
-  const t=tenantsData.find(x=>x.id===tenantId);
+  const t=renewalFindTenant(tenantId);
   if(!t||!t.movingOut) return;
   t.movingOut.landlordChecklist=t.movingOut.landlordChecklist||{};
   t.movingOut.landlordChecklist[key]=checked;
@@ -543,12 +568,15 @@ function renewalToggleLandlordCheck(tenantId,key,checked){
   renderRenewalsPage();
 }
 
-function renewalMarkVacated(tenantId){
-  const t=tenantsData.find(x=>x.id===tenantId);
-  if(!t||!t.movingOut||!t.movingOut.checklistComplete){ showNotif('Complete checklist first','warning'); return; }
+async function renewalMarkVacated(tenantId){
+  const t=renewalFindTenant(tenantId);
+  if(!t||!t.movingOut||!t.movingOut.checklistComplete){ nestiqShowNotif('Complete checklist first','warning'); return; }
   const prop=propertiesData.find(p=>p.name===t.property);
   if(prop) prop.status='vacant';
   t.status='vacant';
+  try{ await window.nestiqUnlinkTenantFromUnit?.(t); }catch(_e){}
+  try{ await window.nestiqTerminateLeasesForTenant?.(t.id); }catch(_e){}
+  try{ await window.nestiqMarkApplicationsTenancyEndedForTenant?.(t); }catch(_e){}
   vacancyRecords.push({
     id:Date.now(),
     propertyId:prop?.id??null,
@@ -561,7 +589,7 @@ function renewalMarkVacated(tenantId){
   try{ window.vacancyRecords=vacancyRecords; }catch(_e){}
   saveData();
   syncTenantStatuses?.();
-  showNotif('Property marked vacant','success');
+  nestiqShowNotif('Property marked vacant','success');
   computeLeaseStatus();
   renderRenewalsPage();
   renderHomeLeaseWidget();
@@ -593,14 +621,14 @@ function renewalCardHtml(t,col){
   }
   let actions='';
   if(col==='attention'){
-    actions=`<button type="button" class="btn-primary btn-sm" onclick="openStartRenewalModal(${t.id})">Start Renewal</button>`;
+    actions=`<button type="button" class="btn-primary btn-sm" onclick='openStartRenewalModal(${renewalIdJs(t.id)})'>Start Renewal</button>`;
   }else if(col==='discuss'){
-    actions=`<button type="button" class="btn-outline btn-sm" onclick="openSendOfferModal(${t.id})">Send Offer</button>`;
+    actions=`<button type="button" class="btn-outline btn-sm" onclick='openSendOfferModal(${renewalIdJs(t.id)})'>Send Offer</button>`;
   }else if(col==='offer'){
-    actions=`<button type="button" class="btn-primary btn-sm" onclick="openConfirmRenewalModal(${t.id})">Confirm Renewal</button>`;
+    actions=`<button type="button" class="btn-primary btn-sm" onclick='openConfirmRenewalModal(${renewalIdJs(t.id)})'>Confirm Renewal</button>`;
   }else if(col==='renewed'){
-    actions=`<button type="button" class="btn-outline btn-sm" onclick="renewalSendConfirmationWhatsApp(${t.id})">WhatsApp</button>
-      <button type="button" class="btn-outline btn-sm" onclick="generateLeaseSummaryPDF(${t.id})">Lease PDF</button>`;
+    actions=`<button type="button" class="btn-outline btn-sm" onclick='renewalSendConfirmationWhatsApp(${renewalIdJs(t.id)})'>WhatsApp</button>
+      <button type="button" class="btn-outline btn-sm" onclick='generateLeaseSummaryPDF(${renewalIdJs(t.id)})'>Lease PDF</button>`;
   }
   return `<div class="renewal-kanban-card">
     <div class="renewal-card-head">${typeof nestiqTenantAvatarHtml==='function'?nestiqTenantAvatarHtml(t,{className:'renewal-card-av'}):`<span class="renewal-card-av">${t.avatar||'👤'}</span>`}<div><strong>${String(t.name||'').replace(/</g,'')}</strong><div class="renewal-card-muted">${String(t.property||'')} · ${String(t.unit||'')}</div></div></div>
@@ -633,7 +661,7 @@ function renderRenewalsPage(){
   const offer=[];
   const renewed=[];
   (tenantsData||[]).forEach(t=>{
-    if(!t||t.status==='vacant') return;
+    if(!renewalTenantInOccupancy(t)) return;
     if(t.renewalStatus==='not-renewing') return;
     if(t.renewalStatus==='renewed'){ renewed.push(renewalCardHtml(t,'renewed')); return; }
     if(t.renewalStatus==='offer-sent'){ offer.push(renewalCardHtml(t,'offer')); return; }
@@ -644,12 +672,12 @@ function renderRenewalsPage(){
 
   const upcoming=[];
   (tenantsData||[]).forEach(t=>{
-    if(!t||t.status==='vacant') return;
+    if(!renewalTenantInOccupancy(t)) return;
     if(t.renewalStatus) return;
     const cat=renewalLeaseCategory(t);
     if(cat==='warning'||cat==='notice'){
       const days=renewalLeaseDaysToEnd(t);
-      upcoming.push(`<div class="renewal-up-item"><div><strong>${String(t.name||'').replace(/</g,'')}</strong> · ${String(t.property||'')}<div class="renewal-card-muted">${days} days remaining</div></div><button type="button" class="btn-outline btn-sm" onclick="openStartRenewalModal(${t.id})">Start Renewal</button></div>`);
+      upcoming.push(`<div class="renewal-up-item"><div><strong>${String(t.name||'').replace(/</g,'')}</strong> · ${String(t.property||'')}<div class="renewal-card-muted">${days} days remaining</div></div><button type="button" class="btn-outline btn-sm" onclick='openStartRenewalModal(${renewalIdJs(t.id)})'>Start Renewal</button></div>`);
     }
   });
 
@@ -666,10 +694,10 @@ function renderRenewalsPage(){
     vac.push(`<div class="renewal-vac-card">
       <div class="renewal-vac-head"><strong>${String(t.name||'').replace(/</g,'')}</strong> · ${t.property}<div class="renewal-card-muted">Move out: ${isoToPretty(mo.expectedMoveOut)} · ${dLeft!=null?dLeft+' days left':'—'}</div>
       <div>Deposit held: R${Number(mo.depositRefund||0).toLocaleString('en-ZA')}</div></div>
-      <div class="renewal-vac-tasks">${MO_LANDLORD_KEYS.map(x=>`<label class="renewal-chk"><input type="checkbox" ${chk[x.k]?'checked':''} onchange="renewalToggleLandlordCheck(${t.id},'${x.k}',this.checked)"> ${x.label}</label>`).join('')}</div>
+      <div class="renewal-vac-tasks">${MO_LANDLORD_KEYS.map(x=>`<label class="renewal-chk"><input type="checkbox" ${chk[x.k]?'checked':''} onchange='renewalToggleLandlordCheck(${renewalIdJs(t.id)},${JSON.stringify(x.k)},this.checked)'> ${x.label}</label>`).join('')}</div>
       <div class="lease-bar" style="margin:10px 0"><div class="lease-fill" style="width:${pct}%"></div></div>
       <div style="font-size:0.78rem;color:var(--muted)">${pct}% complete</div>
-      <button type="button" class="btn-primary btn-sm" style="margin-top:8px" ${pct<100?'disabled':''} onclick="renewalMarkVacated(${t.id})">Mark as Vacated</button>
+      <button type="button" class="btn-primary btn-sm" style="margin-top:8px" ${pct<100?'disabled':''} onclick='renewalMarkVacated(${renewalIdJs(t.id)})'>Mark as Vacated</button>
     </div>`);
   });
   if(vacWrap){
@@ -696,6 +724,8 @@ function renderRenewalsPage(){
       upEl.innerHTML=`<h3 class="tax-section-title" style="margin-top:20px">Upcoming (31–90 days)</h3><div class="renewal-up-strip">${upcoming.join('')}</div>`;
     }
   }
+
+  try{ window.nestiqRenderLeasesPortfolioTable?.(); }catch(_e){}
 }
 
 function initRenewalsPage(){
@@ -741,7 +771,7 @@ function initLeaseRenewalEngine(){
 }
 
 function renderTenantRenewalPortalSection(tenant,days){
-  if(!tenant||tenant.status==='vacant') return '';
+  if(!renewalTenantInOccupancy(tenant)) return '';
   if(days>90) return '';
   const st=tenant.renewalStatus;
   const pend=tenant.pendingNewLease;
@@ -750,8 +780,8 @@ function renderTenantRenewalPortalSection(tenant,days){
     const head=days<0?`Your lease expired ${Math.abs(days)} day${Math.abs(days)===1?'':'s'} ago`:`Your lease expires in ${days} day${days===1?'':'s'}`;
     box=`<div style="background:rgba(201,168,76,0.14);border:1px solid var(--border);border-radius:10px;padding:10px;margin-top:10px;font-size:0.82rem">
       <div style="font-weight:700;margin-bottom:6px">${head}</div>
-      <div style="color:var(--muted);margin-bottom:8px">Contact your landlord to discuss renewal.</div>
-      <button type="button" class="btn-outline btn-sm" onclick="scrollToTenantCard('tenantMessagesCard')">Send Message</button>
+      <div style="color:var(--muted);margin-bottom:8px">Message your caretaker to discuss renewal.</div>
+      <button type="button" class="btn-outline btn-sm" onclick="nestiqTenantOpenChat()">Message caretaker</button>
     </div>`;
   }else if(st==='discussing'){
     box=`<div style="background:rgba(201,168,76,0.2);border:1px solid var(--gold);border-radius:10px;padding:10px;margin-top:10px;font-size:0.82rem">
@@ -800,14 +830,14 @@ function tenantPortalRenewalTenant(){
 
 function tenantPortalAcceptRenewalWhatsApp(){
   const t=tenantPortalRenewalTenant();
-  if(!t||!landlordSettings?.phone){ showNotif('Missing landlord phone','warning'); return; }
+  if(!t||!landlordSettings?.phone){ nestiqShowNotif('Missing landlord phone','warning'); return; }
   const msg=`Hi, I ${t.name} accept the lease renewal terms offered for ${t.property} - ${t.unit}. Please confirm.`;
   openWhatsAppChat?.(landlordSettings.phone,msg);
 }
 
 function tenantPortalDeclineRenewalWhatsApp(){
   const t=tenantPortalRenewalTenant();
-  if(!t||!landlordSettings?.phone){ showNotif('Missing landlord phone','warning'); return; }
+  if(!t||!landlordSettings?.phone){ nestiqShowNotif('Missing landlord phone','warning'); return; }
   const msg=`Hi, I ${t.name} need to decline the renewal offer for ${t.property} - ${t.unit}. Please let me know next steps.`;
   openWhatsAppChat?.(landlordSettings.phone,msg);
 }
